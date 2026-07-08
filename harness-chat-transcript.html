@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Understanding &amp; Building an Agent Harness — Conversation</title>
+<style>
+  :root {
+    --ink: #1a1d21;
+    --muted: #5b6470;
+    --line: #d9dee5;
+    --accent: #2f5fd6;
+    --accent-soft: #eef3fe;
+    --user-bg: #f4f6f9;
+    --code-bg: #f6f8fa;
+  }
+  @page {
+    size: A4;
+    margin: 20mm 18mm 22mm 18mm;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    font-size: 10.5pt;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* Cover */
+  .cover {
+    padding: 60px 0 40px;
+    border-bottom: 3px solid var(--accent);
+    margin-bottom: 34px;
+    page-break-after: avoid;
+  }
+  .cover .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 8.5pt;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .cover h1 {
+    font-size: 26pt;
+    line-height: 1.15;
+    margin: 0 0 14px;
+    letter-spacing: -0.01em;
+  }
+  .cover .sub {
+    color: var(--muted);
+    font-size: 11pt;
+    max-width: 40em;
+    margin: 0 0 20px;
+  }
+  .cover .meta {
+    font-size: 9pt;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+  .cover .meta span { margin-right: 22px; }
+
+  /* Turns */
+  .turn { margin: 0 0 26px; page-break-inside: auto; }
+  .role {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+  }
+  .role.user { background: #e7ebf1; color: #3a4350; }
+  .role.assistant { background: var(--accent-soft); color: var(--accent); }
+
+  .user-turn .bubble {
+    background: var(--user-bg);
+    border: 1px solid var(--line);
+    border-left: 3px solid #9aa5b4;
+    border-radius: 6px;
+    padding: 4px 18px;
+  }
+  .assistant-turn .bubble { padding: 0 2px; }
+
+  h2.section {
+    font-size: 13.5pt;
+    margin: 22px 0 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--line);
+    letter-spacing: -0.01em;
+  }
+  h3.sub {
+    font-size: 11pt;
+    margin: 16px 0 6px;
+    color: var(--ink);
+  }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  strong { font-weight: 700; }
+  em { color: var(--ink); }
+
+  blockquote {
+    margin: 12px 0;
+    padding: 8px 16px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    font-style: italic;
+    color: #2a3550;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 7.6pt;
+    line-height: 1.35;
+    overflow-x: auto;
+    white-space: pre;
+    page-break-inside: avoid;
+  }
+  code {
+    font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 9pt;
+    background: var(--code-bg);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 6px 9px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--accent-soft);
+    font-weight: 700;
+    color: #2a3550;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  .qa-block {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 16px 12px;
+    margin: 12px 0;
+    background: #fcfdff;
+  }
+  .qa-block .qa-head {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 12px 0 2px;
+  }
+  .chosen {
+    display: inline-block;
+    background: #e4f4ea;
+    color: #1f7a43;
+    border: 1px solid #b6e0c4;
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 8.5pt;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+
+  .footer-note {
+    margin-top: 30px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    font-size: 8.5pt;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="eyebrow">AI Fluency Hackathon &mdash; Planning Conversation</div>
+  <h1>Understanding &amp; Building an Agent Harness</h1>
+  <p class="sub">A working session on what a harness is and how to build one &mdash; scoped toward a design-handoff &amp; downstream-communications agent.</p>
+  <div class="meta">
+    <span><strong>Participant:</strong> Brian Studwell, Product Design</span>
+    <span><strong>Date:</strong> 8 July 2026</span>
+    <span><strong>Assistant:</strong> Claude Code</span>
+  </div>
+</div>
+
+<!-- TURN 1: USER -->
+<div class="turn user-turn">
+  <span class="role user">Brian</span>
+  <div class="bubble">
+    <p>I'm participating in a company-wide hackathon to up-skill our teams and promote AI fluency. I'm a member of our product design team who uses Claude Code every day for work. We're currently in the weeks leading up to the actual 2-day build. During the build days we'll be asked to build an agent that can perform some kind of work on our behalfs. My project is going to focus on design handoff and subsequent communications.</p>
+    <p>One task every team, mine included, is being asked to do is to build out a harness for their agent. Not being very familiar with harnesses, I'd like your help in this effort. Bring me up to speed on what a harness is. I don't have to have a PhD, just a solid understanding. Then help me identify the steps I need to take to build a harness. Ask me clarifying questions to flesh out the task.</p>
+  </div>
+</div>
+
+<!-- TURN 2: ASSISTANT -->
+<div class="turn assistant-turn">
+  <span class="role assistant">Claude</span>
+  <div class="bubble">
+    <p>Great project to pick &mdash; design handoff is a genuinely good agent use case, and understanding harnesses will make you dangerous (in a good way) at this hackathon. Let me get you oriented, then we'll scope your build.</p>
+
+    <h2 class="section">What a harness actually is</h2>
+    <p>A language model on its own is just a text predictor. You give it text, it gives you text back. That's it. It can't open a file, send an email, remember what happened yesterday, or take a second step based on the result of a first step.</p>
+    <p><strong>A harness is all the scaffolding around the model that turns "text in, text out" into an agent that can actually do work.</strong> It's the machinery that:</p>
+    <ul>
+      <li><strong>Feeds the model the right context</strong> (instructions, relevant docs, the current state of things)</li>
+      <li><strong>Gives it tools</strong> and runs them when the model asks (read a file, call an API, send a message)</li>
+      <li><strong>Loops</strong> &mdash; takes the model's output, executes any actions, feeds the results back in, and repeats until the job is done</li>
+      <li><strong>Keeps it on the rails</strong> &mdash; permissions, guardrails, what it's allowed to touch, when to stop and ask a human</li>
+    </ul>
+    <p>A useful analogy: the model is an engine. The harness is the rest of the car &mdash; the transmission, steering, dashboard, brakes, and the seatbelt. A brilliant engine sitting on the floor doesn't take you anywhere.</p>
+    <p><strong>You're already using a harness every day: Claude Code is one.</strong> The model doesn't inherently know how to read your files or run bash &mdash; Claude Code (the harness) gives it those tools, manages what context the model sees, runs the tools when the model requests them, loops until your task is done, and asks your permission before risky actions. Your hackathon task is to build a purpose-built version of that same idea, aimed at design handoff.</p>
+
+    <h2 class="section">The anatomy of a harness (the 6 pieces you'll design)</h2>
+    <ol>
+      <li><strong>The loop</strong> &mdash; the core cycle: model thinks &rarr; requests an action &rarr; harness runs it &rarr; result goes back to model &rarr; repeat until done. This is the beating heart.</li>
+      <li><strong>Instructions / system prompt</strong> &mdash; the agent's job description, personality, rules, and definition of "done."</li>
+      <li><strong>Context management</strong> &mdash; what information the agent gets and when. Too little and it's clueless; too much and it drowns.</li>
+      <li><strong>Tools</strong> &mdash; the concrete capabilities. Each is a function the model can invoke: read a Figma file, draft an email, post to a channel, look up a component spec.</li>
+      <li><strong>Guardrails &amp; control</strong> &mdash; permissions, approval gates, what it can't do, when to hand back to a human. Critical for anything that talks to the outside world (like sending comms).</li>
+      <li><strong>Evaluation</strong> &mdash; how you know it's doing a good job. Test cases, examples of good vs. bad output, a way to measure it.</li>
+    </ol>
+
+    <h2 class="section">The steps to build one</h2>
+    <ol>
+      <li><strong>Define the job precisely</strong> &mdash; one clear task the agent owns end-to-end.</li>
+      <li><strong>Map the workflow you do today</strong> &mdash; the manual steps, the inputs you look at, the outputs you produce, the decisions you make. The agent is automating <em>this</em>.</li>
+      <li><strong>Inventory the tools it needs</strong> &mdash; for each manual step, what capability does the agent need?</li>
+      <li><strong>Write the instructions</strong> &mdash; role, process, rules, output format, when to stop and ask you.</li>
+      <li><strong>Decide context strategy</strong> &mdash; what you'll feed it up front vs. what it fetches via tools.</li>
+      <li><strong>Set guardrails</strong> &mdash; especially: does it <em>send</em> communications, or <em>draft</em> them for your approval?</li>
+      <li><strong>Build the loop</strong> &mdash; wire model + tools + context together.</li>
+      <li><strong>Test on real examples</strong> &mdash; run it against actual past handoffs, see where it breaks, refine.</li>
+    </ol>
+    <p>The good news: you don't have to build the loop, permission system, or tool-execution machinery from scratch. Claude Code and the Claude Agent SDK give you those for free &mdash; your real design work is steps 1&ndash;6.</p>
+
+    <h2 class="section">Clarifying questions</h2>
+    <ol>
+      <li><strong>The task itself.</strong> Walk me through what design handoff looks like <em>manually</em> today.</li>
+      <li><strong>Where do the inputs live?</strong> Figma? A design system? Specs in docs or tickets?</li>
+      <li><strong>Where do the communications go?</strong> Email? Teams? A ticketing system? Who's the audience?</li>
+      <li><strong>Draft vs. send.</strong> Should the agent <em>draft</em> for review, or <em>send</em> autonomously?</li>
+      <li><strong>What does "build" mean at the hackathon?</strong> Working prototype, or designed-and-documented harness?</li>
+      <li><strong>Your comfort zone.</strong> Comfortable with code, or prefer configuration-and-prompts?</li>
+    </ol>
+  </div>
+</div>
+
+<!-- TURN 3: USER -->
+<div class="turn user-turn">
+  <span class="role user">Brian</span>
+  <div class="bubble">
+    <p><strong>1.</strong> Today, this means that the working group attached to the design project (designer(s), PM, dev) agree that the design is complete. Historically, we would then prepare the file for handoff by annotating the designs, highlighting important details, and filling in any gaps that were identified. Engineering then would be given access to the file, and we would write a ticket for them describing the task and including a link to the Figma file. If the project had required novel UI, not covered by the existing design system, a new DS component would have to be defined and created, which would be kind of an offshoot from the main effort. Today, we are almost always delivering prototypes created with Claude Code, hosted on Vercel. Dev goes to the hosted site to get familiar with the new feature and inspect value. It's still a translation. Then engineering does their thing, building the feature out in one sprint or another. Once completed in dev, the feature is promoted through our SQA cycle from dev to QA, from QA to test, and from test to production. Sometimes engineers come to us for clarification as they're building. Sometimes we're brought in to review the test build, but rarely. More often, we don't hear anything for weeks or months, until the feature has been released and people are encountering issues with it. As the feature is moving through the quality assurance phases product prepares release notes, and, sometimes, packs of information describing the new feature for internal audiences (support, sales, other product teams, execs).</p>
+    <p><strong>2.</strong> The inputs are the Figma file or Claude Code prototype, our design system (if applicable), and the existing codebase. Specs have been written in Figma in the past but, increasingly, we are generating them from the final prototype. These details are sometimes consumed directly, sometimes added to Jira tickets or Excel spreadsheets. Figma and Microsoft are definitely in play, though I haven't gotten the MS365 connector to work (not authorized by my company yet).</p>
+    <p><strong>3.</strong> Right now the communications are informal and unstructured, if they exist at all. It's ad-hoc. Sometimes we're on the ball and communicate impending changes to our support teams, account managers, and sales people, but more often they're surprised by something new they see in the product one day and we get angry chats and emails. That's one of the things we want to fix with this effort. If the process of disseminating upcoming UX changes were more automatic, and less manual, the thinking is we could make a habit of it. There probably need to be different comms for different audiences. The design system team gets one message. The support folks and technical account managers get another, explaining how the feature works, what changed, how to use and how not to use it etc. QA gets instructions for testing it. Dev gets the new feature as spec'd UI code ready for import, maybe with accompanying documentation similar to the support content. Release notes get drafted, briefly stating the most important aspects of the change. A middle-weight description of the change is authored for internal presentations or blogs.</p>
+    <p><strong>4.</strong> I imagine it will send things, but perhaps with a human in the loop to review and edit the content.</p>
+    <p><strong>5.</strong> A working prototype if we can swing it.</p>
+    <p><strong>6.</strong> I'm comfortable with coding, so long as you're writing it. I can read it somewhat, but I don't have much technical expertise.</p>
+  </div>
+</div>
+
+<!-- TURN 4: ASSISTANT -->
+<div class="turn assistant-turn">
+  <span class="role assistant">Claude</span>
+  <div class="bubble">
+    <p>This is a rich picture, and honestly a textbook-perfect agent use case. Let me reflect back the shape of what you're building, then lock a few decisions with you.</p>
+
+    <h2 class="section">The shape of your agent</h2>
+    <p>Buried in everything you described is one crisp, high-value job the agent can own:</p>
+    <blockquote>Take a completed design change and fan it out into the right message for every downstream audience &mdash; reviewed by a human before it goes out.</blockquote>
+    <p>That "surprise &rarr; angry chat" problem you named is the real prize. The dev handoff is <em>already</em> half-solved by Claude Code + your hosted prototypes. The <strong>multi-audience communications</strong> part is where the pain is, where it's currently ad-hoc, and where an agent shines &mdash; because it's the same underlying change retold six different ways.</p>
+
+    <p>Here's the loop:</p>
+    <pre>   INPUT                UNDERSTAND              FAN-OUT GENERATE           REVIEW              DISTRIBUTE
+&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;        &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;       &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;    &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;        &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+&#9474; Figma /  &#9474;        &#9474; Build ONE      &#9474;  &#9472;&#9472;&#9658; &#9474; DS team msg      &#9474;    &#9474; Human     &#9474;        &#9474; Send /    &#9474;
+&#9474; prototype&#9474;  &#9472;&#9472;&#9658;  &#9474; canonical      &#9474;  &#9472;&#9472;&#9658; &#9474; Support/TAM guide&#9474;&#9472;&#9472;&#9658; &#9474; reviews &amp; &#9474;  &#9472;&#9472;&#9658;  &#9474; post each &#9474;
+&#9474; + DS +   &#9474;        &#9474; "change brief" &#9474;  &#9472;&#9472;&#9658; &#9474; QA test plan     &#9474;    &#9474; edits     &#9474;        &#9474; artifact  &#9474;
+&#9474; codebase &#9474;        &#9474; (what/why/     &#9474;  &#9472;&#9472;&#9658; &#9474; Release note     &#9474;    &#9474; each      &#9474;        &#9474;           &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;        &#9474;  visual/impact)&#9474;  &#9472;&#9472;&#9658; &#9474; Internal blog    &#9474;    &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;        &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;
+                    &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;       &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</pre>
+
+    <p>The key architectural idea &mdash; and the thing that'll make it <em>good</em> &mdash; is that middle step. The agent first distills the change into <strong>one structured "change brief"</strong> (what changed, why, before/after visuals, which DS components are affected, is a new component needed). Then each audience artifact is generated <em>from that same brief</em> by a specialized generator. One understanding, many tailored retellings. That's also naturally a place to fan out into parallel subagents, one per audience.</p>
+
+    <h2 class="section">Mapped to the six harness pieces (your version)</h2>
+    <table>
+      <tr><th>Piece</th><th>Your build</th></tr>
+      <tr><td><strong>Loop</strong></td><td>Understand &rarr; fan-out generate &rarr; human review &rarr; distribute</td></tr>
+      <tr><td><strong>Instructions</strong></td><td>Per-audience "voice + what they care about" specs (QA wants edge cases; sales wants benefits; DS wants component impact)</td></tr>
+      <tr><td><strong>Context</strong></td><td>The change brief + design system reference + the prototype/Figma. Fetched via tools, not all crammed in up front</td></tr>
+      <tr><td><strong>Tools</strong></td><td>Read Figma, fetch the hosted prototype, read DS reference, read codebase, and the <em>distribution</em> tools (email/Teams/Jira)</td></tr>
+      <tr><td><strong>Guardrails</strong></td><td>Nothing sends without human approval &mdash; the review gate is the whole safety story for a comms agent</td></tr>
+      <tr><td><strong>Evaluation</strong></td><td>Run it on 2&ndash;3 <em>past</em> real changes; compare its artifacts to what you'd have written by hand</td></tr>
+    </table>
+
+    <h2 class="section">The one real blocker, and what to prep now</h2>
+    <p><strong>MS365 isn't authorized for you.</strong> That's your critical-path risk, because "distribute" depends on it.</p>
+    <ol>
+      <li><strong>Start the authorization request now</strong> &mdash; it's the longest lead-time item and it's not in your control. Plan a fallback so a demo isn't hostage to IT.</li>
+      <li><strong>Gather 2&ndash;3 real past changes</strong> with their eventual outcomes. These become your test cases <em>and</em> your demo material.</li>
+    </ol>
+    <p>Everything else &mdash; Figma reading, the change brief, the fan-out generation, a review UI &mdash; you can build regardless of the MS365 situation.</p>
+
+    <div class="qa-block">
+      <p style="margin-top:12px;"><strong>Three decisions locked with the user:</strong></p>
+      <div class="qa-head">Build scope</div>
+      <p style="margin:2px 0;">How wide should the hackathon build reach? <span class="chosen">&#10003; Full pipeline</span></p>
+      <p style="margin:2px 0; color:var(--muted); font-size:9pt;">Understand &rarr; dev handoff &rarr; comms &rarr; distribution, end to end. Most complete story, but ambitious for two days.</p>
+
+      <div class="qa-head">Harness stack</div>
+      <p style="margin:2px 0;">What should the harness run on? <span class="chosen">&#10003; Agent SDK app on Vercel</span></p>
+      <p style="margin:2px 0; color:var(--muted); font-size:9pt;">A small TypeScript app using the Claude Agent SDK plus a minimal review/approve UI, deployed to Vercel.</p>
+
+      <div class="qa-head">Distribution</div>
+      <p style="margin:2px 0;">How should the agent "send" for the build? <span class="chosen">&#10003; Review UI, defer sending</span></p>
+      <p style="margin:2px 0; color:var(--muted); font-size:9pt;">Agent produces artifacts into a review/approve UI; actual sending stubbed or manual. Sidesteps the MS365 blocker.</p>
+    </div>
+  </div>
+</div>
+
+<!-- TURN 5: ASSISTANT (build plan) -->
+<div class="turn assistant-turn">
+  <span class="role assistant">Claude</span>
+  <div class="bubble">
+    <p>Good &mdash; you went ambitious on scope, pragmatic on the rest. That's a workable combination <em>if</em> we build it the right way.</p>
+
+    <h3 class="sub">The one honest caveat</h3>
+    <p>"Full pipeline" in 2 days is a lot. The way you don't crash into that wall is <strong>spine-first</strong>: build a thin version that runs end-to-end (one input &rarr; brief &rarr; <em>one</em> artifact &rarr; review UI) on day one, then widen it stage by stage. That way you always have something that works to demo.</p>
+
+    <h2 class="section">The architecture (Agent SDK app on Vercel)</h2>
+    <pre>&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+&#9474;  Next.js app on Vercel                                        &#9474;
+&#9474;                                                               &#9474;
+&#9474;  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;         &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;    &#9474;
+&#9474;  &#9474; Review UI   &#9474;&#9668;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9658;&#9474; /api/run  (server route)     &#9474;    &#9474;
+&#9474;  &#9474; (browser)   &#9474;  stream &#9474;   runs the Claude Agent SDK  &#9474;    &#9474;
+&#9474;  &#9474;             &#9474;         &#9474;   loop + subagents + tools   &#9474;    &#9474;
+&#9474;  &#9474; - trigger   &#9474;         &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;    &#9474;
+&#9474;  &#9474; - watch     &#9474;                        &#9474;                    &#9474;
+&#9474;  &#9474; - edit each &#9474;                        &#9660;                    &#9474;
+&#9474;  &#9474; - approve   &#9474;              &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;          &#9474;
+&#9474;  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;              &#9474; TOOLS             &#9474;          &#9474;
+&#9474;                               &#9474; - fetch prototype &#9474;          &#9474;
+&#9474;                               &#9474; - read DS ref     &#9474;          &#9474;
+&#9474;                               &#9474; - read codebase   &#9474;          &#9474;
+&#9474;                               &#9474; - (send: stubbed) &#9474;          &#9474;
+&#9474;                               &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;          &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</pre>
+    <ul>
+      <li><strong>The agent</strong> = Claude Agent SDK (TypeScript). Same harness machinery as Claude Code &mdash; loop, tools, subagents, permissions &mdash; but <em>yours</em>, wired to your task.</li>
+      <li><strong>The UI</strong> = a Next.js page: trigger a run, watch progress stream in, then a card per audience you can edit and approve.</li>
+      <li><strong>Deploy</strong> = Vercel, which you already use. (Function timeout is now 300s, plenty for bounded stages; we stream progress so it never feels stuck.)</li>
+    </ul>
+
+    <h2 class="section">Input strategy &mdash; lean on the prototype, not Figma</h2>
+    <p>The most important simplification: <strong>make the hosted prototype URL + its source code the primary input, and Figma optional.</strong></p>
+    <ol>
+      <li>You're increasingly generating specs <em>from the prototype</em> anyway.</li>
+      <li>Figma's MCP runs locally against your Figma app &mdash; awkward to reach from a deployed Vercel server. The prototype is just a URL to fetch and a repo to read.</li>
+    </ol>
+    <p>So the agent's front door becomes: <strong>a prototype URL + a short human note</strong> ("what changed and why"). Everything else it derives.</p>
+
+    <h2 class="section">The full pipeline, staged</h2>
+    <table>
+      <tr><th>Stage</th><th>Input &rarr; Output</th><th>Tools</th><th>Spine phase</th></tr>
+      <tr><td><strong>1. Understand</strong></td><td>prototype + note &rarr; <strong>change brief</strong> (what/why/before-after/affected DS components/new-component?)</td><td>fetch prototype, read DS ref, read codebase</td><td>&#10003; Phase 0</td></tr>
+      <tr><td><strong>2. Dev handoff</strong></td><td>brief &rarr; spec'd UI notes + import-ready code pointer + dev doc</td><td>read codebase</td><td>Phase 2</td></tr>
+      <tr><td><strong>3. Comms fan-out</strong></td><td>brief &rarr; 5 audience artifacts (DS / support+TAM / QA / release note / internal blog), generated in parallel</td><td>&mdash;</td><td>&#10003; start with 1, widen</td></tr>
+      <tr><td><strong>4. Review</strong></td><td>artifacts &rarr; editable cards, approve each</td><td>&mdash;</td><td>&#10003; Phase 0</td></tr>
+      <tr><td><strong>5. Distribute</strong></td><td>approved &rarr; send (stubbed: download / copy / "mark sent")</td><td>send-tool (stub now, MS365 later)</td><td>&#10003; stub in Phase 0</td></tr>
+    </table>
+
+    <h3 class="sub">Phased build</h3>
+    <ul>
+      <li><strong>Phase 0 (spine):</strong> prototype URL + note &rarr; change brief &rarr; <em>release note only</em> &rarr; review card &rarr; stub "send." End to end. Day-1 morning target.</li>
+      <li><strong>Phase 1:</strong> widen stage 3 to all five audiences, fanned out as parallel subagents (one generator per audience, each with its own "voice + what they care about" instructions).</li>
+      <li><strong>Phase 2:</strong> add the dev-handoff stage and the "is a new DS component needed?" detection.</li>
+      <li><strong>Phase 3 (if time):</strong> real distribution via whatever channel landed.</li>
+    </ul>
+
+    <h2 class="section">What to do in the weeks before the build</h2>
+    <ol>
+      <li><strong>File the MS365 authorization request now</strong> &mdash; longest lead time, not in your control.</li>
+      <li><strong>Collect 2&ndash;3 real past changes</strong> &mdash; the prototype URL + what release note/support content actually got written + any complaint that came in.</li>
+      <li><strong>Write the audience specs</strong> &mdash; for each of the five audiences: who they are, what they care about, tone, and one example of a <em>good</em> artifact. This is 80% of what makes the output good.</li>
+      <li><strong>Confirm the five audiences and their channels.</strong></li>
+    </ol>
+
+    <h2 class="section">What I need to start scaffolding</h2>
+    <ul>
+      <li><strong>One sample prototype URL</strong> (a real hosted feature) to wire the "understand" stage against.</li>
+      <li><strong>Confirmation of the five audiences</strong> (or your edits to that list).</li>
+      <li>A yes on the stack: <strong>Next.js + Claude Agent SDK (TypeScript) on Vercel.</strong></li>
+    </ul>
+    <p>Recommended next move: work through the <strong>audience specs</strong> first, because a great harness with vague instructions produces mediocre output &mdash; nailing those makes the build days mostly wiring.</p>
+  </div>
+</div>
+
+<div class="footer-note">
+  Generated from a Claude Code planning session &middot; Ideagen AI Fluency Hackathon &middot; 8 July 2026
+</div>
+
+</body>
+</html>
