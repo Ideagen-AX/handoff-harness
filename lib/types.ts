@@ -10,6 +10,20 @@ export const ChangeBriefSchema = z.object({
   oneLiner: z
     .string()
     .describe("The change in a single sentence; reused verbatim in release notes"),
+  changeBasis: z
+    .object({
+      method: z
+        .enum(["codebase-diff", "url-diff", "inferred"])
+        .describe(
+          "How 'what changed' was established: compared against the current source code, against a baseline URL, or inferred from the note + knowledge with NO baseline",
+        ),
+      note: z
+        .string()
+        .describe(
+          "One line on how the delta was determined and any caveats. If 'inferred', state plainly that whatChanged/beforeAfter are unverified.",
+        ),
+    })
+    .describe("Provenance of the change analysis — lets the reviewer know how much to trust it"),
   whatChanged: z
     .array(z.string())
     .describe("Concrete, factual bullet list of what changed — no spin"),

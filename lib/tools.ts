@@ -1,5 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { readFile, readdir, stat } from "node:fs/promises";
+import { resolve, relative, join, basename } from "node:path";
 import { readReferenceDoc } from "./specs";
 
 // Crude but dependency-free HTML → readable text. Good enough to feed a model.
@@ -47,6 +49,68 @@ export const fetchPrototype = tool({
     }
   },
 });
+
+// TOOL 3 (dynamic) — explore the current application's source code (the "before"
+// state). Created per-run and scoped to a single root directory so the agent can
+// only read within the provided codebase. Enables a true prototype-vs-current diff.
+const CODEBASE_IGNORE = new Set([
+  "node_modules", ".git", ".next", "dist", "build", "coverage", ".vercel", ".turbo", ".cache",
+]);
+
+export function makeCodebaseTool(root: string) {
+  const absRoot = resolve(root);
+  return tool({
+    description:
+      "Explore the current application's source code — the 'before' state — to determine what the prototype actually changes. op 'list' returns a filtered file tree under a relative path; op 'read' returns a file's contents. Reads are confined to the codebase root.",
+    inputSchema: z.object({
+      op: z.enum(["list", "read"]),
+      path: z.string().default(".").describe("path relative to the codebase root"),
+    }),
+    execute: async ({ op, path: rel }) => {
+      const target = resolve(absRoot, rel);
+      if (target !== absRoot && !target.startsWith(absRoot + "/")) {
+        return { error: "path escapes the codebase root" };
+      }
+      try {
+        if (op === "read") {
+          if (basename(target).startsWith(".env")) {
+            return { error: "refusing to read environment files" };
+          }
+          const content = await readFile(target, "utf8");
+          return {
+            path: rel,
+            content: content.slice(0, 20000),
+            truncated: content.length > 20000,
+          };
+        }
+        if (!(await stat(target)).isDirectory()) {
+          return { error: "path is a file; use op 'read'" };
+        }
+        const out: string[] = [];
+        const cap = 400;
+        async function walk(dir: string, depth: number) {
+          if (out.length >= cap || depth > 6) return;
+          for (const e of await readdir(dir, { withFileTypes: true })) {
+            if (out.length >= cap) break;
+            if (CODEBASE_IGNORE.has(e.name) || e.name.startsWith(".")) continue;
+            const full = join(dir, e.name);
+            const r = relative(absRoot, full);
+            if (e.isDirectory()) {
+              out.push(r + "/");
+              await walk(full, depth + 1);
+            } else {
+              out.push(r);
+            }
+          }
+        }
+        await walk(target, 0);
+        return { root: rel, entries: out, truncated: out.length >= cap };
+      } catch (err) {
+        return { error: String(err) };
+      }
+    },
+  });
+}
 
 // TOOL 2 — read a reference document (e.g. the design-system reference).
 export const readReference = tool({

@@ -15,6 +15,7 @@ and reading the codebase, plus the short human note that kicks off a run.
 |---|---|---|
 | `title` | Short name of the change | e.g. "Responsive search result views" |
 | `one_liner` | The change in a single sentence | Reused verbatim in release notes |
+| `changeBasis` | How the delta was established: `method` (`codebase-diff` / `url-diff` / `inferred`) + `note` | Provenance — tells the reviewer how much to trust `whatChanged`/`beforeAfter`. `inferred` means no baseline was available. |
 | `what_changed` | Bulleted list of concrete changes | The facts, no spin |
 | `why` | The problem it solves / motivation | Human note is the seed; agent enriches |
 | `before_after` | Prior behavior → new behavior | Table or paired bullets |
@@ -37,6 +38,8 @@ and reading the codebase, plus the short human note that kicks off a run.
 **one_liner:** Search results can now be viewed as list, table, cards, calendar,
 hierarchy, or chart, and the surrounding filter/visualization panels adapt to any
 screen size.
+
+**changeBasis:** `{ method: "codebase-diff", note: "Compared the prototype against the current Search implementation in the product source." }` — or, with no baseline: `{ method: "inferred", note: "No baseline provided; whatChanged/beforeAfter are inferred from the note and must be verified." }`
 
 **what_changed:**
 - Added six result view modes: list, table, cards, calendar, hierarchy, chart

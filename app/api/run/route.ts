@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const { prototypeUrl, note } = await req.json();
+  const { prototypeUrl, note, baselineUrl, codebasePath } = await req.json();
 
   if (!prototypeUrl || typeof prototypeUrl !== "string") {
     return new Response(JSON.stringify({ error: "prototypeUrl is required" }), {
@@ -22,7 +22,12 @@ export async function POST(req: Request) {
       const send = (event: PipelineEvent) =>
         controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       try {
-        for await (const event of runPipeline({ prototypeUrl, note: note ?? "" })) {
+        for await (const event of runPipeline({
+          prototypeUrl,
+          note: note ?? "",
+          baselineUrl: baselineUrl || undefined,
+          codebasePath: codebasePath || undefined,
+        })) {
           send(event);
         }
       } catch (err) {

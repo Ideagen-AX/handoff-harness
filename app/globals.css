@@ -50,7 +50,7 @@ header.masthead p { color: var(--muted); margin: 0; max-width: 62ch; }
 label.field { display: block; margin-bottom: 14px; }
 label.field .lab { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
 
-input[type="url"], textarea {
+input[type="url"], input[type="text"], textarea {
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -60,7 +60,7 @@ input[type="url"], textarea {
   padding: 10px 12px;
   resize: vertical;
 }
-input[type="url"]:focus, textarea:focus, button:focus-visible {
+input:focus, textarea:focus, button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
   border-color: var(--accent);
@@ -92,6 +92,10 @@ button.ghost { background: transparent; }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.baseline { margin: 4px 0 16px; }
+.baseline summary { cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; }
+.baseline summary:hover { color: var(--ink); }
 
 .brief summary { cursor: pointer; font-weight: 700; color: var(--ink); }
 .brief dl { display: grid; grid-template-columns: 180px 1fr; gap: 6px 18px; margin: 14px 0 0; }

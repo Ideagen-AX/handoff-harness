@@ -53,6 +53,23 @@ Browser (app/page.tsx)  ──POST──►  /api/run (route.ts)  ──►  run
 - **Phase 2** — add the dev-handoff stage + richer DS-component detection.
 - **Phase 3** — real distribution (email/Teams/Jira) once a channel is authorized.
 
+## How it determines what changed
+
+The prototype is only the *after* state. To evaluate the *change*, the Understand
+agent establishes a baseline, in this order of preference:
+
+1. **Codebase diff** — pass a `codebasePath` (the current app source). The agent
+   reads it via the `read_codebase` tool and diffs it against the prototype.
+   Local runs only (a deployed function can't see your local repo).
+2. **Baseline-URL diff** — pass a `baselineUrl` (the current live screen). Works
+   anywhere, including the deployed app.
+3. **Inferred** — with no baseline, it reconstructs the delta from your note +
+   product/DS knowledge and **labels it unverified**.
+
+Every brief reports its `changeBasis` (shown as a badge in the UI) so a reviewer
+always knows whether "what changed" was *computed* or *inferred*. The agent will
+not claim a codebase diff it couldn't actually perform.
+
 ## Tuning the output
 
 You almost never need to touch code. To change how an audience's artifact reads,

@@ -1,7 +1,8 @@
-import { ToolLoopAgent, Output, generateText, stepCountIs } from "ai";
+import { ToolLoopAgent, Output, generateText, stepCountIs, type ToolSet } from "ai";
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, type ChangeBrief, type PipelineEvent, type Artifact } from "./types";
-import { fetchPrototype, readReference } from "./tools";
+import { stat } from "node:fs/promises";
+import { fetchPrototype, readReference, makeCodebaseTool } from "./tools";
 import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc } from "./specs";
 import { AUDIENCES } from "./audiences";
 
@@ -11,17 +12,44 @@ import { AUDIENCES } from "./audiences";
 async function understand(input: {
   prototypeUrl: string;
   note: string;
+  baselineUrl?: string;
+  codebasePath?: string;
 }): Promise<ChangeBrief> {
   const guidance = await readChangeBriefGuidance();
 
+  // Establish the "before" state: codebase (preferred) → baseline URL → inference.
+  let useCodebase = false;
+  if (input.codebasePath) {
+    try {
+      useCodebase = (await stat(input.codebasePath)).isDirectory();
+    } catch {
+      useCodebase = false; // path not reachable here (e.g. on Vercel) — fall back
+    }
+  }
+
+  const tools: ToolSet = { fetchPrototype, readReference };
+  if (useCodebase) tools.readCodebase = makeCodebaseTool(input.codebasePath!);
+
+  let basisInstruction: string;
+  if (useCodebase) {
+    basisInstruction =
+      "BASELINE: the current source code is available via readCodebase (the 'before'). Explore it — list directories, then read the files that implement the affected area — then diff it against the prototype to determine what ACTUALLY changed. Set changeBasis.method = 'codebase-diff'.";
+  } else if (input.baselineUrl) {
+    basisInstruction = `BASELINE: a baseline URL of the current state is provided. Call fetchPrototype on it (${input.baselineUrl}) as the 'before', then diff against the prototype. Set changeBasis.method = 'url-diff'.`;
+  } else {
+    basisInstruction =
+      "BASELINE: none provided. Infer what changed from the designer's note plus product/design-system knowledge, and set changeBasis.method = 'inferred'. State clearly in changeBasis.note AND in openQuestions that whatChanged/beforeAfter are inferred and must be verified against the real prior state.";
+  }
+
   const agent = new ToolLoopAgent({
     model: MODEL_UNDERSTAND,
-    tools: { fetchPrototype, readReference },
-    stopWhen: stepCountIs(8),
+    tools,
+    stopWhen: stepCountIs(useCodebase ? 18 : 8),
     output: Output.object({ schema: ChangeBriefSchema }),
     instructions: [
       "You are a senior product designer preparing a design-handoff change brief.",
-      "Process: (1) call fetchPrototype on the given URL; (2) call readReference('product') for product context and correct terminology; (3) call readReference('design-system') to ground component impact in the real component library; (4) produce the structured change brief.",
+      "Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('design-system'); (4) establish the baseline per the BASELINE instruction below; (5) produce the structured change brief.",
+      basisInstruction,
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
       "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing.",
       "",
@@ -32,13 +60,17 @@ async function understand(input: {
 
   const { output } = await agent.generate({
     prompt: [
-      `Prototype URL: ${input.prototypeUrl}`,
+      `Prototype URL (the AFTER state): ${input.prototypeUrl}`,
+      input.baselineUrl && !useCodebase ? `Baseline URL (the BEFORE state): ${input.baselineUrl}` : "",
+      useCodebase ? "Current source code (the BEFORE state) is available via the readCodebase tool." : "",
       "",
       `Designer's note about what changed and why:`,
-      input.note || "(none provided — infer conservatively from the prototype)",
+      input.note || "(none provided — infer conservatively)",
       "",
       "Produce the change brief now.",
-    ].join("\n"),
+    ]
+      .filter(Boolean)
+      .join("\n"),
   });
 
   return output as ChangeBrief;
@@ -100,8 +132,15 @@ async function* asCompleted<T>(promises: Promise<T>[]): AsyncGenerator<T> {
 export async function* runPipeline(input: {
   prototypeUrl: string;
   note: string;
+  baselineUrl?: string;
+  codebasePath?: string;
 }): AsyncGenerator<PipelineEvent> {
-  yield { type: "status", stage: "understand", message: "Reading the prototype and building the change brief…" };
+  const basis = input.codebasePath
+    ? "against the current codebase"
+    : input.baselineUrl
+      ? "against the baseline URL"
+      : "from the note (no baseline — inferred)";
+  yield { type: "status", stage: "understand", message: `Building the change brief, diffing ${basis}…` };
   const brief = await understand(input);
   yield { type: "brief", brief };
 

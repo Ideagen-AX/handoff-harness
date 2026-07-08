@@ -15,6 +15,8 @@ export default function Home() {
   const [note, setNote] = useState(
     "We made the search results view responsive and added multiple view modes.",
   );
+  const [baselineUrl, setBaselineUrl] = useState("");
+  const [codebasePath, setCodebasePath] = useState("");
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -36,7 +38,7 @@ export default function Home() {
       const res = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prototypeUrl: url, note }),
+        body: JSON.stringify({ prototypeUrl: url, note, baselineUrl, codebasePath }),
         signal: ac.signal,
       });
       if (!res.body) throw new Error("No response stream");
@@ -132,6 +134,34 @@ export default function Home() {
             disabled={running}
           />
         </label>
+        <details className="baseline">
+          <summary>Baseline — how it determines what changed (optional)</summary>
+          <p className="meta" style={{ margin: "8px 0 12px" }}>
+            Give it the <strong>before</strong> state for a true diff. It prefers the codebase; if
+            that isn&apos;t reachable (e.g. on the deployed app) it uses the baseline URL; with
+            neither, it infers the change from your note and flags it as unverified.
+          </p>
+          <label className="field">
+            <span className="lab">Current source codebase path (preferred — local runs only)</span>
+            <input
+              type="text"
+              value={codebasePath}
+              onChange={(e) => setCodebasePath(e.target.value)}
+              placeholder="/path/to/current/app/source"
+              disabled={running}
+            />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span className="lab">Baseline URL (fallback — the current live screen)</span>
+            <input
+              type="url"
+              value={baselineUrl}
+              onChange={(e) => setBaselineUrl(e.target.value)}
+              placeholder="https://current-app.example.com/search"
+              disabled={running}
+            />
+          </label>
+        </details>
         <div className="btn-row">
           <button className="primary" onClick={run} disabled={running || !url}>
             {running ? "Running…" : "Generate handoff"}
@@ -192,6 +222,18 @@ function BriefCard({ brief }: { brief: ChangeBrief }) {
       <dl>
         <dt>One-liner</dt>
         <dd>{brief.oneLiner}</dd>
+
+        <dt>Change basis</dt>
+        <dd>
+          <span className={`pill ${brief.changeBasis.method === "inferred" ? "warn" : "ok"}`}>
+            {brief.changeBasis.method === "codebase-diff"
+              ? "Codebase diff"
+              : brief.changeBasis.method === "url-diff"
+                ? "Baseline-URL diff"
+                : "Inferred — verify"}
+          </span>{" "}
+          {brief.changeBasis.note}
+        </dd>
 
         <dt>What changed</dt>
         <dd>
