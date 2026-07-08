@@ -51,9 +51,9 @@ export const fetchPrototype = tool({
 // TOOL 2 — read a reference document (e.g. the design-system reference).
 export const readReference = tool({
   description:
-    'Read a reference document by name to inform the change brief. Available names: "design-system" (component library reference). Returns a note if the reference is unavailable.',
+    'Read a reference document by name to inform the change brief. Available names: "product" (EHSQ-E product context, modules, terminology) and "design-system" (real component library — components, tokens, patterns, gaps). Returns a note if the reference is unavailable.',
   inputSchema: z.object({
-    name: z.string().describe('Reference name, e.g. "design-system"'),
+    name: z.string().describe('Reference name: "product" or "design-system"'),
   }),
   execute: async ({ name }) => {
     return { name, text: await readReferenceDoc(name) };

@@ -57,8 +57,20 @@ Browser (app/page.tsx)  ──POST──►  /api/run (route.ts)  ──►  run
 
 You almost never need to touch code. To change how an audience's artifact reads,
 edit its spec in `specs/audiences/`. To change what the brief captures, edit
-`specs/change-brief.md` and the schema in `lib/types.ts`. Drop a real
-design-system export at `specs/references/design-system.md` for sharper DS reasoning.
+`specs/change-brief.md` and the schema in `lib/types.ts`.
+
+**Knowledge layer** (`specs/references/`) — the stable, high-signal context the
+harness reasons from:
+- `product.md` — EHSQ-E product context, modules, terminology. Read by the
+  Understand agent and injected into every generator for accurate framing.
+- `design-system.md` — the real EHSQ-E component library (components, tokens,
+  patterns, gaps), distilled via the `sync-ehsqe-ds` skill. Lets the Understand
+  agent classify component impact as used-as-is / extended / net-new against
+  what actually exists. Re-run `sync-ehsqe-ds` and re-distill to refresh.
+
+Both are delivered as tools the agent calls (`read_reference`) — the "right
+knowledge at the right time" principle, rather than cramming everything into the
+prompt.
 
 ## The five audiences
 

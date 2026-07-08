@@ -2,7 +2,7 @@ import { ToolLoopAgent, Output, generateText, stepCountIs } from "ai";
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, type ChangeBrief, type PipelineEvent, type Artifact } from "./types";
 import { fetchPrototype, readReference } from "./tools";
-import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate } from "./specs";
+import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc } from "./specs";
 import { AUDIENCES } from "./audiences";
 
 // ── Stage 1: UNDERSTAND ──────────────────────────────────────────────────────
@@ -21,7 +21,8 @@ async function understand(input: {
     output: Output.object({ schema: ChangeBriefSchema }),
     instructions: [
       "You are a senior product designer preparing a design-handoff change brief.",
-      "Process: (1) call fetchPrototype on the given URL, (2) if the change appears to touch shared UI, call readReference('design-system'), (3) produce the structured change brief.",
+      "Process: (1) call fetchPrototype on the given URL; (2) call readReference('product') for product context and correct terminology; (3) call readReference('design-system') to ground component impact in the real component library; (4) produce the structured change brief.",
+      "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
       "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing.",
       "",
       "Follow this brief specification:",
@@ -52,6 +53,7 @@ async function generate(opts: {
   label: string;
   specText: string;
   brief: ChangeBrief;
+  productContext: string;
   focus?: string;
 }): Promise<Artifact> {
   const { text } = await generateText({
@@ -59,7 +61,10 @@ async function generate(opts: {
     system: [
       "You are drafting one design-handoff artifact for a single, specific audience or purpose.",
       "Follow the spec below exactly — its voice, format, length, must-include, and must-avoid.",
-      "Output ONLY the finished artifact as clean Markdown. No preamble, no meta commentary.",
+      "Use correct product terminology from the product context. Output ONLY the finished artifact as clean Markdown. No preamble, no meta commentary.",
+      "",
+      "### Product context (shared — use for accurate framing and terminology)",
+      opts.productContext,
       "",
       "### Spec",
       opts.specText,
@@ -127,7 +132,8 @@ export async function* runPipeline(input: {
     stage: "generate",
     message: `Drafting ${jobs.length} artifacts in parallel…`,
   };
-  const promises = jobs.map((j) => generate({ ...j, brief }));
+  const productContext = await readReferenceDoc("product");
+  const promises = jobs.map((j) => generate({ ...j, brief, productContext }));
   for await (const artifact of asCompleted(promises)) {
     yield { type: "artifact", artifact };
   }
