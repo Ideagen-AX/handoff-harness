@@ -2,7 +2,7 @@ import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type 
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, SlideSpecSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec } from "./types";
 import { stat } from "node:fs/promises";
-import { fetchPrototype, readReference, makeCodebaseTool } from "./tools";
+import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype } from "./tools";
 import { captureScreens } from "./capture";
 import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples } from "./specs";
 import { AUDIENCES } from "./audiences";
@@ -28,7 +28,7 @@ async function understand(input: {
     }
   }
 
-  const tools: ToolSet = { fetchPrototype, readReference };
+  const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype };
   if (useCodebase) tools.readCodebase = makeCodebaseTool(input.codebasePath!);
 
   let basisInstruction: string;
@@ -45,14 +45,20 @@ async function understand(input: {
   const agent = new ToolLoopAgent({
     model: MODEL_UNDERSTAND,
     tools,
-    stopWhen: stepCountIs(useCodebase ? 18 : 8),
+    stopWhen: stepCountIs(useCodebase ? 20 : 10),
+    // The change brief is a large object; give it room so it isn't truncated
+    // into invalid JSON (the cause of intermittent "no object generated").
+    maxOutputTokens: 16000,
     output: Output.object({ schema: ChangeBriefSchema }),
     instructions: [
       "You are a senior product designer preparing a design-handoff change brief.",
-      "Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('design-system'); (4) establish the baseline per the BASELINE instruction below; (5) produce the structured change brief.",
+      "Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('design-system'); (4) call inspectPrototype on the prototype URL to get its ACTUAL clickable control labels; (5) establish the baseline per the BASELINE instruction below; (6) produce the structured change brief.",
+      "When filling each visualManifest entry's `actions`, use the EXACT control labels returned by inspectPrototype as click targets (e.g. if the layout control reads 'Modal', target 'Modal' — not a guessed 'Filter layout'). If inspectPrototype returned no labels, fall back to the most likely visible label and note lower confidence.",
       basisInstruction,
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
       "Populate the downstream-feeding fields deliberately: decisionLog (the reasoning trail — decisions, rationale, alternatives, honest tradeoffs), intendedOutcomes + successMetrics (what success looks like and how it could be measured in Gainsight), useCases (persona + scenario + concrete example), and visualManifest (the views worth capturing, each with a caption and annotation callouts, ordered by narrative importance).",
+      "For each visualManifest entry, also fill `actions` — the steps to drive the prototype INTO that state before its screenshot. To reach a mode/tab/panel, add a click whose `target` is the control's VISIBLE label (e.g. 'Cards', 'Calendar', 'Filters'). For a responsive/size-dependent state, add a setViewport with a realistic width (e.g. 480 mobile, 834 tablet, 1440 desktop). Leave `actions` empty only for the default landing view. Distinct states MUST have distinct actions, or their screenshots will be identical.",
+      "CRITICAL — do not confuse ENHANCED with NEW. A change is often an improvement to something that already exists (making existing views responsive, faster, or more accessible), NOT the introduction of a brand-new capability. Never state that a feature, mode, or view is 'new' or 'added' unless a baseline (codebase or baseline URL) confirms it was absent before. Without that confirmation, describe the change as an enhancement to existing behaviour and record the assumption in openQuestions. Read the designer's note literally but skeptically — 'added X' in a note may mean 'made existing X responsive'.",
       "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing. Where you must infer a decision or metric that the inputs don't state, still flag it in openQuestions.",
       "",
       "Follow this brief specification:",
@@ -60,20 +66,36 @@ async function understand(input: {
     ].join("\n"),
   });
 
-  const { output } = await agent.generate({
-    prompt: [
-      `Prototype URL (the AFTER state): ${input.prototypeUrl}`,
-      input.baselineUrl && !useCodebase ? `Baseline URL (the BEFORE state): ${input.baselineUrl}` : "",
-      useCodebase ? "Current source code (the BEFORE state) is available via the readCodebase tool." : "",
-      "",
-      `Designer's note about what changed and why:`,
-      input.note || "(none provided — infer conservatively)",
-      "",
-      "Produce the change brief now.",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  });
+  const promptText = [
+    `Prototype URL (the AFTER state): ${input.prototypeUrl}`,
+    input.baselineUrl && !useCodebase ? `Baseline URL (the BEFORE state): ${input.baselineUrl}` : "",
+    useCodebase ? "Current source code (the BEFORE state) is available via the readCodebase tool." : "",
+    "",
+    `Designer's note about what changed and why:`,
+    input.note || "(none provided — infer conservatively)",
+    "",
+    "Produce the change brief now.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  // Object generation on a large schema is occasionally non-deterministic; retry
+  // only on that specific failure (rethrow anything else immediately).
+  let output: unknown;
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      ({ output } = await agent.generate({ prompt: promptText }));
+      lastErr = null;
+      break;
+    } catch (e) {
+      lastErr = e;
+      const err = e as { name?: string; finishReason?: string };
+      console.error(`[understand] attempt ${attempt} failed:`, { name: err?.name, finishReason: err?.finishReason });
+      if (err?.name !== "AI_NoObjectGeneratedError") throw e;
+    }
+  }
+  if (lastErr) throw lastErr;
 
   return output as ChangeBrief;
 }
@@ -106,6 +128,7 @@ async function generate(opts: {
     : "";
   const { text } = await generateText({
     model: MODEL_GENERATE,
+    maxOutputTokens: 8000,
     system: [
       "You are drafting one design-handoff artifact for a single, specific audience or purpose.",
       "Follow the spec below exactly — its voice, format, length, must-include, and must-avoid.",
@@ -155,6 +178,7 @@ async function generateSlide(opts: {
 
   const { object } = await generateObject({
     model: MODEL_GENERATE,
+    maxOutputTokens: 4000,
     schema: SlideSpecSchema,
     system: [
       "You are producing structured content for ONE Ideagen slide, built on the master deck template.",

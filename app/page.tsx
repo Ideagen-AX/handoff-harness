@@ -14,7 +14,7 @@ type UiArtifact = {
 export default function Home() {
   const [url, setUrl] = useState("https://responsive-search.vercel.app/");
   const [note, setNote] = useState(
-    "We made the search results view responsive and added multiple view modes.",
+    "The search result view modes (list, table, cards, calendar, hierarchy, chart) and their filter panels already exist — this work makes them responsive across screen sizes. No new view modes were added; the change is responsiveness/layout adaptation.",
   );
   const [baselineUrl, setBaselineUrl] = useState("");
   const [codebasePath, setCodebasePath] = useState("");

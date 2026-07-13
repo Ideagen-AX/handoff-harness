@@ -28,7 +28,12 @@ and reading the codebase, plus the short human note that kicks off a run.
 | `user_visible` | What an end user will actually notice | Feeds support + release notes |
 | `risks_edge_cases` | Where it could break or confuse | Feeds QA + support "how NOT to use" |
 | `open_questions` | Anything the agent couldn't determine | Surfaced to the human, never guessed |
-| `visualManifest` | Views worth capturing: `screenKey` + `caption` + `state` + optional `selector` + `annotations[]` | Drives the screenshot stage; feeds the case study, one-pager, and slide. Order by narrative importance. |
+| `visualManifest` | Views worth capturing: `screenKey` + `caption` + `state` + optional `selector` + `annotations[]` + `actions[]` | Drives the screenshot stage; feeds the case study, one-pager, and slide. `actions` = steps (click by visible label / setViewport / wait) that drive the prototype into that state before capture — distinct states need distinct actions or the screenshots come out identical. Order by narrative importance. |
+
+> **Enhanced ≠ new.** Do not describe a mode, view, or feature as "new" or "added"
+> unless a baseline confirms it was absent before. Many changes make *existing* behaviour
+> responsive/faster/clearer. Without a baseline, treat the change as an enhancement and note
+> the assumption in `open_questions` — and read the designer's note literally but skeptically.
 
 ---
 
@@ -107,7 +112,7 @@ narrow-viewport drawer overlap.
 available for which record types? (Agent could not confirm from the prototype.)
 
 **visualManifest:**
-- *screenKey:* `search-list-default`. *caption:* Default list view with the new view-mode switcher. *state:* default. *selector:* "". *annotations:* [View-mode switcher (6 modes); result density control].
-- *screenKey:* `search-cards`. *caption:* Card view of the same result set. *state:* default. *selector:* "". *annotations:* [Cards reflow to viewport width].
-- *screenKey:* `filter-drawer-mobile`. *caption:* Filter panel as a modal on a narrow viewport. *state:* expanded. *selector:* ".filter-panel". *annotations:* [Panel becomes a full-height modal below 768px; controls stay reachable].
-- *screenKey:* `expression-builder`. *caption:* Custom AND/OR filter expression builder. *state:* default. *selector:* ".expression-builder". *annotations:* [Bracket grouping; AND/OR toggles per row].
+- *screenKey:* `search-list-default`. *caption:* Default list view with the view-mode switcher. *state:* default. *selector:* "". *annotations:* [View-mode switcher; result density control]. *actions:* [] (landing view).
+- *screenKey:* `search-cards`. *caption:* Card view of the same result set. *state:* default. *selector:* "". *annotations:* [Cards reflow to viewport width]. *actions:* [{do: click, target: "Cards"}].
+- *screenKey:* `filter-drawer-mobile`. *caption:* Filter panel on a narrow viewport. *state:* expanded. *selector:* "". *annotations:* [Panel adapts to a modal/drawer below tablet width]. *actions:* [{do: setViewport, width: 480, height: 900}, {do: click, target: "Filters"}].
+- *screenKey:* `expression-builder`. *caption:* Custom AND/OR filter expression builder. *state:* default. *selector:* ".expression-builder". *annotations:* [Bracket grouping; AND/OR toggles per row]. *actions:* [{do: click, target: "Filters"}].

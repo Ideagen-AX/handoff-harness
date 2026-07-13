@@ -3,6 +3,7 @@ import { z } from "zod";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { resolve, relative, join, basename } from "node:path";
 import { readReferenceDoc } from "./specs";
+import { inspectClickables } from "./capture";
 
 // Crude but dependency-free HTML → readable text. Good enough to feed a model.
 function htmlToText(html: string): string {
@@ -111,6 +112,20 @@ export function makeCodebaseTool(root: string) {
     },
   });
 }
+
+// TOOL 4 — inspect the live prototype's actual clickable control labels, so the
+// change brief's visualManifest actions target real controls (not guesses).
+export const inspectPrototype = tool({
+  description:
+    "Inspect the live prototype and return its actual clickable control labels (buttons, tabs, toggles). Call this before authoring visualManifest actions, then use these EXACT labels as click targets so screenshots reach the right state. Returns a note if inspection isn't available (e.g. deployed environment).",
+  inputSchema: z.object({
+    url: z.string().describe("The full URL of the hosted prototype"),
+  }),
+  execute: async ({ url }) => {
+    const { labels, note } = await inspectClickables(url);
+    return { url, labels, count: labels.length, note };
+  },
+});
 
 // TOOL 2 — read a reference document (e.g. the design-system reference).
 export const readReference = tool({

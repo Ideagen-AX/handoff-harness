@@ -137,6 +137,32 @@ export const ChangeBriefSchema = z.object({
           .describe(
             "Ordered callouts to place beside the captured image — each points out one meaningful region or change",
           ),
+        actions: z
+          .array(
+            z.object({
+              do: z
+                .enum(["click", "setViewport", "wait"])
+                .describe("The interaction to perform before capturing this screen"),
+              target: z
+                .string()
+                .optional()
+                .describe(
+                  "For 'click': the visible label/text of the control to click (e.g. 'Cards', 'Calendar') OR a CSS selector.",
+                ),
+              width: z
+                .number()
+                .optional()
+                .describe("For 'setViewport': viewport width in px (e.g. 480 mobile, 834 tablet, 1440 desktop)."),
+              height: z
+                .number()
+                .optional()
+                .describe("For 'setViewport': viewport height in px (e.g. 900)."),
+              ms: z.number().optional().describe("For 'wait': milliseconds to wait."),
+            }),
+          )
+          .describe(
+            "Ordered steps to drive the prototype into THIS state before the screenshot (e.g. click the 'Cards' toggle; set a narrow viewport for a mobile/drawer state). Empty for the default landing state. Prefer clicking by the control's VISIBLE TEXT, and use setViewport for responsive/size-dependent states.",
+          ),
       }),
     )
     .describe(
