@@ -165,3 +165,39 @@ button.ghost { background: transparent; }
 .cap-text { display: block; margin-top: 6px; font-size: 13px; color: var(--ink); }
 .cap-notes { margin: 8px 0 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
 .cap-warn { display: block; margin-top: 8px; font-size: 12px; color: var(--warn); }
+
+/* Review packages */
+.pkg { padding-top: 16px; }
+.pkg > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  list-style: none;
+}
+.pkg > summary::-webkit-details-marker { display: none; }
+.pkg > summary::before {
+  content: "▸";
+  color: var(--muted);
+  font-size: 12px;
+  margin-right: 8px;
+  transition: transform 0.15s ease;
+}
+.pkg[open] > summary::before { transform: rotate(90deg); }
+.pkg-title { flex: 1; }
+.pkg-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+.pkg-count.ok { color: var(--good); border-color: rgba(52,199,123,0.4); background: rgba(52,199,123,0.12); }
+.pkg-blurb { color: var(--muted); font-size: 13px; margin: 8px 0 4px; }
+.pkg .artifact { background: var(--bg); margin-top: 14px; }

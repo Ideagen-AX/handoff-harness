@@ -11,6 +11,26 @@ type UiArtifact = {
   slideSpec?: SlideSpec;
 };
 
+// The seven review packages. Each artifact is routed to one by id/prefix so the
+// ~15 drafts read as a small set of grouped deliverables rather than a long list.
+const PACKAGES = [
+  { id: "design", title: "Design system", blurb: "Updates and net-new component specs for the DS team.", ids: ["design-system"], prefixes: ["component-"] },
+  { id: "eng", title: "Engineering", blurb: "Implementation spec plus a starting-point coded component.", ids: ["dev", "dev-code"], prefixes: [] },
+  { id: "qa", title: "QA", blurb: "Test cases and instructions for the build.", ids: ["qa"], prefixes: [] },
+  { id: "docs", title: "Documentation & support", blurb: "Product-doc updates, a support summary, and release notes.", ids: ["product-docs", "support-summary", "release-notes"], prefixes: [] },
+  { id: "comms", title: "Executive comms", blurb: "A 1-pager and a presentation slide (with .pptx).", ids: ["one-pager", "slide"], prefixes: [] },
+  { id: "story", title: "Case study", blurb: "The narrative: why, decisions, before/after, outcomes.", ids: ["case-study"], prefixes: [] },
+  { id: "analytics", title: "Analytics & success", blurb: "What success looks like and testable Gainsight hypotheses.", ids: ["analytics-plan"], prefixes: [] },
+  { id: "other", title: "Other", blurb: "", ids: [] as string[], prefixes: [] as string[] },
+];
+
+function packageFor(audienceId: string): string {
+  const p = PACKAGES.find(
+    (pkg) => pkg.ids.includes(audienceId) || pkg.prefixes.some((pre) => audienceId.startsWith(pre)),
+  );
+  return p ? p.id : "other";
+}
+
 export default function Home() {
   const [url, setUrl] = useState("https://responsive-search.vercel.app/");
   const [note, setNote] = useState(
@@ -157,6 +177,41 @@ export default function Home() {
     }
   }
 
+  function renderArtifact(a: UiArtifact) {
+    return (
+      <div key={a.audienceId} className={`card artifact ${a.approved ? "approved" : ""}`}>
+        <div className="artifact-head">
+          <h3>{a.label}</h3>
+          {a.approved && <span className="approved-tag">✓ Approved</span>}
+        </div>
+        <textarea value={a.content} onChange={(e) => updateArtifact(a.audienceId, e.target.value)} />
+        <div className="btn-row" style={{ marginTop: 10 }}>
+          <button className={a.approved ? "" : "primary"} onClick={() => toggleApprove(a.audienceId)}>
+            {a.approved ? "Unapprove" : "Approve"}
+          </button>
+          <button className="ghost" onClick={() => copy(a.content)}>
+            Copy
+          </button>
+          {a.audienceId === "slide" && a.slideSpec && (
+            <button className="ghost" onClick={() => downloadDeck(a)}>
+              .pptx
+            </button>
+          )}
+          <button className="ghost" onClick={() => downloadExport(a, "pdf")}>
+            PDF
+          </button>
+          <button className="ghost" onClick={() => downloadExport(a, "docx")}>
+            Word
+          </button>
+          <button className="ghost" onClick={() => emailDraft(a)}>
+            Email draft
+          </button>
+          <span className="meta">Email is stubbed — downloads a draft .eml to send from Outlook.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="wrap">
       <header className="masthead">
@@ -250,43 +305,25 @@ export default function Home() {
       {artifacts.length > 0 && (
         <>
           <div className="section-title">
-            Drafts for review · {artifacts.filter((a) => a.approved).length}/{artifacts.length} approved
+            Review packages · {artifacts.filter((a) => a.approved).length}/{artifacts.length} approved
           </div>
-          {artifacts.map((a) => (
-            <div key={a.audienceId} className={`card artifact ${a.approved ? "approved" : ""}`}>
-              <div className="artifact-head">
-                <h3>{a.label}</h3>
-                {a.approved && <span className="approved-tag">✓ Approved</span>}
-              </div>
-              <textarea
-                value={a.content}
-                onChange={(e) => updateArtifact(a.audienceId, e.target.value)}
-              />
-              <div className="btn-row" style={{ marginTop: 10 }}>
-                <button className={a.approved ? "" : "primary"} onClick={() => toggleApprove(a.audienceId)}>
-                  {a.approved ? "Unapprove" : "Approve"}
-                </button>
-                <button className="ghost" onClick={() => copy(a.content)}>
-                  Copy
-                </button>
-                {a.audienceId === "slide" && a.slideSpec && (
-                  <button className="ghost" onClick={() => downloadDeck(a)}>
-                    .pptx
-                  </button>
-                )}
-                <button className="ghost" onClick={() => downloadExport(a, "pdf")}>
-                  PDF
-                </button>
-                <button className="ghost" onClick={() => downloadExport(a, "docx")}>
-                  Word
-                </button>
-                <button className="ghost" onClick={() => emailDraft(a)}>
-                  Email draft
-                </button>
-                <span className="meta">Email is stubbed — downloads a draft .eml to send from Outlook.</span>
-              </div>
-            </div>
-          ))}
+          {PACKAGES.map((pkg) => {
+            const items = artifacts.filter((a) => packageFor(a.audienceId) === pkg.id);
+            if (!items.length) return null;
+            const done = items.filter((a) => a.approved).length;
+            return (
+              <details key={pkg.id} className="card pkg" open>
+                <summary>
+                  <span className="pkg-title">{pkg.title}</span>
+                  <span className={`pkg-count ${done === items.length ? "ok" : ""}`}>
+                    {done}/{items.length} approved
+                  </span>
+                </summary>
+                {pkg.blurb && <p className="pkg-blurb">{pkg.blurb}</p>}
+                {items.map(renderArtifact)}
+              </details>
+            );
+          })}
         </>
       )}
     </div>
