@@ -4,7 +4,7 @@ import { ChangeBriefSchema, SlideSpecSchema, type ChangeBrief, type PipelineEven
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype } from "./tools";
 import { captureScreens } from "./capture";
-import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples } from "./specs";
+import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples, readCodeSpec } from "./specs";
 import { AUDIENCES } from "./audiences";
 
 // ── Stage 1: UNDERSTAND ──────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ async function understand(input: {
   const agent = new ToolLoopAgent({
     model: MODEL_UNDERSTAND,
     tools,
-    stopWhen: stepCountIs(useCodebase ? 20 : 10),
+    stopWhen: stepCountIs(useCodebase ? 28 : 12),
     // The change brief is a large object; give it room so it isn't truncated
     // into invalid JSON (the cause of intermittent "no object generated").
     maxOutputTokens: 16000,
@@ -92,6 +92,9 @@ async function understand(input: {
       lastErr = e;
       const err = e as { name?: string; finishReason?: string };
       console.error(`[understand] attempt ${attempt} failed:`, { name: err?.name, finishReason: err?.finishReason });
+      // Retry ONLY the transient truncated-JSON failure. "No output" means the
+      // step cap was hit before emitting — retrying re-runs the whole loop and
+      // just doubles latency; the fix for that is the larger stepCount budget.
       if (err?.name !== "AI_NoObjectGeneratedError") throw e;
     }
   }
@@ -221,8 +224,63 @@ async function generateSlide(opts: {
   return { audienceId: "slide", label: "Slide", content, slideSpec };
 }
 
+// The coded developer artifact: a real, DS-grounded starting-point component in
+// the chosen framework (Vue by default). Separate from the dev handoff SPEC — the
+// designer asked for both. Injects the design-system reference so imports/tokens
+// are real, not invented.
+async function generateCode(opts: {
+  brief: ChangeBrief;
+  productContext: string;
+  dsReference: string;
+  codeSpecText: string;
+  framework: string;
+  focus?: string;
+}): Promise<Artifact> {
+  const { text } = await generateText({
+    model: MODEL_GENERATE,
+    maxOutputTokens: 8000,
+    system: [
+      `You are a senior front-end engineer writing a starting-point ${opts.framework} component for a design-handoff.`,
+      "Follow the code-target spec exactly. Ground every component/token in the design-system reference — do not invent names.",
+      "Output ONLY the finished Markdown document described by the spec. No preamble.",
+      "",
+      "### Product context",
+      opts.productContext,
+      "",
+      "### Design-system reference (real components, tokens, patterns — use these)",
+      opts.dsReference,
+      "",
+      "### Code-target spec",
+      opts.codeSpecText,
+    ].join("\n"),
+    prompt: [
+      opts.focus
+        ? `Implement this component: ${opts.focus}. It is the change's primary net-new UI.`
+        : "Implement the change's primary new/changed UI as a single focused component.",
+      "Use this change brief as the source of truth:",
+      "",
+      JSON.stringify(opts.brief, null, 2),
+    ].join("\n"),
+  });
+  return {
+    audienceId: "dev-code",
+    label: `Developer component code (${opts.framework})`,
+    content: text.trim(),
+  };
+}
+
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+// Wrap a generation promise so a single artifact's failure never sinks the run —
+// it resolves to a visible, re-runnable error card instead of rejecting.
+function guard(p: Promise<Artifact>, audienceId: string, label: string): Promise<Artifact> {
+  return p.catch((err) => ({
+    audienceId,
+    label,
+    content: `> ⚠️ This artifact failed to generate: ${String(err).slice(0, 200)}\n\nEverything else generated normally — re-run to retry just the pipeline, or edit this manually.`,
+  }));
 }
 
 // Yields the results of an array of promises as each one settles.
@@ -244,6 +302,7 @@ export async function* runPipeline(input: {
   note: string;
   baselineUrl?: string;
   codebasePath?: string;
+  framework?: string;
 }): AsyncGenerator<PipelineEvent> {
   const basis = input.codebasePath
     ? "against the current codebase"
@@ -304,30 +363,60 @@ export async function* runPipeline(input: {
   yield {
     type: "status",
     stage: "generate",
-    message: `Drafting ${jobs.length} artifacts in parallel…`,
+    message: `Drafting ${jobs.length + 2} artifacts in parallel…`,
   };
   const productContext = await readReferenceDoc("product");
   // Artifacts that embed real screenshots inline (prose formats). The slide
   // references screenKeys instead and the deck exporter places the images.
   const IMAGE_ARTIFACTS = new Set(["case-study", "one-pager"]);
-  const promises = jobs.map(async (j) =>
-    generate({
-      ...j,
-      brief,
-      productContext,
-      examples: await readExamples(j.id),
-      captures: IMAGE_ARTIFACTS.has(j.id) ? captures : undefined,
-    }),
+  const promises = jobs.map((j) =>
+    guard(
+      (async () =>
+        generate({
+          ...j,
+          brief,
+          productContext,
+          examples: await readExamples(j.id),
+          captures: IMAGE_ARTIFACTS.has(j.id) ? captures : undefined,
+        }))(),
+      j.id,
+      j.label,
+    ),
   );
   // The slide's dedicated structured generator, streamed alongside the rest.
   promises.push(
-    (async () =>
-      generateSlide({
-        brief,
-        productContext,
-        examples: await readExamples("slide"),
-        captures,
-      }))(),
+    guard(
+      (async () =>
+        generateSlide({
+          brief,
+          productContext,
+          examples: await readExamples("slide"),
+          captures,
+        }))(),
+      "slide",
+      "Slide",
+    ),
+  );
+  // The coded developer artifact (framework-parameterized; Vue default), grounded
+  // in the design-system reference and focused on the primary net-new component.
+  const framework = input.framework || "vue";
+  promises.push(
+    guard(
+      (async () => {
+        const dsReference = await readReferenceDoc("design-system");
+        const { text: codeSpecText } = await readCodeSpec(framework);
+        return generateCode({
+          brief,
+          productContext,
+          dsReference,
+          codeSpecText,
+          framework,
+          focus: newComponents[0]?.name,
+        });
+      })(),
+      "dev-code",
+      `Developer component code (${framework})`,
+    ),
   );
   for await (const artifact of asCompleted(promises)) {
     yield { type: "artifact", artifact };

@@ -18,6 +18,26 @@ export async function readComponentSpecTemplate(): Promise<string> {
   return readFile(join(SPECS_DIR, "component-spec.md"), "utf8");
 }
 
+// Framework-specific code-target spec (specs/code/<framework>.md). Falls back to
+// Vue — the only target with a design-system mapping today — with a note when an
+// unsupported framework is requested.
+export async function readCodeSpec(framework: string): Promise<{ text: string; supported: boolean }> {
+  const safe = framework.toLowerCase().replace(/[^a-z0-9-]/gi, "");
+  try {
+    return { text: await readFile(join(SPECS_DIR, "code", `${safe}.md`), "utf8"), supported: true };
+  } catch {
+    const vue = await readFile(join(SPECS_DIR, "code", "vue.md"), "utf8");
+    return {
+      text:
+        `No code target is defined for "${framework}" yet, and the design-system mapping is Vue-specific. ` +
+        `Produce ${framework} code on a best-effort basis, following the STRUCTURE below but translating idioms to ${framework}, ` +
+        `and add a prominent TODO that a ${framework} design-system mapping is required before this is trustworthy.\n\n` +
+        vue,
+      supported: false,
+    };
+  }
+}
+
 // Real-world exemplars, staged per artifact under specs/examples/<dir>/. Injected
 // as few-shot so voice-heavy artifacts match Ideagen's actual house style. Most
 // artifacts read their own id's folder; a few borrow another's voice (below).

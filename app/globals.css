@@ -50,7 +50,7 @@ header.masthead p { color: var(--muted); margin: 0; max-width: 62ch; }
 label.field { display: block; margin-bottom: 14px; }
 label.field .lab { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
 
-input[type="url"], input[type="text"], textarea {
+input[type="url"], input[type="text"], textarea, select {
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -60,7 +60,8 @@ input[type="url"], input[type="text"], textarea {
   padding: 10px 12px;
   resize: vertical;
 }
-input:focus, textarea:focus, button:focus-visible {
+select { appearance: none; cursor: pointer; }
+input:focus, textarea:focus, select:focus, button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
   border-color: var(--accent);

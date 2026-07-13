@@ -18,6 +18,7 @@ export default function Home() {
   );
   const [baselineUrl, setBaselineUrl] = useState("");
   const [codebasePath, setCodebasePath] = useState("");
+  const [framework, setFramework] = useState("vue");
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -41,7 +42,7 @@ export default function Home() {
       const res = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prototypeUrl: url, note, baselineUrl, codebasePath }),
+        body: JSON.stringify({ prototypeUrl: url, note, baselineUrl, codebasePath, framework }),
         signal: ac.signal,
       });
       if (!res.body) throw new Error("No response stream");
@@ -162,6 +163,14 @@ export default function Home() {
             rows={2}
             disabled={running}
           />
+        </label>
+        <label className="field">
+          <span className="lab">Developer code target</span>
+          <select value={framework} onChange={(e) => setFramework(e.target.value)} disabled={running}>
+            <option value="vue">Vue 3 (design-system-mapped)</option>
+            <option value="react">React (best-effort — no DS mapping yet)</option>
+            <option value="svelte">Svelte (best-effort — no DS mapping yet)</option>
+          </select>
         </label>
         <details className="baseline">
           <summary>Baseline — how it determines what changed (optional)</summary>
