@@ -49,6 +49,11 @@ async function clickTarget(page: import("puppeteer-core").Page, target: string):
   }, target);
 }
 
+// Exposed so other local-first features (PDF export) can reuse the same browser.
+export async function findChrome(): Promise<string | null> {
+  return firstExisting(CHROME_PATHS);
+}
+
 async function firstExisting(paths: string[]): Promise<string | null> {
   const { stat } = await import("node:fs/promises");
   for (const p of paths) {

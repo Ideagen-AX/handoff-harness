@@ -108,25 +108,50 @@ export default function Home() {
   function copy(content: string) {
     navigator.clipboard?.writeText(content);
   }
+  async function saveBlob(res: Response, fallbackName: string) {
+    if (!res.ok) {
+      const msg = await res.text().catch(() => res.statusText);
+      setError(`Download failed: ${msg}`);
+      return;
+    }
+    const blob = await res.blob();
+    // Prefer the server-provided filename.
+    const cd = res.headers.get("Content-Disposition") || "";
+    const m = cd.match(/filename="([^"]+)"/);
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = m?.[1] || fallbackName;
+    link.click();
+    URL.revokeObjectURL(href);
+  }
+
+  function post(url: string, body: unknown) {
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  }
+
   async function downloadDeck(a: UiArtifact) {
     if (!a.slideSpec) return;
     try {
-      const res = await fetch("/api/deck", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slideSpec: a.slideSpec, captures }),
+      await saveBlob(await post("/api/deck", { slideSpec: a.slideSpec, captures }), "slide.pptx");
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  async function downloadExport(a: UiArtifact, format: "pdf" | "docx") {
+    try {
+      await saveBlob(await post("/api/export", { format, title: a.label, content: a.content }), `${a.audienceId}.${format}`);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  async function emailDraft(a: UiArtifact) {
+    try {
+      const res = await post("/api/email", {
+        artifact: { audienceId: a.audienceId, label: a.label, content: a.content },
+        changeTitle: brief?.title,
       });
-      if (!res.ok) {
-        setError(`Deck export failed: ${await res.text()}`);
-        return;
-      }
-      const blob = await res.blob();
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = href;
-      link.download = `slide-${a.slideSpec.template.toLowerCase()}.pptx`;
-      link.click();
-      URL.revokeObjectURL(href);
+      await saveBlob(res, `${a.audienceId}-draft.eml`);
     } catch (e) {
       setError(String(e));
     }
@@ -246,10 +271,19 @@ export default function Home() {
                 </button>
                 {a.audienceId === "slide" && a.slideSpec && (
                   <button className="ghost" onClick={() => downloadDeck(a)}>
-                    Download .pptx
+                    .pptx
                   </button>
                 )}
-                <span className="meta">Sending is stubbed in this build — approve then copy into the channel.</span>
+                <button className="ghost" onClick={() => downloadExport(a, "pdf")}>
+                  PDF
+                </button>
+                <button className="ghost" onClick={() => downloadExport(a, "docx")}>
+                  Word
+                </button>
+                <button className="ghost" onClick={() => emailDraft(a)}>
+                  Email draft
+                </button>
+                <span className="meta">Email is stubbed — downloads a draft .eml to send from Outlook.</span>
               </div>
             </div>
           ))}
