@@ -146,6 +146,24 @@ export const ChangeBriefSchema = z.object({
 
 export type ChangeBrief = z.infer<typeof ChangeBriefSchema>;
 
+// Structured content for the deck exporter. The slide artifact emits this
+// (validated) instead of free markdown, so placeholder-filling is reliable.
+export const SlideSpecSchema = z.object({
+  template: z
+    .enum(["Teal", "Pink"])
+    .describe("Which Ideagen branded content slide to build on"),
+  title: z.string().describe("The single benefit headline, ≤ ~8 words"),
+  subtitle: z
+    .string()
+    .describe("One supporting line capturing the essence of the change, ≤ ~16 words"),
+  picScreenKey: z
+    .string()
+    .describe("screenKey of the hero screenshot to place in the picture area; empty string if none"),
+  attribution: z.string().describe("Short owner/date line, e.g. 'Design review · 2026'"),
+  notes: z.string().describe("2–3 sentence speaker note"),
+});
+export type SlideSpec = z.infer<typeof SlideSpecSchema>;
+
 // One downstream audience the harness fans out to.
 export type Audience = {
   id: string;
@@ -158,6 +176,7 @@ export type Artifact = {
   audienceId: string;
   label: string;
   content: string; // Markdown
+  slideSpec?: SlideSpec; // set only for the slide artifact — drives the deck exporter
 };
 
 // One captured screenshot (or a placeholder when capture wasn't possible),

@@ -1,13 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { ChangeBrief, PipelineEvent, Capture } from "@/lib/types";
+import type { ChangeBrief, PipelineEvent, Capture, SlideSpec } from "@/lib/types";
 
 type UiArtifact = {
   audienceId: string;
   label: string;
   content: string;
   approved: boolean;
+  slideSpec?: SlideSpec;
 };
 
 export default function Home() {
@@ -105,6 +106,29 @@ export default function Home() {
   }
   function copy(content: string) {
     navigator.clipboard?.writeText(content);
+  }
+  async function downloadDeck(a: UiArtifact) {
+    if (!a.slideSpec) return;
+    try {
+      const res = await fetch("/api/deck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slideSpec: a.slideSpec, captures }),
+      });
+      if (!res.ok) {
+        setError(`Deck export failed: ${await res.text()}`);
+        return;
+      }
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = `slide-${a.slideSpec.template.toLowerCase()}.pptx`;
+      link.click();
+      URL.revokeObjectURL(href);
+    } catch (e) {
+      setError(String(e));
+    }
   }
 
   return (
@@ -211,6 +235,11 @@ export default function Home() {
                 <button className="ghost" onClick={() => copy(a.content)}>
                   Copy
                 </button>
+                {a.audienceId === "slide" && a.slideSpec && (
+                  <button className="ghost" onClick={() => downloadDeck(a)}>
+                    Download .pptx
+                  </button>
+                )}
                 <span className="meta">Sending is stubbed in this build — approve then copy into the channel.</span>
               </div>
             </div>

@@ -1,6 +1,6 @@
-import { ToolLoopAgent, Output, generateText, stepCountIs, type ToolSet } from "ai";
+import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type ToolSet } from "ai";
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
-import { ChangeBriefSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture } from "./types";
+import { ChangeBriefSchema, SlideSpecSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec } from "./types";
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool } from "./tools";
 import { captureScreens } from "./capture";
@@ -138,6 +138,65 @@ async function generate(opts: {
   return { audienceId: opts.id, label: opts.label, content: text.trim() };
 }
 
+// The slide is generated as validated structured data (not free markdown) so the
+// deck exporter can fill template placeholders reliably. Returns an Artifact with
+// a readable content preview plus the SlideSpec attached for the .pptx download.
+async function generateSlide(opts: {
+  brief: ChangeBrief;
+  productContext: string;
+  examples: string;
+  captures: Capture[];
+}): Promise<Artifact> {
+  const specText = await readAudienceSpec("slide.md");
+  const usable = opts.captures.filter((c) => c.ok);
+  const keys = usable.length
+    ? usable.map((c) => `- ${c.screenKey} — ${c.caption}`).join("\n")
+    : "(none captured — use an empty string for picScreenKey)";
+
+  const { object } = await generateObject({
+    model: MODEL_GENERATE,
+    schema: SlideSpecSchema,
+    system: [
+      "You are producing structured content for ONE Ideagen slide, built on the master deck template.",
+      "Follow the spec's voice and rules. Pick the template and the single best hero screenshot.",
+      "",
+      "### Product context",
+      opts.productContext,
+      "",
+      "### Spec",
+      specText,
+      opts.examples ? `\n### Reference voice\n${opts.examples}` : "",
+    ].join("\n"),
+    prompt: [
+      "Change brief (source of truth):",
+      JSON.stringify(opts.brief, null, 2),
+      "",
+      "Available captured screenKeys for picScreenKey (choose the single best hero, or empty string if none fits):",
+      keys,
+    ].join("\n"),
+  });
+
+  const slideSpec = object as SlideSpec;
+  // Guardrail: the model can hallucinate a screenKey. Force picScreenKey to a real
+  // captured key so the deck exporter reliably finds the hero (best available if
+  // the model's choice doesn't exist; empty only when nothing was captured).
+  const validKeys = new Set(usable.map((c) => c.screenKey));
+  if (slideSpec.picScreenKey && !validKeys.has(slideSpec.picScreenKey)) {
+    slideSpec.picScreenKey = usable[0]?.screenKey ?? "";
+  }
+  const content = [
+    `**${slideSpec.title}**`,
+    "",
+    slideSpec.subtitle,
+    "",
+    slideSpec.picScreenKey ? `_Hero image: \`${slideSpec.picScreenKey}\`_` : "_No hero image_",
+    `_Template: ${slideSpec.template} · ${slideSpec.attribution}_`,
+    "",
+    `> **Speaker notes:** ${slideSpec.notes}`,
+  ].join("\n");
+  return { audienceId: "slide", label: "Slide", content, slideSpec };
+}
+
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
@@ -198,6 +257,7 @@ export async function* runPipeline(input: {
   // Build the generation jobs: the 5 comms audiences + the developer handoff…
   const jobs: Array<{ id: string; label: string; specText: string; focus?: string }> = [];
   for (const a of AUDIENCES) {
+    if (a.id === "slide") continue; // slide uses a dedicated structured generator
     jobs.push({ id: a.id, label: a.label, specText: await readAudienceSpec(a.specFile) });
   }
   jobs.push({ id: "dev", label: "Developer handoff", specText: await readAudienceSpec("dev.md") });
@@ -234,6 +294,16 @@ export async function* runPipeline(input: {
       examples: await readExamples(j.id),
       captures: IMAGE_ARTIFACTS.has(j.id) ? captures : undefined,
     }),
+  );
+  // The slide's dedicated structured generator, streamed alongside the rest.
+  promises.push(
+    (async () =>
+      generateSlide({
+        brief,
+        productContext,
+        examples: await readExamples("slide"),
+        captures,
+      }))(),
   );
   for await (const artifact of asCompleted(promises)) {
     yield { type: "artifact", artifact };

@@ -6,3 +6,7 @@ public/captures
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Deck templates are large binaries (fonts+media for all layouts). Kept local;
+# regenerate from the master .potx. Decide LFS/commit before deploying the deck route.
+specs/templates/*.pptx
