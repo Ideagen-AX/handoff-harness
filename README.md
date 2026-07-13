@@ -49,7 +49,7 @@ Browser (app/page.tsx)  ──POST──►  /api/run (route.ts)  ──►  run
 ### Steps
 1. **Clone and enter the project**
    ```bash
-   git clone <this-repo-url>
+   git clone https://github.com/Ideagen-AX/handoff-harness.git
    cd handoff-harness
    ```
 2. **Install dependencies**
