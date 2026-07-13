@@ -37,14 +37,57 @@ Browser (app/page.tsx)  ──POST──►  /api/run (route.ts)  ──►  run
 - **Models:** routed through the Vercel AI Gateway via `"anthropic/…"` strings
   (`lib/model.ts`). Verified live: `claude-sonnet-5`, `claude-opus-4.8`.
 
-## Run it locally
+## Getting started (clone & run)
 
-1. Create `.env.local` from `.env.example` and add an `AI_GATEWAY_API_KEY`
-   (Vercel dashboard → AI Gateway → API Keys). *Or* run `vercel dev` after
-   `vercel link` to use OIDC and skip the key.
-2. `npm run dev`
-3. Open http://localhost:3000 — it's pre-filled with the responsive-search
-   prototype. Click **Generate handoff**.
+### Prerequisites
+- **Node.js 20+** (Next.js 15). Check with `node -v`.
+- **Google Chrome** (or Edge) installed — used headlessly for screenshots and PDF
+  export. Optional but recommended (see *What needs what* below).
+- **A Vercel AI Gateway API key** with a positive credit balance — the app calls
+  Claude through the gateway.
+
+### Steps
+1. **Clone and enter the project**
+   ```bash
+   git clone <this-repo-url>
+   cd handoff-harness
+   ```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+3. **Add your API key.** Copy the example env file and paste your key in:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Then edit `.env.local`:
+   ```
+   AI_GATEWAY_API_KEY=vck_your_key_here
+   ```
+   - Get a key from the Vercel dashboard → **AI Gateway → API Keys**.
+   - It needs **credits** on the gateway or every run fails with a balance error.
+   - `.env.local` is **git-ignored — it is not in the repo**, so each developer
+     supplies their own key.
+4. **Start the dev server**
+   ```bash
+   npm run dev
+   ```
+5. **Open** http://localhost:3000. It's pre-filled with a demo prototype + note —
+   click **Generate handoff** and watch the change brief, captured screens, and the
+   grouped review packages stream in.
+
+### What needs what (this app is local-first by design)
+| Feature | Requirement |
+|---|---|
+| AI pipeline · all text artifacts · **Word (.docx)** export · **email draft** (.eml) | Just the API key above |
+| **Screenshots** of the prototype · **PDF** export | A local **Chrome/Edge**. Without one, screenshots become placeholders and PDF returns a clear error — everything else still works. |
+| **PowerPoint (.pptx)** deck on the Ideagen template | The two brand templates at `specs/templates/ideagen-base.pptx` and `ideagen-master.pptx`. These are **large (~160 MB) and git-ignored, so they are NOT in the repo** — ask the project owner for the files and drop them into `specs/templates/`. Without them the `.pptx` download errors; nothing else is affected. |
+| **Codebase-diff baseline** (most accurate briefs) | Optional. Clone the current front-end repo locally and paste its path (e.g. the Search components folder) into **Baseline → Current source codebase path** in the UI. Without it, the change is inferred from your note and labelled *unverified*. |
+
+### Handy commands
+- `npm run dev` — dev server with hot reload
+- `npm run build` && `npm start` — production build and serve
+- `npm run typecheck` — TypeScript check (no emit)
 
 ## The build phases
 
