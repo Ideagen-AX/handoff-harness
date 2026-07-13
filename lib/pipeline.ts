@@ -1,8 +1,9 @@
 import { ToolLoopAgent, Output, generateText, stepCountIs, type ToolSet } from "ai";
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
-import { ChangeBriefSchema, type ChangeBrief, type PipelineEvent, type Artifact } from "./types";
+import { ChangeBriefSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture } from "./types";
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool } from "./tools";
+import { captureScreens } from "./capture";
 import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples } from "./specs";
 import { AUDIENCES } from "./audiences";
 
@@ -88,8 +89,21 @@ async function generate(opts: {
   brief: ChangeBrief;
   productContext: string;
   examples?: string;
+  captures?: Capture[];
   focus?: string;
 }): Promise<Artifact> {
+  const usableCaptures = (opts.captures ?? []).filter((c) => c.ok && c.url);
+  const capturesBlock = usableCaptures.length
+    ? [
+        "",
+        "### Captured screenshots (real, served URLs)",
+        "These images were captured from the prototype. When the spec calls for a screenshot",
+        "of a given screenKey, embed THAT image inline as Markdown: `![caption](url)`.",
+        "Use ONLY the URLs below — never invent an image URL. If a screenKey you need is not",
+        "listed, describe it in words instead.",
+        ...usableCaptures.map((c) => `- screenKey \`${c.screenKey}\`: ${c.url} — ${c.caption}`),
+      ].join("\n")
+    : "";
   const { text } = await generateText({
     model: MODEL_GENERATE,
     system: [
@@ -102,6 +116,7 @@ async function generate(opts: {
       "",
       "### Spec",
       opts.specText,
+      capturesBlock,
       opts.examples
         ? [
             "",
@@ -156,6 +171,30 @@ export async function* runPipeline(input: {
   const brief = await understand(input);
   yield { type: "brief", brief };
 
+  // ── Stage: CAPTURE ─────────────────────────────────────────────────────────
+  // Screenshot each view in the brief's visualManifest from the live prototype.
+  // Local-first; degrades to placeholders. Feeds the visual artifacts + deck.
+  let captures: Capture[] = [];
+  const manifest = brief.visualManifest ?? [];
+  if (manifest.length) {
+    yield {
+      type: "status",
+      stage: "capture",
+      message: `Capturing ${manifest.length} screen${manifest.length > 1 ? "s" : ""} from the prototype…`,
+    };
+    const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    captures = await captureScreens({ prototypeUrl: input.prototypeUrl, manifest, runId });
+    yield { type: "captures", captures };
+    const failed = captures.filter((c) => !c.ok).length;
+    if (failed) {
+      yield {
+        type: "status",
+        stage: "capture",
+        message: `${captures.length - failed}/${captures.length} screens captured; ${failed} need manual attachment.`,
+      };
+    }
+  }
+
   // Build the generation jobs: the 5 comms audiences + the developer handoff…
   const jobs: Array<{ id: string; label: string; specText: string; focus?: string }> = [];
   for (const a of AUDIENCES) {
@@ -184,8 +223,17 @@ export async function* runPipeline(input: {
     message: `Drafting ${jobs.length} artifacts in parallel…`,
   };
   const productContext = await readReferenceDoc("product");
+  // Artifacts that embed real screenshots inline (prose formats). The slide
+  // references screenKeys instead and the deck exporter places the images.
+  const IMAGE_ARTIFACTS = new Set(["case-study", "one-pager"]);
   const promises = jobs.map(async (j) =>
-    generate({ ...j, brief, productContext, examples: await readExamples(j.id) }),
+    generate({
+      ...j,
+      brief,
+      productContext,
+      examples: await readExamples(j.id),
+      captures: IMAGE_ARTIFACTS.has(j.id) ? captures : undefined,
+    }),
   );
   for await (const artifact of asCompleted(promises)) {
     yield { type: "artifact", artifact };

@@ -1,5 +1,6 @@
 node_modules
 .next
+public/captures
 .env.local
 .env*.local
 .vercel

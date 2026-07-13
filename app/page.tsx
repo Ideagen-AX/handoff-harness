@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { ChangeBrief, PipelineEvent } from "@/lib/types";
+import type { ChangeBrief, PipelineEvent, Capture } from "@/lib/types";
 
 type UiArtifact = {
   audienceId: string;
@@ -21,6 +21,7 @@ export default function Home() {
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [brief, setBrief] = useState<ChangeBrief | null>(null);
+  const [captures, setCaptures] = useState<Capture[]>([]);
   const [artifacts, setArtifacts] = useState<UiArtifact[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -28,6 +29,7 @@ export default function Home() {
     setRunning(true);
     setError("");
     setBrief(null);
+    setCaptures([]);
     setArtifacts([]);
     setStatus("Starting…");
 
@@ -74,6 +76,9 @@ export default function Home() {
         break;
       case "brief":
         setBrief(ev.brief);
+        break;
+      case "captures":
+        setCaptures(ev.captures);
         break;
       case "artifact":
         setArtifacts((prev) => [
@@ -182,6 +187,8 @@ export default function Home() {
 
       {brief && <BriefCard brief={brief} />}
 
+      {captures.length > 0 && <CaptureGallery captures={captures} />}
+
       {artifacts.length > 0 && (
         <>
           <div className="section-title">
@@ -211,6 +218,42 @@ export default function Home() {
         </>
       )}
     </div>
+  );
+}
+
+function CaptureGallery({ captures }: { captures: Capture[] }) {
+  const ok = captures.filter((c) => c.ok).length;
+  return (
+    <details className="card brief" open>
+      <summary>
+        Captured screens · {ok}/{captures.length} from the prototype
+      </summary>
+      <div className="capture-grid">
+        {captures.map((c) => (
+          <figure key={c.screenKey} className={`capture ${c.ok ? "" : "capture-missing"}`}>
+            {c.ok && c.url ? (
+              <a href={c.url} target="_blank" rel="noreferrer">
+                <img src={c.url} alt={c.caption} loading="lazy" />
+              </a>
+            ) : (
+              <div className="capture-placeholder">Not captured</div>
+            )}
+            <figcaption>
+              <code className="screenkey">{c.screenKey}</code>
+              <span className="cap-text">{c.caption}</span>
+              {c.annotations?.length > 0 && (
+                <ul className="cap-notes">
+                  {c.annotations.map((a, i) => (
+                    <li key={i}>{a}</li>
+                  ))}
+                </ul>
+              )}
+              {!c.ok && c.note && <span className="cap-warn">{c.note}</span>}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </details>
   );
 }
 

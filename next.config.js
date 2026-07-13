@@ -5,6 +5,9 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/run": ["./specs/**/*"],
   },
+  // puppeteer-core is used only for local screenshot capture; keep it out of the
+  // bundle so builds (and Vercel, where capture is skipped) don't choke on it.
+  serverExternalPackages: ["puppeteer-core"],
 };
 
 module.exports = nextConfig;

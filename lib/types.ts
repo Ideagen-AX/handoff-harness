@@ -160,10 +160,22 @@ export type Artifact = {
   content: string; // Markdown
 };
 
+// One captured screenshot (or a placeholder when capture wasn't possible),
+// derived from a visualManifest entry.
+export type Capture = {
+  screenKey: string;
+  caption: string;
+  annotations: string[];
+  ok: boolean;
+  url?: string; // served path when ok, e.g. /captures/<runId>/<screenKey>.png
+  note?: string; // why it failed / was skipped, when !ok
+};
+
 // Events streamed from the pipeline to the review UI (one JSON object per line).
 export type PipelineEvent =
   | { type: "status"; stage: string; message: string }
   | { type: "brief"; brief: ChangeBrief }
+  | { type: "captures"; captures: Capture[] }
   | { type: "artifact"; artifact: Artifact }
   | { type: "done" }
   | { type: "error"; message: string };
