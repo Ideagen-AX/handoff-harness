@@ -6,8 +6,12 @@ import type { Audience } from "./types";
 // code change required.
 export const AUDIENCES: Audience[] = [
   { id: "design-system", label: "Design System team", specFile: "design-system.md" },
-  { id: "support-tam", label: "Support & Technical Account Managers", specFile: "support-tam.md" },
+  { id: "product-docs", label: "Product documentation", specFile: "product-docs.md" },
+  { id: "support-summary", label: "Support & Technical Account Managers", specFile: "support-summary.md" },
   { id: "qa", label: "QA", specFile: "qa.md" },
   { id: "release-notes", label: "Release notes", specFile: "release-notes.md" },
-  { id: "internal-blog", label: "Internal blog / presentation", specFile: "internal-blog.md" },
+  { id: "analytics-plan", label: "Analytics & success plan", specFile: "analytics-plan.md" },
+  { id: "one-pager", label: "1-Pager", specFile: "one-pager.md" },
+  { id: "slide", label: "Slide", specFile: "slide.md" },
+  { id: "case-study", label: "Case study", specFile: "case-study.md" },
 ];

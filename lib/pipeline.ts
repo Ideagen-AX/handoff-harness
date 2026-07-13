@@ -3,7 +3,7 @@ import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, type ChangeBrief, type PipelineEvent, type Artifact } from "./types";
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool } from "./tools";
-import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc } from "./specs";
+import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples } from "./specs";
 import { AUDIENCES } from "./audiences";
 
 // ── Stage 1: UNDERSTAND ──────────────────────────────────────────────────────
@@ -51,7 +51,8 @@ async function understand(input: {
       "Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('design-system'); (4) establish the baseline per the BASELINE instruction below; (5) produce the structured change brief.",
       basisInstruction,
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
-      "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing.",
+      "Populate the downstream-feeding fields deliberately: decisionLog (the reasoning trail — decisions, rationale, alternatives, honest tradeoffs), intendedOutcomes + successMetrics (what success looks like and how it could be measured in Gainsight), useCases (persona + scenario + concrete example), and visualManifest (the views worth capturing, each with a caption and annotation callouts, ordered by narrative importance).",
+      "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing. Where you must infer a decision or metric that the inputs don't state, still flag it in openQuestions.",
       "",
       "Follow this brief specification:",
       guidance,
@@ -86,6 +87,7 @@ async function generate(opts: {
   specText: string;
   brief: ChangeBrief;
   productContext: string;
+  examples?: string;
   focus?: string;
 }): Promise<Artifact> {
   const { text } = await generateText({
@@ -100,6 +102,16 @@ async function generate(opts: {
       "",
       "### Spec",
       opts.specText,
+      opts.examples
+        ? [
+            "",
+            "### Reference examples (real Ideagen artifacts)",
+            "Match their VOICE, STRUCTURE, and register closely — headings, rhythm, level of detail, spelling.",
+            "Do NOT copy their specific products, features, or facts; those come only from the change brief.",
+            "",
+            opts.examples,
+          ].join("\n")
+        : "",
     ].join("\n"),
     prompt: [
       opts.focus ? `This artifact must focus ONLY on: ${opts.focus}` : `Write the artifact for: ${opts.label}.`,
@@ -172,7 +184,9 @@ export async function* runPipeline(input: {
     message: `Drafting ${jobs.length} artifacts in parallel…`,
   };
   const productContext = await readReferenceDoc("product");
-  const promises = jobs.map((j) => generate({ ...j, brief, productContext }));
+  const promises = jobs.map(async (j) =>
+    generate({ ...j, brief, productContext, examples: await readExamples(j.id) }),
+  );
   for await (const artifact of asCompleted(promises)) {
     yield { type: "artifact", artifact };
   }
