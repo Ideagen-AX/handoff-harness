@@ -269,6 +269,39 @@ export type PipelineEvent =
   | { type: "status"; stage: string; message: string }
   | { type: "brief"; brief: ChangeBrief }
   | { type: "captures"; captures: Capture[] }
+  | { type: "instrumentation"; plan: InstrumentationPlan }
   | { type: "artifact"; artifact: Artifact }
-  | { type: "done" }
+  | { type: "done"; savedRunId?: string; project?: string }
   | { type: "error"; message: string };
+
+// A generated run, persisted to the local library for later reference/comparison.
+export type StoredRunMeta = {
+  id: string;
+  version: string; // APP_VERSION that produced it
+  createdAt: string; // ISO
+  project: { id: string; name: string };
+  title: string; // brief title
+  prototypeUrl?: string;
+  baselineUrl?: string;
+  subject?: string;
+  artifactCount: number;
+  captureCount: number;
+};
+export type StoredRun = StoredRunMeta & {
+  input: {
+    prototypeUrl?: string;
+    baselineUrl?: string;
+    framework?: string;
+    subject?: string;
+    componentSelector?: string;
+    designDescription?: string;
+    projectContext?: string;
+    focusAreas?: string;
+    designDecisions?: string;
+    enabledOutputs?: string[];
+  };
+  brief: ChangeBrief;
+  captures: Capture[];
+  artifacts: Artifact[];
+  instrumentation: InstrumentationPlan | null;
+};

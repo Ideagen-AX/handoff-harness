@@ -1,9 +1,11 @@
 import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type ToolSet } from "ai";
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
-import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan } from "./types";
+import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan, type StoredRun } from "./types";
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype } from "./tools";
 import { captureScreens, capturePrototypeState } from "./capture";
+import { APP_VERSION } from "./version";
+import { saveRun, projectSlug } from "./library";
 
 type DiffPart = { type: "text"; text: string } | { type: "image"; image: string };
 
@@ -62,9 +64,28 @@ async function understand(input: {
   codebasePath?: string;
   subject?: string;
   componentSelector?: string;
+  designDescription?: string;
+  projectContext?: string;
+  focusAreas?: string;
+  designDecisions?: string;
 }): Promise<ChangeBrief> {
   const subject = input.subject?.trim();
   const guidance = await readChangeBriefGuidance();
+
+  // The designer's rich, structured context — primary truth the agent should use
+  // instead of re-inferring intent. Falls back to the short note.
+  const designerContext =
+    [
+      input.designDescription?.trim() ? `WHAT THE NEW DESIGN IS:\n${input.designDescription.trim()}` : "",
+      input.projectContext?.trim() ? `SURROUNDING CONTEXT:\n${input.projectContext.trim()}` : "",
+      input.focusAreas?.trim() ? `FOCUS AREAS (weight these):\n${input.focusAreas.trim()}` : "",
+      input.designDecisions?.trim()
+        ? `KEY DESIGN DECISIONS & RATIONALE (use directly — do not re-infer):\n${input.designDecisions.trim()}`
+        : "",
+      input.note?.trim() ? `NOTE:\n${input.note.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n") || input.note?.trim() || "";
 
   // Establish the "before" state: codebase (preferred) → baseline URL → inference.
   let useCodebase = false;
@@ -84,7 +105,7 @@ async function understand(input: {
   // fetched text. Falls back to the plain text diff if capture is unavailable.
   const diffSummary =
     !useCodebase && input.baselineUrl
-      ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, input.note, subject)
+      ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, designerContext, subject)
       : null;
 
   let basisInstruction: string;
@@ -124,6 +145,7 @@ async function understand(input: {
       "IMPORTANT for collapsed/overflow menus: some controls only exist at a particular width — e.g. discrete buttons that collapse into an overflow / 'more' / 'Tools' / 'Options' menu on narrower screens (or are inline on wide screens). If a menu/trigger only appears at a certain width, the click action MUST be preceded by a setViewport to a width where that trigger is actually visible (put the setViewport action first, then the click). Clicking a control that is hidden at the current width opens nothing — the shot will look like the default. So for a 'menu open' state on a component that collapses, set the narrower viewport AND click the trigger.",
       "Capture the component's DISTINCT, meaningful states — not the same view repeatedly. For a toolbar that means e.g.: default, responsive/mobile (setViewport), each display-mode selected (click each mode), any menu/panel open (click it), and an active/pressed control. Give each a distinct screenKey and the actions to reach it.",
       "Set each visualManifest entry's `selector` to a CSS selector that scopes the screenshot to the COMPONENT (not the whole page) — the component is small and centered on the demo page, so an unscoped shot makes every state look the same. Use a selector wide enough to include any open menu/popover for menu-open states. If a component selector was provided with the run, prefer it; otherwise infer one from the markup/inspection.",
+      "The designer has supplied structured context in the prompt below — what the new design is, the surrounding context, the focus areas, and the key design decisions with rationale. TREAT THIS AS PRIMARY TRUTH: put the stated decisions and their rationale straight into decisionLog (rather than re-inferring them), weight the focus areas when choosing what matters, and lean on the description instead of guessing intent. Only infer what the designer hasn't told you — and flag those inferences in openQuestions.",
       "CRITICAL — do not confuse ENHANCED with NEW. A change is often an improvement to something that already exists (making existing views responsive, faster, or more accessible), NOT the introduction of a brand-new capability. Never state that a feature, mode, or view is 'new' or 'added' unless a baseline (codebase or baseline URL) confirms it was absent before. Without that confirmation, describe the change as an enhancement to existing behaviour and record the assumption in openQuestions. Read the designer's note literally but skeptically — 'added X' in a note may mean 'made existing X responsive'.",
       "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing. Where you must infer a decision or metric that the inputs don't state, still flag it in openQuestions.",
       "",
@@ -138,8 +160,8 @@ async function understand(input: {
     diffSummary ? `\nBefore/after diff (authoritative — visual + code, BEFORE=baseline, AFTER=prototype):\n${diffSummary}\n` : "",
     useCodebase ? "Current source code (the BEFORE state) is available via the readCodebase tool." : "",
     "",
-    `Designer's note about what changed and why:`,
-    input.note || "(none provided — infer conservatively)",
+    `Designer's context (primary truth — use directly, infer only what's missing):`,
+    designerContext || "(none provided — infer conservatively and flag it)",
     "",
     "Produce the change brief now.",
   ]
@@ -472,7 +494,14 @@ export async function* runPipeline(input: {
   enabledOutputs?: string[];
   subject?: string;
   componentSelector?: string;
+  projectName?: string;
+  designDescription?: string;
+  projectContext?: string;
+  focusAreas?: string;
+  designDecisions?: string;
 }): AsyncGenerator<PipelineEvent> {
+  // Stable id for this run — used for the capture folder AND the library entry.
+  const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   // Which artifact types to produce. Empty/undefined = all. Component specs are
   // gated under "design-system" since they're a design-system deliverable.
   const enabled = input.enabledOutputs?.length ? new Set(input.enabledOutputs) : null;
@@ -497,7 +526,6 @@ export async function* runPipeline(input: {
       stage: "capture",
       message: `Capturing ${manifest.length} screen${manifest.length > 1 ? "s" : ""} from the prototype…`,
     };
-    const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     captures = await captureScreens({ prototypeUrl: input.prototypeUrl, manifest, runId, defaultSelector: input.componentSelector });
     yield { type: "captures", captures };
     const failed = captures.filter((c) => !c.ok).length;
@@ -556,6 +584,7 @@ export async function* runPipeline(input: {
       const nPts = instrumentation?.points?.length ?? 0;
       if (nPts) {
         yield { type: "status", stage: "instrument", message: `Instrumentation plan: ${nPts} data-id${nPts > 1 ? "s" : ""} for Gainsight` };
+        yield { type: "instrumentation", plan: instrumentation };
       }
     } catch {
       instrumentation = null; // the plan and code still generate without it
@@ -586,10 +615,13 @@ export async function* runPipeline(input: {
   // than re-sending it at full price. Concurrent requests can't read a cache
   // that's still being written, so the first must land before the others fire.
   const framework = input.framework || "vue";
+  const collected: Artifact[] = []; // accumulated for the library save at the end
   const promises: Promise<Artifact>[] = [];
   if (jobs.length) {
     const [firstJob, ...restJobs] = jobs;
-    yield { type: "artifact", artifact: await genJob(firstJob) };
+    const first = await genJob(firstJob);
+    collected.push(first);
+    yield { type: "artifact", artifact: first };
     promises.push(...restJobs.map(genJob));
   }
   // The slide's dedicated structured generator, streamed alongside the rest.
@@ -618,8 +650,53 @@ export async function* runPipeline(input: {
     );
   }
   for await (const artifact of asCompleted(promises)) {
+    collected.push(artifact);
     yield { type: "artifact", artifact };
   }
 
-  yield { type: "done" };
+  // ── Auto-save to the local library ────────────────────────────────────────
+  // Every successful run is archived (with its screenshots), stamped with the
+  // tool version and grouped under its design project, for later reference and
+  // cross-run comparison. Best-effort — a save failure never fails the run.
+  let savedRunId: string | null = null;
+  let savedProject: string | undefined;
+  try {
+    const projectName =
+      input.projectName?.trim() || input.subject?.trim() || brief.title || "Unsorted";
+    const project = { id: projectSlug(projectName), name: projectName };
+    const run: StoredRun = {
+      id: runId,
+      version: APP_VERSION,
+      createdAt: new Date().toISOString(),
+      project,
+      title: brief.title,
+      prototypeUrl: input.prototypeUrl,
+      baselineUrl: input.baselineUrl,
+      subject: input.subject,
+      artifactCount: collected.length,
+      captureCount: captures.filter((c) => c.ok).length,
+      input: {
+        prototypeUrl: input.prototypeUrl,
+        baselineUrl: input.baselineUrl,
+        framework: input.framework,
+        subject: input.subject,
+        componentSelector: input.componentSelector,
+        designDescription: input.designDescription,
+        projectContext: input.projectContext,
+        focusAreas: input.focusAreas,
+        designDecisions: input.designDecisions,
+        enabledOutputs: input.enabledOutputs,
+      },
+      brief,
+      captures,
+      artifacts: collected,
+      instrumentation,
+    };
+    savedRunId = await saveRun(run, runId);
+    if (savedRunId) savedProject = project.id;
+  } catch {
+    /* archival is best-effort */
+  }
+
+  yield { type: "done", savedRunId: savedRunId ?? undefined, project: savedProject };
 }

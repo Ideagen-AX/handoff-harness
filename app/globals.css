@@ -256,3 +256,42 @@ button.ghost { background: transparent; }
 }
 .nav-download:hover { background: rgba(41, 210, 215, 0.18); border-color: var(--accent); }
 .nav-download:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Top bar / cross-page nav ─────────────────────────────────────────── */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ver { color: var(--muted); font-weight: 600; font-size: 12px; margin-left: 6px; }
+.topnav { display: flex; gap: 16px; align-items: center; font-size: 14px; }
+.topnav a { color: var(--accent); text-decoration: none; }
+.topnav a:hover { text-decoration: underline; }
+.topnav-active { color: var(--muted); }
+
+/* ── Structured "describe the design" group ───────────────────────────── */
+.describe { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 6px 0 16px; background: rgba(255,255,255,0.02); }
+.describe-head { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+
+/* ── Read-only rendered markdown (library + artifact view) ────────────── */
+.md { font-size: 14px; line-height: 1.6; color: var(--ink); }
+.md h1, .md h2, .md h3 { color: var(--ink); line-height: 1.25; margin: 1.2em 0 0.4em; }
+.md h1 { font-size: 20px; } .md h2 { font-size: 17px; } .md h3 { font-size: 15px; }
+.md code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+.md pre { background: #0b0f16; border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md table { border-collapse: collapse; margin: 1em 0; }
+.md th, .md td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+.md blockquote { border-left: 3px solid var(--accent); margin: 1em 0; padding: 4px 14px; color: var(--muted); }
+
+/* ── Instrumentation table ────────────────────────────────────────────── */
+.instr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.instr-table th, .instr-table td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+.instr-table th { background: rgba(255,255,255,0.04); color: var(--muted); font-weight: 700; }
+
+/* ── Library run rows + compare ───────────────────────────────────────── */
+.lib-run { display: flex; align-items: stretch; gap: 4px; }
+.lib-run.active .lib-run-main { background: rgba(41,210,215,0.12); }
+.lib-run-main { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.lib-run-meta { font-size: 11px; color: var(--muted); }
+.lib-del { background: none; border: none; color: var(--muted); cursor: pointer; padding: 0 6px; font-size: 12px; }
+.lib-del:hover { color: #ff7a7a; }
+.run-header h2 { margin: 0 0 4px; }
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .compare-grid { grid-template-columns: 1fr; } }
