@@ -44,6 +44,48 @@ const OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] = [
 ];
 const ALL_OUTPUT_IDS = OUTPUTS.flatMap((g) => g.items.map((i) => i.id));
 
+// Per-output export/download options. Every artifact also gets Approve + Copy
+// (rendered separately). Rendered in EXPORT_ORDER, filtered to each output's set.
+const EXPORTS: Record<string, string[]> = {
+  "design-system": ["md", "pdf", "docx", "email", "jira"],
+  dev: ["md", "pdf", "docx", "jira"],
+  "dev-code": ["js", "jira"],
+  qa: ["md", "pdf", "docx", "email", "jira"],
+  "product-docs": ["md", "pdf", "docx", "email"],
+  "support-summary": ["md", "pdf", "docx", "email"],
+  "release-notes": ["md", "pdf", "docx", "email"],
+  slide: ["pptx", "pdf", "email"],
+  "one-pager": ["md", "pdf", "docx", "email"],
+  "case-study": ["md", "pdf", "docx", "email"],
+  "analytics-plan": ["md", "pdf", "docx", "email"],
+};
+const EXPORT_ORDER = ["pptx", "js", "pdf", "docx", "md", "email", "jira"];
+const EXPORT_LABEL: Record<string, string> = {
+  pptx: ".pptx", md: ".md", pdf: "PDF", docx: "Word", email: "Email", jira: "Jira",
+};
+
+// Net-new component specs (component-*) are a design-system deliverable.
+function exportsFor(id: string): string[] {
+  if (EXPORTS[id]) return EXPORTS[id];
+  if (id.startsWith("component-")) return ["md", "pdf", "docx", "email", "jira"];
+  return ["md", "pdf", "docx"];
+}
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "artifact";
+}
+// Pull the code out of the dev-code Markdown (fenced blocks), falling back to the
+// whole content. Extension follows the chosen framework.
+function extractCode(md: string): string {
+  const blocks = [...md.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map((m) => m[1].replace(/\s+$/, ""));
+  return blocks.length ? blocks.join("\n\n") : md;
+}
+function codeExt(framework: string): string {
+  return ({ vue: "vue", react: "jsx", svelte: "svelte", angular: "ts" } as Record<string, string>)[
+    (framework || "").toLowerCase()
+  ] ?? "js";
+}
+
 export default function Home() {
   const [url, setUrl] = useState("https://forge-demo-toolbar-after.vercel.app/");
   const [note, setNote] = useState(
@@ -57,6 +99,7 @@ export default function Home() {
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [notice, setNotice] = useState<string>("");
   const [brief, setBrief] = useState<ChangeBrief | null>(null);
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [artifacts, setArtifacts] = useState<UiArtifact[]>([]);
@@ -175,6 +218,16 @@ export default function Home() {
     URL.revokeObjectURL(href);
   }
 
+  // Save a client-built blob (used for .md and code files — no round-trip needed).
+  function saveLocalBlob(content: BlobPart, name: string, type = "text/plain;charset=utf-8") {
+    const href = URL.createObjectURL(new Blob([content], { type }));
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(href);
+  }
+
   function post(url: string, body: unknown) {
     return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   }
@@ -187,20 +240,65 @@ export default function Home() {
       setError(String(e));
     }
   }
-  async function downloadExport(a: UiArtifact, format: "pdf" | "docx") {
+  async function downloadSlidePdf(a: UiArtifact) {
+    if (!a.slideSpec) return;
     try {
-      await saveBlob(await post("/api/export", { format, title: a.label, content: a.content }), `${a.audienceId}.${format}`);
+      await saveBlob(await post("/api/slide-pdf", { slideSpec: a.slideSpec, captures }), "slide.pdf");
     } catch (e) {
       setError(String(e));
     }
+  }
+  async function downloadExport(a: UiArtifact, format: "pdf" | "docx") {
+    try {
+      await saveBlob(await post("/api/export", { format, title: a.label, content: a.content }), `${slugify(a.audienceId)}.${format}`);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  function downloadMd(a: UiArtifact) {
+    saveLocalBlob(a.content, `${slugify(a.audienceId)}.md`, "text/markdown;charset=utf-8");
+  }
+  function downloadCode(a: UiArtifact) {
+    saveLocalBlob(extractCode(a.content), `component.${codeExt(framework)}`);
+  }
+  function jiraStub(a: UiArtifact) {
+    setError("");
+    setNotice(`Jira export for “${a.label}” is stubbed — the integration isn’t wired up yet.`);
   }
   async function emailDraft(a: UiArtifact) {
     try {
       const res = await post("/api/email", {
         artifact: { audienceId: a.audienceId, label: a.label, content: a.content },
         changeTitle: brief?.title,
+        // For the slide, the server attaches the generated .pptx to the draft.
+        slideSpec: a.slideSpec,
+        captures: a.audienceId === "slide" ? captures : undefined,
       });
       await saveBlob(res, `${a.audienceId}-draft.eml`);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  async function briefExport(format: "md" | "pdf" | "docx") {
+    if (!brief) return;
+    try {
+      await saveBlob(await post("/api/brief-export", { format, brief }), `change-brief.${format}`);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  async function downloadCapture(c: Capture) {
+    if (!c.ok || !c.url) return;
+    try {
+      const res = await fetch(c.url);
+      saveLocalBlob(await res.blob(), `${slugify(c.screenKey)}.png`, "image/png");
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  async function downloadCapturesZip() {
+    try {
+      await saveBlob(await post("/api/captures-zip", { captures }), "screenshots.zip");
     } catch (e) {
       setError(String(e));
     }
@@ -221,6 +319,7 @@ export default function Home() {
   }
 
   function renderArtifact(a: UiArtifact) {
+    const caps = exportsFor(a.audienceId);
     return (
       <div key={a.audienceId} className={`card artifact ${a.approved ? "approved" : ""}`}>
         <div className="artifact-head">
@@ -235,21 +334,29 @@ export default function Home() {
           <button className="ghost" onClick={() => copy(a.content)}>
             Copy
           </button>
-          {a.audienceId === "slide" && a.slideSpec && (
-            <button className="ghost" onClick={() => downloadDeck(a)}>
-              .pptx
-            </button>
+          {EXPORT_ORDER.filter((cap) => caps.includes(cap)).map((cap) => {
+            const label = cap === "js" ? `.${codeExt(framework)}` : EXPORT_LABEL[cap];
+            const onClick = () => {
+              if (cap === "pptx") return downloadDeck(a);
+              if (cap === "js") return downloadCode(a);
+              if (cap === "md") return downloadMd(a);
+              if (cap === "pdf") return a.audienceId === "slide" ? downloadSlidePdf(a) : downloadExport(a, "pdf");
+              if (cap === "docx") return downloadExport(a, "docx");
+              if (cap === "email") return emailDraft(a);
+              if (cap === "jira") return jiraStub(a);
+            };
+            return (
+              <button key={cap} className="ghost" onClick={onClick}>
+                {label}
+              </button>
+            );
+          })}
+          {caps.includes("email") && (
+            <span className="meta">
+              Email is stubbed — downloads a draft .eml to send from Outlook
+              {a.audienceId === "slide" ? " (with the .pptx attached)" : ""}.
+            </span>
           )}
-          <button className="ghost" onClick={() => downloadExport(a, "pdf")}>
-            PDF
-          </button>
-          <button className="ghost" onClick={() => downloadExport(a, "docx")}>
-            Word
-          </button>
-          <button className="ghost" onClick={() => emailDraft(a)}>
-            Email draft
-          </button>
-          <span className="meta">Email is stubbed — downloads a draft .eml to send from Outlook.</span>
         </div>
       </div>
     );
@@ -381,6 +488,11 @@ export default function Home() {
           </div>
         )}
         {error && <p className="err">Error: {error}</p>}
+        {notice && (
+          <p className="notice" onClick={() => setNotice("")} title="Dismiss">
+            {notice}
+          </p>
+        )}
       </div>
 
       {(brief || artifacts.length > 0) && (
@@ -428,9 +540,16 @@ export default function Home() {
 
           <section className="viewer">
             {selected === "brief" && brief ? (
-              <BriefCard brief={brief} />
+              <div>
+                <div className="btn-row" style={{ marginBottom: 12 }}>
+                  <button className="ghost" onClick={() => briefExport("pdf")}>PDF</button>
+                  <button className="ghost" onClick={() => briefExport("docx")}>Word</button>
+                  <button className="ghost" onClick={() => briefExport("md")}>.md</button>
+                </div>
+                <BriefCard brief={brief} />
+              </div>
             ) : selected === "captures" ? (
-              <CaptureGallery captures={captures} />
+              <CaptureGallery captures={captures} onDownloadOne={downloadCapture} onDownloadAll={downloadCapturesZip} />
             ) : (
               (() => {
                 const a = artifacts.find((x) => x.audienceId === selected);
@@ -448,13 +567,27 @@ export default function Home() {
   );
 }
 
-function CaptureGallery({ captures }: { captures: Capture[] }) {
+function CaptureGallery({
+  captures,
+  onDownloadOne,
+  onDownloadAll,
+}: {
+  captures: Capture[];
+  onDownloadOne: (c: Capture) => void;
+  onDownloadAll: () => void;
+}) {
   const ok = captures.filter((c) => c.ok).length;
   return (
     <details className="card brief" open>
       <summary>
         Captured screens · {ok}/{captures.length} from the prototype
       </summary>
+      <div className="btn-row" style={{ margin: "10px 0 4px" }}>
+        <button className="ghost" onClick={onDownloadAll} disabled={!ok} title="Download every captured screenshot as a .zip">
+          ⤓ Download all (.zip)
+        </button>
+        <span className="meta">Screenshots are PNG.</span>
+      </div>
       <div className="capture-grid">
         {captures.map((c) => (
           <figure key={c.screenKey} className={`capture ${c.ok ? "" : "capture-missing"}`}>
@@ -476,6 +609,11 @@ function CaptureGallery({ captures }: { captures: Capture[] }) {
                 </ul>
               )}
               {!c.ok && c.note && <span className="cap-warn">{c.note}</span>}
+              {c.ok && c.url && (
+                <button className="ghost cap-dl" onClick={() => onDownloadOne(c)}>
+                  ⤓ PNG
+                </button>
+              )}
             </figcaption>
           </figure>
         ))}

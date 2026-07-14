@@ -17,7 +17,7 @@ function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "artifact";
 }
 
-function briefToMarkdown(brief: ChangeBrief): string {
+export function briefToMarkdown(brief: ChangeBrief): string {
   const list = (arr: string[]) => (arr?.length ? arr.map((x) => `- ${x}`).join("\n") : "_none_");
   const lines: string[] = [
     `# Change brief — ${brief.title}`,

@@ -53,6 +53,31 @@ export async function toPdf(markdown: string, title: string): Promise<Buffer> {
   }
 }
 
+// Full HTML → a single slide-sized PDF page (13.333in × 7.5in, no margins), for
+// exporting the actual styled slide rather than its Markdown. Local-first like toPdf.
+export async function slideHtmlToPdf(html: string): Promise<Buffer> {
+  const executablePath = await findChrome();
+  if (!executablePath) {
+    throw new Error("Slide PDF export needs a local Chrome/Edge; none found (run locally).");
+  }
+  const { launch } = await import("puppeteer-core");
+  const browser = await launch({ executablePath, headless: true, args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+    const pdf = await page.pdf({
+      width: "13.333in",
+      height: "7.5in",
+      printBackground: true,
+      pageRanges: "1",
+      margin: { top: "0", bottom: "0", left: "0", right: "0" },
+    });
+    return Buffer.from(pdf);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
 // Markdown → Word (.docx) via html-to-docx. Pure JS — works anywhere.
 export async function toDocx(markdown: string, title: string): Promise<Buffer> {
   const html = renderHtml(markdown, title);

@@ -33,15 +33,41 @@ export function composeDraft(artifact: Artifact, changeTitle?: string): EmailDra
   };
 }
 
+export type EmailAttachment = { filename: string; contentType: string; base64: string };
+
 // Serialise a draft as an RFC-822 .eml the user can open in Outlook and send.
-export function toEml(draft: EmailDraft, dateISO: string): string {
-  const headers = [
+// With attachments it emits a multipart/mixed message (e.g. the slide .pptx).
+export function toEml(draft: EmailDraft, dateISO: string, attachments: EmailAttachment[] = []): string {
+  const base = [
     `To: ${draft.to}`,
     `Subject: ${draft.subject}`,
     `Date: ${dateISO}`,
     "X-Unsent: 1", // Outlook opens this as an editable draft
-    "Content-Type: text/plain; charset=utf-8",
     "MIME-Version: 1.0",
   ];
-  return `${headers.join("\r\n")}\r\n\r\n${draft.body.replace(/\n/g, "\r\n")}`;
+  const bodyCRLF = draft.body.replace(/\n/g, "\r\n");
+
+  if (!attachments.length) {
+    return `${[...base, "Content-Type: text/plain; charset=utf-8"].join("\r\n")}\r\n\r\n${bodyCRLF}`;
+  }
+
+  const boundary = "=_handoff_harness_boundary_=";
+  const wrap = (b64: string) => b64.replace(/(.{76})/g, "$1\r\n"); // RFC-822 line length
+  const parts = [
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=utf-8",
+    "",
+    bodyCRLF,
+    ...attachments.flatMap((a) => [
+      `--${boundary}`,
+      `Content-Type: ${a.contentType}; name="${a.filename}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${a.filename}"`,
+      "",
+      wrap(a.base64),
+    ]),
+    `--${boundary}--`,
+  ];
+  const headers = [...base, `Content-Type: multipart/mixed; boundary="${boundary}"`];
+  return `${headers.join("\r\n")}\r\n\r\n${parts.join("\r\n")}`;
 }
