@@ -103,7 +103,7 @@ async function understand(input: {
   const agent = new ToolLoopAgent({
     model: MODEL_UNDERSTAND,
     tools,
-    stopWhen: stepCountIs(useCodebase ? 28 : 12),
+    stopWhen: stepCountIs(useCodebase ? 32 : 18),
     // The change brief is a large object; give it room so it isn't truncated
     // into invalid JSON (the cause of intermittent "no object generated").
     maxOutputTokens: 16000,
@@ -118,6 +118,7 @@ async function understand(input: {
       "Express styling (colours, spacing, radii, type) as design-system TOKENS — the CSS variables in the markup or DS token names from the reference — not raw hex values. Only use a hex value when no token applies, and flag it.",
       basisInstruction,
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
+      "Call each tool AT MOST ONCE — you have everything after fetchPrototype, the two readReference calls, inspectPrototype, and the baseline step. Do NOT re-fetch or re-inspect. As soon as you have that context, STOP calling tools and emit the structured change brief; the very next step after gathering must be the final brief, not another tool call.",
       "Populate the downstream-feeding fields deliberately: decisionLog (the reasoning trail — decisions, rationale, alternatives, honest tradeoffs), intendedOutcomes + successMetrics (what success looks like and how it could be measured in Gainsight), useCases (persona + scenario + concrete example), and visualManifest (the views worth capturing, each with a caption and annotation callouts, ordered by narrative importance).",
       "For each visualManifest entry, also fill `actions` — the steps to drive the prototype INTO that state before its screenshot. To reach a mode/tab/panel/menu, add a click whose `target` is the control's EXACT visible label from inspectPrototype (e.g. 'Options', 'Table', 'Cards'). For a responsive/size-dependent state, add a setViewport with a realistic width (e.g. 480 mobile, 834 tablet, 1440 desktop). Leave `actions` empty only for the default view. Distinct states MUST have distinct actions, or their screenshots come out identical.",
       "IMPORTANT for collapsed/overflow menus: some controls only exist at a particular width — e.g. discrete buttons that collapse into an overflow / 'more' / 'Tools' / 'Options' menu on narrower screens (or are inline on wide screens). If a menu/trigger only appears at a certain width, the click action MUST be preceded by a setViewport to a width where that trigger is actually visible (put the setViewport action first, then the click). Clicking a control that is hidden at the current width opens nothing — the shot will look like the default. So for a 'menu open' state on a component that collapses, set the narrower viewport AND click the trigger.",
@@ -145,11 +146,14 @@ async function understand(input: {
     .filter(Boolean)
     .join("\n");
 
-  // Object generation on a large schema is occasionally non-deterministic; retry
-  // only on that specific failure (rethrow anything else immediately).
+  // The tool-loop + large-object generation is intermittently non-deterministic:
+  // a run occasionally ends on a tool call (AI_NoOutputGeneratedError) or truncates
+  // the object (AI_NoObjectGeneratedError). The gateway/model themselves are healthy,
+  // so simply re-running the whole loop almost always recovers — retry BOTH.
+  const RETRYABLE = new Set(["AI_NoObjectGeneratedError", "AI_NoOutputGeneratedError"]);
   let output: unknown;
   let lastErr: unknown = null;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
     try {
       ({ output } = await agent.generate({ prompt: promptText }));
       lastErr = null;
@@ -158,10 +162,7 @@ async function understand(input: {
       lastErr = e;
       const err = e as { name?: string; finishReason?: string };
       console.error(`[understand] attempt ${attempt} failed:`, { name: err?.name, finishReason: err?.finishReason });
-      // Retry ONLY the transient truncated-JSON failure. "No output" means the
-      // step cap was hit before emitting — retrying re-runs the whole loop and
-      // just doubles latency; the fix for that is the larger stepCount budget.
-      if (err?.name !== "AI_NoObjectGeneratedError") throw e;
+      if (!RETRYABLE.has(err?.name ?? "")) throw e;
     }
   }
   if (lastErr) throw lastErr;
