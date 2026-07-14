@@ -129,38 +129,64 @@ async function generate(opts: {
         ...usableCaptures.map((c) => `- screenKey \`${c.screenKey}\`: ${c.url} — ${c.caption}`),
       ].join("\n")
     : "";
-  const { text } = await generateText({
+  // Per-artifact tail — varies by artifact, so it must come AFTER the cached
+  // shared prefix (product context + brief) or it would break the prefix match.
+  const perArtifact = [
+    "### Spec",
+    opts.specText,
+    capturesBlock,
+    opts.examples
+      ? [
+          "",
+          "### Reference examples (real Ideagen artifacts)",
+          "Match their VOICE, STRUCTURE, and register closely — headings, rhythm, level of detail, spelling.",
+          "Do NOT copy their specific products, features, or facts; those come only from the change brief.",
+          "",
+          opts.examples,
+        ].join("\n")
+      : "",
+    "",
+    opts.focus ? `Write the artifact, focusing ONLY on: ${opts.focus}.` : `Write the artifact for: ${opts.label}.`,
+  ].join("\n");
+
+  const { text, usage, providerMetadata } = await generateText({
     model: MODEL_GENERATE,
     maxOutputTokens: 8000,
-    system: [
-      "You are drafting one design-handoff artifact for a single, specific audience or purpose.",
-      "Follow the spec below exactly — its voice, format, length, must-include, and must-avoid.",
-      "Use correct product terminology from the product context. Output ONLY the finished artifact as clean Markdown. No preamble, no meta commentary.",
-      "",
-      "### Product context (shared — use for accurate framing and terminology)",
-      opts.productContext,
-      "",
-      "### Spec",
-      opts.specText,
-      capturesBlock,
-      opts.examples
-        ? [
-            "",
-            "### Reference examples (real Ideagen artifacts)",
-            "Match their VOICE, STRUCTURE, and register closely — headings, rhythm, level of detail, spelling.",
-            "Do NOT copy their specific products, features, or facts; those come only from the change brief.",
-            "",
-            opts.examples,
-          ].join("\n")
-        : "",
-    ].join("\n"),
-    prompt: [
-      opts.focus ? `This artifact must focus ONLY on: ${opts.focus}` : `Write the artifact for: ${opts.label}.`,
-      "Use this change brief as the single source of truth:",
-      "",
-      JSON.stringify(opts.brief, null, 2),
-    ].join("\n"),
+    // Prompt-cache the two blocks that are identical across every artifact in a
+    // run — the product context (system) and the change brief (first user block).
+    // The per-artifact spec/examples follow, uncached. The fan-out is staggered
+    // (see runPipeline) so these caches are written once and read by the rest.
+    messages: [
+      {
+        role: "system",
+        content: [
+          "You are drafting one design-handoff artifact for a single, specific audience or purpose.",
+          "Follow the spec below exactly — its voice, format, length, must-include, and must-avoid.",
+          "Use correct product terminology from the product context. Output ONLY the finished artifact as clean Markdown. No preamble, no meta commentary.",
+          "",
+          "### Product context (shared — use for accurate framing and terminology)",
+          opts.productContext,
+        ].join("\n"),
+        providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Use this change brief as the single source of truth:\n\n${JSON.stringify(opts.brief, null, 2)}`,
+            providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+          },
+          { type: "text", text: perArtifact },
+        ],
+      },
+    ],
   });
+  // Cache reads surface on usage.cachedInputTokens; cache writes on the anthropic
+  // provider metadata. Logged for cost visibility during the fan-out.
+  const write = (providerMetadata?.anthropic as { cacheCreationInputTokens?: number } | undefined)?.cacheCreationInputTokens ?? 0;
+  const read = usage?.cachedInputTokens ?? 0;
+  console.error(`[cache] ${opts.id}: read=${read} write=${write}`);
   return { audienceId: opts.id, label: opts.label, content: text.trim() };
 }
 
@@ -369,7 +395,7 @@ export async function* runPipeline(input: {
   // Artifacts that embed real screenshots inline (prose formats). The slide
   // references screenKeys instead and the deck exporter places the images.
   const IMAGE_ARTIFACTS = new Set(["case-study", "one-pager"]);
-  const promises = jobs.map((j) =>
+  const genJob = (j: { id: string; label: string; specText: string; focus?: string }) =>
     guard(
       (async () =>
         generate({
@@ -381,38 +407,33 @@ export async function* runPipeline(input: {
         }))(),
       j.id,
       j.label,
-    ),
-  );
+    );
+
+  // Warm the shared prompt cache (product context + brief) with the FIRST
+  // generator, then fan the rest out concurrently so they READ that cache rather
+  // than re-sending it at full price. Concurrent requests can't read a cache
+  // that's still being written, so the first must land before the others fire.
+  const [firstJob, ...restJobs] = jobs;
+  yield { type: "artifact", artifact: await genJob(firstJob) };
+
+  const framework = input.framework || "vue";
+  const promises = restJobs.map(genJob);
   // The slide's dedicated structured generator, streamed alongside the rest.
   promises.push(
     guard(
-      (async () =>
-        generateSlide({
-          brief,
-          productContext,
-          examples: await readExamples("slide"),
-          captures,
-        }))(),
+      (async () => generateSlide({ brief, productContext, examples: await readExamples("slide"), captures }))(),
       "slide",
       "Slide",
     ),
   );
   // The coded developer artifact (framework-parameterized; Vue default), grounded
   // in the design-system reference and focused on the primary net-new component.
-  const framework = input.framework || "vue";
   promises.push(
     guard(
       (async () => {
         const dsReference = await readReferenceDoc("design-system");
         const { text: codeSpecText } = await readCodeSpec(framework);
-        return generateCode({
-          brief,
-          productContext,
-          dsReference,
-          codeSpecText,
-          framework,
-          focus: newComponents[0]?.name,
-        });
+        return generateCode({ brief, productContext, dsReference, codeSpecText, framework, focus: newComponents[0]?.name });
       })(),
       "dev-code",
       `Developer component code (${framework})`,
