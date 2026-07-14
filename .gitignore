@@ -7,9 +7,11 @@ public/captures
 *.tsbuildinfo
 next-env.d.ts
 
-# Deck templates are large binaries (fonts+media for all layouts). Kept local;
-# regenerate from the master .potx. Decide LFS/commit before deploying the deck route.
+# The slide exporter uses one lightweight format: specs/templates/blank1-bg.png
+# (a pre-composited Blanks-Blank-1 background, committed). Any stray .pptx masters
+# left over from the old approach stay local — they're no longer used or needed.
 specs/templates/*.pptx
+specs/templates/*.potx
 
 # macOS
 .DS_Store

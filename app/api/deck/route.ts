@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const captures: Capture[] = Array.isArray(body.captures) ? body.captures : [];
 
     const buffer = await buildDeck(slideSpec, captures);
-    const filename = `slide-${slideSpec.template.toLowerCase()}.pptx`;
+    const filename = "slide.pptx";
 
     return new Response(new Uint8Array(buffer), {
       headers: {

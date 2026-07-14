@@ -120,6 +120,7 @@ async function understand(input: {
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
       "Populate the downstream-feeding fields deliberately: decisionLog (the reasoning trail — decisions, rationale, alternatives, honest tradeoffs), intendedOutcomes + successMetrics (what success looks like and how it could be measured in Gainsight), useCases (persona + scenario + concrete example), and visualManifest (the views worth capturing, each with a caption and annotation callouts, ordered by narrative importance).",
       "For each visualManifest entry, also fill `actions` — the steps to drive the prototype INTO that state before its screenshot. To reach a mode/tab/panel/menu, add a click whose `target` is the control's EXACT visible label from inspectPrototype (e.g. 'Options', 'Table', 'Cards'). For a responsive/size-dependent state, add a setViewport with a realistic width (e.g. 480 mobile, 834 tablet, 1440 desktop). Leave `actions` empty only for the default view. Distinct states MUST have distinct actions, or their screenshots come out identical.",
+      "IMPORTANT for collapsed/overflow menus: some controls only exist at a particular width — e.g. discrete buttons that collapse into an overflow / 'more' / 'Tools' / 'Options' menu on narrower screens (or are inline on wide screens). If a menu/trigger only appears at a certain width, the click action MUST be preceded by a setViewport to a width where that trigger is actually visible (put the setViewport action first, then the click). Clicking a control that is hidden at the current width opens nothing — the shot will look like the default. So for a 'menu open' state on a component that collapses, set the narrower viewport AND click the trigger.",
       "Capture the component's DISTINCT, meaningful states — not the same view repeatedly. For a toolbar that means e.g.: default, responsive/mobile (setViewport), each display-mode selected (click each mode), any menu/panel open (click it), and an active/pressed control. Give each a distinct screenKey and the actions to reach it.",
       "Set each visualManifest entry's `selector` to a CSS selector that scopes the screenshot to the COMPONENT (not the whole page) — the component is small and centered on the demo page, so an unscoped shot makes every state look the same. Use a selector wide enough to include any open menu/popover for menu-open states. If a component selector was provided with the run, prefer it; otherwise infer one from the markup/inspection.",
       "CRITICAL — do not confuse ENHANCED with NEW. A change is often an improvement to something that already exists (making existing views responsive, faster, or more accessible), NOT the introduction of a brand-new capability. Never state that a feature, mode, or view is 'new' or 'added' unless a baseline (codebase or baseline URL) confirms it was absent before. Without that confirmation, describe the change as an enhancement to existing behaviour and record the assumption in openQuestions. Read the designer's note literally but skeptically — 'added X' in a note may mean 'made existing X responsive'.",
@@ -275,40 +276,48 @@ async function generateSlide(opts: {
     maxOutputTokens: 4000,
     schema: SlideSpecSchema,
     system: [
-      "You are producing structured content for ONE Ideagen slide, built on the master deck template.",
-      "Follow the spec's voice and rules. Pick the template and the single best hero screenshot.",
+      "You are producing structured content for ONE Ideagen slide on the 'Blanks - Blank 1' layout.",
+      "The layout is fixed: a headline title and a supporting subtitle top-left, magenta-bulleted CALLOUTS down the left column, and 1–3 showcase screenshots down the right column. Fill title, subtitle, callouts, images (choose the frames that best show the new design), and speaker notes.",
+      "Follow the spec's voice and rules, and mirror the worked example's structure closely.",
       "",
       "### Product context",
       opts.productContext,
       "",
       "### Spec",
       specText,
-      opts.examples ? `\n### Reference voice\n${opts.examples}` : "",
+      opts.examples ? `\n### Worked example (match this structure)\n${opts.examples}` : "",
     ].join("\n"),
     prompt: [
       "Change brief (source of truth):",
       JSON.stringify(opts.brief, null, 2),
       "",
-      "Available captured screenKeys for picScreenKey (choose the single best hero, or empty string if none fits):",
+      "Available captured screenKeys for the images (pick 1–3 that best showcase the change; use ONLY these keys):",
       keys,
     ].join("\n"),
   });
 
   const slideSpec = object as SlideSpec;
-  // Guardrail: the model can hallucinate a screenKey. Force picScreenKey to a real
-  // captured key so the deck exporter reliably finds the hero (best available if
-  // the model's choice doesn't exist; empty only when nothing was captured).
+  // Guardrail: the model can hallucinate screenKeys. Keep only images whose
+  // screenKey was actually captured (in order); if it named none that exist,
+  // fall back to the first couple of real captures so the right column isn't
+  // empty. Cap at 3 — the layout stacks at most three.
   const validKeys = new Set(usable.map((c) => c.screenKey));
-  if (slideSpec.picScreenKey && !validKeys.has(slideSpec.picScreenKey)) {
-    slideSpec.picScreenKey = usable[0]?.screenKey ?? "";
+  let images = (slideSpec.images ?? []).filter((img) => validKeys.has(img.screenKey)).slice(0, 3);
+  if (!images.length && usable.length) {
+    images = usable.slice(0, 2).map((c) => ({ screenKey: c.screenKey, label: c.caption?.slice(0, 24) ?? "" }));
   }
+  slideSpec.images = images;
+
   const content = [
     `**${slideSpec.title}**`,
     "",
     slideSpec.subtitle,
     "",
-    slideSpec.picScreenKey ? `_Hero image: \`${slideSpec.picScreenKey}\`_` : "_No hero image_",
-    `_Template: ${slideSpec.template} · ${slideSpec.attribution}_`,
+    ...(slideSpec.callouts ?? []).map((c) => `- ${c}`),
+    "",
+    images.length
+      ? `_Images: ${images.map((i) => (i.label ? `${i.screenKey} (${i.label})` : i.screenKey)).join(", ")}_`
+      : "_No images_",
     "",
     `> **Speaker notes:** ${slideSpec.notes}`,
   ].join("\n");

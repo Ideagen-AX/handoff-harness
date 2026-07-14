@@ -1,54 +1,109 @@
-import { join, basename, dirname } from "node:path";
-import Automizer, { ModifyTextHelper, ModifyImageHelper } from "pptx-automizer";
-import type { ISlide } from "pptx-automizer/dist/interfaces/islide";
-import type { ModificationCallback } from "pptx-automizer/dist/types/types";
+import { join } from "node:path";
+import { access } from "node:fs/promises";
+import PptxGenJS from "pptxgenjs";
 import type { SlideSpec, Capture } from "./types";
 
-const TEMPLATES_DIR = join(process.cwd(), "specs", "templates");
+// One slide format only: the Ideagen "Blanks - Blank 1" layout, rebuilt from
+// scratch so we don't carry the 65 MB master deck. The brand furniture (navy
+// gradient, magenta glow, corner dot pattern, Ideagen logo) is a single
+// pre-composited background image; text and showcase images are placed on top.
+const BG_IMAGE = join(process.cwd(), "specs", "templates", "blank1-bg.png");
 
-// Each branded content slide in the master maps to a sample slide number and the
-// shape names to fill. Verified against Ideagen_MASTER-BLANK-Template_JUN26.
-const SLIDE_TEMPLATES = {
-  Teal: { slide: 12, title: "Title 14", subtitle: "Text Placeholder 6", attribution: "Text Placeholder 9", pic: "Picture Placeholder 21" },
-  Pink: { slide: 11, title: "Title 10", subtitle: "Text Placeholder 16", attribution: "Text Placeholder 9", pic: "Picture Placeholder 7" },
-} as const;
+// 16:9 widescreen canvas — matches the master (13.333in × 7.5in).
+const CANVAS = { w: 13.333, h: 7.5 };
+
+// Ideagen brand — see specs/references/slide-template.md.
+const WHITE = "FFFFFF";
+const MAGENTA = "F90185"; // accent1 — bullet marks
+const LABEL_GREY = "AEB4C2"; // muted caption grey for image labels
+const FONT = "Gilroy"; // headings + body; PowerPoint substitutes if absent
+
+async function exists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
- * Build a single-slide .pptx on the Ideagen master template from a SlideSpec.
- * Clones the chosen branded content slide, fills its title/subtitle/attribution,
- * and swaps its picture for the captured hero screenshot when one is available.
+ * Build a single-slide .pptx on the Ideagen Blank-1 layout from a SlideSpec.
+ * Title + subtitle top-left, magenta-bulleted callouts down the left column,
+ * and 1–3 showcase screenshots down the right column (each with an optional
+ * label), mirroring the worked example. Returns the .pptx as a Buffer.
  */
 export async function buildDeck(slideSpec: SlideSpec, captures: Capture[]): Promise<Buffer> {
-  const map = SLIDE_TEMPLATES[slideSpec.template] ?? SLIDE_TEMPLATES.Teal;
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({ name: "IDG_WIDE", width: CANVAS.w, height: CANVAS.h });
+  pptx.layout = "IDG_WIDE";
+  pptx.author = "Design Handoff Harness";
+  pptx.title = slideSpec.title;
 
-  // Resolve the hero image (if the chosen screenKey was captured to disk).
-  const hero = captures.find((c) => c.ok && c.url && c.screenKey === slideSpec.picScreenKey);
-  const heroPath = hero?.url ? join(process.cwd(), "public", hero.url.replace(/^\//, "")) : null;
+  const slide = pptx.addSlide();
+  if (await exists(BG_IMAGE)) slide.background = { path: BG_IMAGE };
+  else slide.background = { color: "0A1022" }; // navy fallback if asset missing
 
-  const automizer = new Automizer({
-    templateDir: TEMPLATES_DIR,
-    // Media is loaded by absolute-ish path below, so mediaDir points at the hero's folder.
-    mediaDir: heroPath ? dirname(heroPath) : TEMPLATES_DIR,
-    removeExistingSlides: true,
+  // ── Title ──────────────────────────────────────────────────────────────
+  slide.addText(slideSpec.title, {
+    x: 0.62, y: 0.42, w: 10.8, h: 0.95,
+    fontFace: FONT, fontSize: 34, bold: true, color: WHITE,
+    align: "left", valign: "top", fit: "shrink",
   });
 
-  automizer.loadRoot("ideagen-base.pptx").load("ideagen-master.pptx", "tmpl");
-  if (heroPath) automizer.loadMedia([basename(heroPath)]);
-
-  const pres = automizer.addSlide("tmpl", map.slide, (slide: ISlide) => {
-    slide.modifyElement(map.title, [ModifyTextHelper.setText(slideSpec.title)]);
-    slide.modifyElement(map.subtitle, [ModifyTextHelper.setText(slideSpec.subtitle)]);
-    if (slideSpec.attribution) {
-      slide.modifyElement(map.attribution, [ModifyTextHelper.setText(slideSpec.attribution)]);
-    }
-    if (heroPath) {
-      // setRelationTarget's callback type differs from the chart-callback union
-      // member; the cast reconciles a known automizer typing inconsistency.
-      const swap = ModifyImageHelper.setRelationTarget(basename(heroPath)) as unknown as ModificationCallback;
-      slide.modifyElement(map.pic, [swap]);
-    }
+  // ── Subtitle (kept in the left ~40% so it never runs under the images) ──
+  slide.addText(slideSpec.subtitle, {
+    x: 0.62, y: 1.5, w: 5.0, h: 1.15,
+    fontFace: FONT, fontSize: 18, color: WHITE,
+    align: "left", valign: "top", lineSpacingMultiple: 1.08, fit: "shrink",
   });
 
-  const zip = await pres.getJSZip();
-  return zip.generateAsync({ type: "nodebuffer" }) as Promise<Buffer>;
+  // ── Callouts (left column, magenta bullet marks + white text) ───────────
+  const callouts = (slideSpec.callouts ?? []).filter((c) => c.trim());
+  if (callouts.length) {
+    const runs = callouts.flatMap((c) => [
+      { text: "•  ", options: { color: MAGENTA, bold: true, breakLine: false } },
+      { text: c.trim(), options: { color: WHITE, breakLine: true, paraSpaceAfter: 10 } },
+    ]);
+    slide.addText(runs, {
+      x: 0.62, y: 2.75, w: 4.7, h: 4.4,
+      fontFace: FONT, fontSize: 14.5, align: "left", valign: "top",
+      lineSpacingMultiple: 1.05,
+    });
+  }
+
+  // ── Showcase images (right column, stacked, contain-fit, optional label) ─
+  const usable = (slideSpec.images ?? [])
+    .map((img) => {
+      const cap = captures.find((c) => c.ok && c.url && c.screenKey === img.screenKey);
+      const path = cap?.url ? join(process.cwd(), "public", cap.url.replace(/^\//, "")) : null;
+      return path ? { path, label: img.label?.trim() ?? "" } : null;
+    })
+    .filter((x): x is { path: string; label: string } => !!x)
+    .slice(0, 3);
+
+  const RX = 5.95, RW = 6.7, RY = 1.55, RH = 5.45; // right-column box
+  const n = usable.length;
+  for (let i = 0; i < n; i++) {
+    const { path, label } = usable[i];
+    if (!(await exists(path))) continue;
+    const rowH = RH / n;
+    const rowTop = RY + i * rowH;
+    const labelH = label ? 0.32 : 0;
+    if (label) {
+      slide.addText(label.toUpperCase(), {
+        x: RX, y: rowTop, w: RW, h: labelH,
+        fontFace: FONT, fontSize: 10, bold: true, color: LABEL_GREY,
+        charSpacing: 2, align: "left", valign: "middle",
+      });
+    }
+    slide.addImage({
+      path,
+      x: RX, y: rowTop + labelH,
+      sizing: { type: "contain", w: RW, h: rowH - labelH - 0.18 },
+    });
+  }
+
+  const out = await pptx.write({ outputType: "nodebuffer" });
+  return out as Buffer;
 }

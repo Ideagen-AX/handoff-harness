@@ -45,8 +45,9 @@ const EXAMPLE_DIRS: Record<string, string[]> = {
   // Exec-comms + narrative artifacts borrow the product-comms newsletter VOICE
   // (benefit-first, user-named) — we have no dedicated exemplar for them yet.
   "one-pager": ["product-comms"],
-  slide: ["product-comms"],
   "case-study": ["product-comms"],
+  // The slide has its own worked example (the Blanks - Blank 1 layout) to mimic.
+  slide: ["slide"],
 };
 
 // Cap on total example text injected per artifact — one strong exemplar beats

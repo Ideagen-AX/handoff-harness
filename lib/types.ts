@@ -173,19 +173,33 @@ export const ChangeBriefSchema = z.object({
 export type ChangeBrief = z.infer<typeof ChangeBriefSchema>;
 
 // Structured content for the deck exporter. The slide artifact emits this
-// (validated) instead of free markdown, so placeholder-filling is reliable.
+// (validated) instead of free markdown, so the single Ideagen "Blanks - Blank 1"
+// layout can be filled reliably: title + subtitle top-left, bulleted callouts
+// down the left column, and one-to-three showcase images down the right column.
 export const SlideSpecSchema = z.object({
-  template: z
-    .enum(["Teal", "Pink"])
-    .describe("Which Ideagen branded content slide to build on"),
-  title: z.string().describe("The single benefit headline, ≤ ~8 words"),
+  title: z.string().describe("The change's headline, ≤ ~6 words (e.g. 'Toolbar Styling Updates')"),
   subtitle: z
     .string()
-    .describe("One supporting line capturing the essence of the change, ≤ ~16 words"),
-  picScreenKey: z
-    .string()
-    .describe("screenKey of the hero screenshot to place in the picture area; empty string if none"),
-  attribution: z.string().describe("Short owner/date line, e.g. 'Design review · 2026'"),
+    .describe("One supporting sentence capturing the essence of the change, ≤ ~18 words"),
+  callouts: z
+    .array(z.string())
+    .describe(
+      "3–7 short bullet callouts for the left column — the specific highlights of the change, each ≤ ~12 words. No sentences-as-paragraphs.",
+    ),
+  images: z
+    .array(
+      z.object({
+        screenKey: z
+          .string()
+          .describe("screenKey of a captured screenshot to show on the right (must be one that was captured)"),
+        label: z
+          .string()
+          .describe("Short label shown above the image, e.g. 'Light mode' / 'Dark mode'; empty string for none"),
+      }),
+    )
+    .describe(
+      "1–3 showcase screenshots for the right column, ordered top→bottom. Pick the frames that best show the new design; prefer distinct states (e.g. light vs dark, default vs menu-open).",
+    ),
   notes: z.string().describe("2–3 sentence speaker note"),
 });
 export type SlideSpec = z.infer<typeof SlideSpecSchema>;

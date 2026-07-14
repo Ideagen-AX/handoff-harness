@@ -1,44 +1,60 @@
 # Audience spec — Slide
 
 **Who they are:** Anyone presenting the change in a deck — product comms, leadership
-reviews, all-hands. One slide, one message, built on the Ideagen master template and
+reviews, all-hands. One slide, one message, on the Ideagen **"Blanks - Blank 1"** layout,
 exported as a real .pptx.
 
+**The format is fixed — every slide uses this one layout:**
+- A dark branded background (navy → magenta glow, Ideagen logo top-right). You don't set it.
+- **Title** — top-left, large.
+- **Subtitle** — one supporting line directly under the title (stays in the left column).
+- **Callouts** — a bulleted list down the left column: the specific highlights of the change.
+- **Images** — 1–3 showcase screenshots down the right column, each with a short label.
+
 **What they care about:**
-- A single headline claim they can say out loud
-- One tight supporting line
-- One strong hero screenshot
-- A speaker note so anyone can present it
+- A title they can say out loud
+- A subtitle that frames the whole change in one line
+- Punchy callouts that name the concrete changes
+- Screenshots that actually show the new design
 
 **Tone:** Confident, benefit-first, spoken-word short. British spelling, full product
-names. Every word earns its place — no paragraphs, no bullet dumps.
+names. Callouts are fragments, not paragraphs — each names one concrete change.
 
-**Output:** You produce a structured SlideSpec (validated fields), not prose. Fill it so
-it drops onto an Ideagen branded content slide:
-- `template` — the brand colour of the slide: **Teal** or **Pink**. Pick either; default Teal.
-- `title` — the single benefit headline (≤ ~8 words). This is the claim, not the feature name.
-- `subtitle` — one supporting line capturing the essence (≤ ~16 words). If you must convey
-  two ideas, join them with " · ".
-- `picScreenKey` — the screenKey of the single best hero screenshot from those offered.
-  Choose the frame that most shows the benefit. Use an empty string only if none fits.
-- `attribution` — a short owner/date line, e.g. "Design review · 2026".
-- `notes` — a 2–3 sentence speaker note: the problem, what changed, and what's on screen.
+**Output:** You produce a structured SlideSpec (validated fields), not prose:
+- `title` — the change's headline, ≤ ~6 words. The feature/area + what happened
+  (e.g. "Toolbar Styling Updates"), not a full sentence.
+- `subtitle` — one supporting sentence capturing the essence of the change, ≤ ~18 words.
+- `callouts` — 3–7 short bullets, each ≤ ~12 words, each naming one concrete highlight
+  (what changed, an improvement, a caveat like "spacing unchanged"). No paragraphs.
+- `images` — 1–3 entries `{ screenKey, label }`, ordered top→bottom. Choose the captured
+  frames that best show the new design; prefer DISTINCT states (light vs dark, default vs
+  menu-open). `label` is a short caption shown above the image (e.g. "Light mode"); use an
+  empty string for no label. Use ONLY screenKeys that were actually captured.
+- `notes` — a 2–3 sentence speaker note: the problem, what changed, what's on screen.
 
-**Must:** one message only; benefit-led title; a real screenKey from those offered (or
-empty); a speaker note.
+**Must:** one message; benefit/area-led title; callouts that are concrete and specific;
+1–3 real captured screenKeys in `images`; a speaker note.
 
-**Must avoid:** feature-name-as-title, two messages, full sentences in `title`/`subtitle`,
-inventing a screenKey that wasn't offered.
+**Must avoid:** a full sentence as the `title`; vague callouts ("various improvements");
+inventing a screenKey that wasn't captured; more than 3 images.
 
 ---
 
-**Example (responsive-search):**
+**Worked example** — this is exactly the shape to produce (see `specs/examples/slide/`):
 
-> - template: `Teal`
-> - title: `Search that fits the job`
-> - subtitle: `Six result views, and filters that adapt to any screen size`
-> - picScreenKey: `search-cards-view`
-> - attribution: `Design review · 2026`
-> - notes: `Search used to force one fixed layout that broke on small screens. Now users
->   pick the view that fits the task and filter panels adapt to any viewport. Shown here in
->   card view.`
+> - title: `Toolbar Styling Updates`
+> - subtitle: `The search page toolbar has been updated to reflect the new Praxis design language`
+> - callouts:
+>   - `Buttons are rounder, styled with a light gradient for a dimensional effect.`
+>   - `Icons have been refined.`
+>   - `Aria labels wired in to ensure accessibility.`
+>   - `Selected display mode styled with gradient and shadow.`
+>   - `Toolbar background changed from flat to gradient.`
+>   - `Element spacing remains unchanged.`
+>   - `New dark mode variant included.`
+> - images:
+>   - `{ screenKey: "toolbar-light-default", label: "Light mode" }`
+>   - `{ screenKey: "toolbar-dark-default", label: "Dark mode" }`
+> - notes: `The search toolbar was restyled to the Praxis design language — rounder,
+>   gradient-filled controls and a first-class dark mode — with no change to its controls
+>   or spacing. Shown here in light and dark.`
