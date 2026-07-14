@@ -238,3 +238,19 @@ button.ghost { background: transparent; }
 .viewer .card { margin-bottom: 0; }
 .viewer .artifact textarea { min-height: 58vh; }
 .viewer-empty { color: var(--muted); padding: 48px; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius); }
+
+/* Download-all button in the nav */
+.nav-download {
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(41, 210, 215, 0.1);
+  border: 1px solid rgba(41, 210, 215, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.nav-download:hover { background: rgba(41, 210, 215, 0.18); border-color: var(--accent); }
+.nav-download:disabled { opacity: 0.5; cursor: not-allowed; }

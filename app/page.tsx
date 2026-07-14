@@ -201,6 +201,20 @@ export default function Home() {
       setError(String(e));
     }
   }
+  async function downloadAll() {
+    try {
+      const res = await post("/api/bundle", {
+        title: brief?.title,
+        meta: { prototypeUrl: url, baselineUrl, note, framework, generatedAt: new Date().toISOString() },
+        brief,
+        artifacts,
+        captures,
+      });
+      await saveBlob(res, "handoff.zip");
+    } catch (e) {
+      setError(String(e));
+    }
+  }
 
   function renderArtifact(a: UiArtifact) {
     return (
@@ -351,6 +365,9 @@ export default function Home() {
             <div className="nav-head">
               Outputs · {artifacts.filter((a) => a.approved).length}/{artifacts.length} approved
             </div>
+            <button className="nav-download" onClick={downloadAll} disabled={running} title="Download the brief, all artifacts, screenshots and the deck as a .zip">
+              ⤓ Download all (.zip)
+            </button>
             {brief && (
               <button className={`nav-item ${selected === "brief" ? "active" : ""}`} onClick={() => setSelected("brief")}>
                 <span className="nav-item-label">Change brief</span>
