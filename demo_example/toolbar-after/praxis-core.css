@@ -1,0 +1,117 @@
+/* =====================================================================
+   PRAXIS CORE — shared Mazlan design-language token + material layer.
+
+   Single source of truth consumed by BOTH the record page and the
+   workspace so they read as one design system. Scoped to
+   body[data-variant="praxis"]; supports light + dark via body[data-theme].
+
+   Owns: --px-* surface/material tokens, Praxis geometry (8/12/16 radii,
+   12px cards), Praxis ink/strokes, the primary-button gradient, the
+   generic --ehsq-elevation-* → Praxis-material remaps, and the dot-grid
+   page texture. Component rules stay in each page, but both pages now share
+   the same chrome vocabulary (.appbar, .ehsq-navrail) after reconciliation.
+
+   Mazlan DNA: slate layered elevation w/ lit edges, frosted glass,
+   12px geometry, lighter strokes, teal→magenta AI signature, brighter
+   cyan accent in the dark.
+   ===================================================================== */
+
+body[data-variant="praxis"]{
+  /* ink + strokes (light) */
+  --ehsq-color-text-primary:#2F4051; --ehsq-color-text-secondary:#5D6977;
+  --ehsq-color-border-default:#E2E5E9;
+
+  /* Solution accent palette — used to tint module/record-type icons (Create New
+     groups). pink + teal already exist as brand tokens; add the rest here so
+     nothing is hardcoded. */
+  --ehsq-color-blue-60:#4361c4; --ehsq-color-orange-60:#ef8100; --ehsq-color-purple-60:#805ad5;
+
+  /* geometry + motion — Praxis 8/12/16 geometry takes primacy */
+  --ehsq-radius-sm:8px; --ehsq-radius-md:12px; --ehsq-radius-lg:16px;
+  --ehsq-radius-card:12px;
+  --ehsq-ease-default:cubic-bezier(.32,.72,0,1);
+
+  /* slate elevation */
+  --ehsq-elevation-1:0 0 0 .5px rgba(16,36,58,.05),0 1px 2px rgba(16,36,58,.04);
+
+  /* Praxis surface/material palette (LIGHT) */
+  --px-page:#F0F2F4; --px-surface:#ffffff; --px-surface-2:#F4F6F8; --px-tool:#ffffff;
+  --px-chip:#EEF1F4; --px-glass:rgba(255,255,255,.82); --px-hover:rgba(16,36,58,.025); --px-dot:rgba(16,36,58,.11);
+  --praxis-card:0 0 0 .5px rgba(16,36,58,.06),0 1px 1.5px rgba(16,36,58,.045),0 10px 28px -14px rgba(16,36,58,.10),inset 0 .5px 0 rgba(255,255,255,.7);
+  --px-tool-shadow:0 0 0 .5px rgba(16,36,58,.07),0 1px 2px rgba(16,36,58,.05);
+  --px-tool-shadow-hover:0 0 0 .5px rgba(16,36,58,.09),0 2px 8px -2px rgba(16,36,58,.16);
+  --px-overlay:0 0 0 .5px rgba(16,36,58,.06),0 2px 6px rgba(16,36,58,.06),0 18px 38px -16px rgba(16,36,58,.18);
+  --px-edge:rgba(255,255,255,.6);
+
+  /* primary button — refined teal with lit edge (used by Submit / Create New /
+     Reassign task on the record page and the quick-actions on the workspace) */
+  --px-primary-grad:linear-gradient(180deg,#1f8f97,#1b838b);
+  --px-primary-fg:#fff;
+  --px-primary-shadow:0 0 0 .5px rgba(16,36,58,.2),0 1px 2px rgba(16,36,58,.15),0 8px 18px -8px rgba(27,131,139,.5),inset 0 .5px 0 rgba(255,255,255,.28);
+
+  /* Map the generic elevation tokens onto Praxis materials so any component
+     that references --ehsq-elevation-* inherits the lit-edge look. The record
+     page uses its own --ehsq-elevation-1..4 scale, so these only affect the
+     workspace's cards/popovers. */
+  --ehsq-elevation-card:var(--praxis-card);
+  --ehsq-elevation-card-raised:var(--praxis-card);
+  --ehsq-elevation-popover:var(--px-overlay);
+
+  /* dotted-grid page texture — faded at left/right edges (page-color gradient
+     over the dots). Fixed to the viewport so it reads as page material. */
+  background-color:var(--px-page);
+  background-image:
+    linear-gradient(to right, var(--px-page), transparent 7%, transparent 93%, var(--px-page)),
+    radial-gradient(circle, var(--px-dot) 1px, transparent 1px);
+  background-size:100% 100%, 18px 18px;
+  background-repeat:no-repeat, repeat;
+  background-attachment:fixed, fixed;
+  color:var(--ehsq-color-text-primary);
+}
+
+/* ---- base DARK: recolors token-driven styles (covers Miramar too) ---- */
+body[data-theme="dark"]{
+  color-scheme:dark;
+  --ehsq-color-surface-default:#1c2330; --ehsq-color-surface-subtle:#161c27;
+  --ehsq-color-neutral-05:#10151e; --ehsq-color-neutral-10:#222b39;
+  --ehsq-color-neutral-15:#2a3342; --ehsq-color-neutral-20:#3a4556;
+  --ehsq-color-border-default:rgba(255,255,255,.10);
+  --ehsq-color-text-primary:#e7ebf1; --ehsq-color-text-secondary:#9aa7b4; --ehsq-color-text-disabled:#62707e;
+}
+
+/* ---- Praxis DARK: Mazlan dark surfaces + materials ---- */
+body[data-variant="praxis"][data-theme="dark"]{
+  --ehsq-color-text-primary:#e7ebf1; --ehsq-color-text-secondary:#9aa7b4;
+  --ehsq-color-border-default:rgba(255,255,255,.10);
+  --ehsq-color-surface-default:#1c2330; --ehsq-color-surface-subtle:#161c27;
+  --ehsq-color-interactive-default:#29D2D7; --ehsq-color-text-link:#5CE0E5;
+  /* Solution accents brighten on dark so they read on tinted chips */
+  --ehsq-color-blue-60:#7a93e0; --ehsq-color-orange-60:#ffa94d; --ehsq-color-purple-60:#b088e8;
+  --px-page:#11161f; --px-surface:#1c2330; --px-surface-2:#232c3b; --px-tool:rgba(255,255,255,.06);
+  --px-chip:rgba(255,255,255,.07); --px-glass:rgba(26,32,45,.72); --px-hover:rgba(255,255,255,.05); --px-dot:rgba(255,255,255,.09);
+  --px-edge:rgba(255,255,255,.08);
+  --praxis-card:0 0 0 .5px rgba(255,255,255,.08),0 1px 2px rgba(0,0,0,.4),0 16px 40px -18px rgba(0,0,0,.6),inset 0 .5px 0 rgba(255,255,255,.07);
+  --px-tool-shadow:0 0 0 .5px rgba(255,255,255,.08),0 1px 2px rgba(0,0,0,.35);
+  --px-tool-shadow-hover:0 0 0 .5px rgba(255,255,255,.12),0 4px 12px -2px rgba(0,0,0,.5);
+  --px-overlay:0 0 0 .5px rgba(255,255,255,.08),0 2px 6px rgba(0,0,0,.4),0 24px 50px -20px rgba(0,0,0,.7);
+  /* Dark primary CTA: subtle cyan gradient from the bright interactive color,
+     with dark ink (mirrors the light-mode teal gradient treatment). */
+  --px-primary-grad:linear-gradient(180deg,#29d2d7,#1fb4b9);
+  --px-primary-fg:#08313a;
+}
+
+/* Dark mode: primary CTAs use dark ink on the cyan gradient. Higher specificity
+   than the per-page color:#fff rules, so it wins regardless of load order. */
+body[data-variant="praxis"][data-theme="dark"] .tbtn--run,
+body[data-variant="praxis"][data-theme="dark"] .tbtn--primary,
+body[data-variant="praxis"][data-theme="dark"] .pill-btn,
+body[data-variant="praxis"][data-theme="dark"] .btn--primary,
+body[data-variant="praxis"][data-theme="dark"] .qa,
+body[data-variant="praxis"][data-theme="dark"] .ehsq-navrail__btn--create,
+body[data-variant="praxis"][data-theme="dark"] .mz-input__send,
+body[data-variant="praxis"][data-theme="dark"] .tbtn--run .icon,
+body[data-variant="praxis"][data-theme="dark"] .tbtn--primary .icon,
+body[data-variant="praxis"][data-theme="dark"] .tbtn--primary .material-symbols-rounded,
+body[data-variant="praxis"][data-theme="dark"] .pill-btn .icon{
+  color:var(--px-primary-fg);
+}

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Search Toolbar — Groom Lake (After)</title>
+
+<!-- Verbatim from the groom lake project — the shared Praxis token layer. -->
+<link rel="stylesheet" href="praxis-core.css" />
+<!-- Material Symbols — used by the Table / Cards view-switch icons -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet" />
+<!-- The search page's own embedded styles (tokens, Gilroy @font-face, .toolbar/.tbtn/.sortbtn/.viewswitch). -->
+<link rel="stylesheet" href="page.css" />
+
+<!-- Showcase chrome only — the isolation frame, not part of the component. -->
+<style>
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ehsq-space-16, 16px);
+    padding: 24px;
+    overflow: auto;
+    box-sizing: border-box;
+    background-color: var(--px-page);
+    background-image: radial-gradient(var(--px-dot) 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-position: -1px -1px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* Centred frame — a Praxis surface card holding the isolated toolbar. */
+  .stage-frame {
+    width: min(1120px, calc(100vw - 48px));
+    background: var(--px-surface);
+    border-radius: 16px;
+    box-shadow:
+      0 0 0 .5px rgba(16, 36, 58, .08),
+      0 20px 48px rgba(16, 36, 58, .14),
+      0 2px 8px rgba(16, 36, 58, .06);
+    overflow: hidden;
+  }
+  /* The toolbar already carries its own 20px inline padding; it fades a --px-page
+     band into the surface (dot-grid habitat), which reads correctly on the card. */
+  .stage-frame .toolbar { margin: 0; }
+
+  .stage-caption {
+    font-family: var(--ehsq-type-font-sans, "Gilroy", sans-serif);
+    font-size: .82rem;
+    color: var(--ehsq-color-text-secondary);
+    text-align: center;
+    letter-spacing: .01em;
+  }
+  .stage-caption strong { color: var(--ehsq-color-text-primary); font-weight: 700; }
+  body[data-theme="dark"] .stage-frame { box-shadow: 0 0 0 .5px rgba(255,255,255,.08), 0 20px 48px rgba(0,0,0,.5); }
+
+  /* ---- Accessibility remediation (layered on top of the faithful source) ----
+     Kept here so the diff from the original groom lake toolbar is self-contained. */
+
+  /* M6 — explicit focus-visible ring on the toolbar controls (the source relies
+     on the UA default, which is inconsistent with the rest of the app). */
+  .stage-frame .tbtn:focus-visible,
+  .stage-frame .sortbtn:focus-visible,
+  .stage-frame .viewswitch__btn:focus-visible {
+    outline: 2px solid var(--ehsq-color-teal-50);
+    outline-offset: 2px;
+  }
+
+  /* M4 — darken the light-theme primary gradient so the white "Run" label clears
+     4.5:1. Was #1f8f97→#1b838b (~3.9–4.5:1); now ~4.9–7.0:1. Dark theme (dark ink
+     on cyan) already passed, so it is left untouched. */
+  body[data-theme="light"] { --px-primary-grad: linear-gradient(180deg, #1a7d84, #156268); }
+</style>
+</head>
+<body data-variant="praxis" data-theme="light" data-page="search">
+
+  <!-- ===========================
+       ISOLATED COMPONENT: Search page toolbar
+       Source of truth: "groom lake" project, search-page.html (the AFTER state).
+       Markup copied verbatim; behaviour ported in app.js.
+       =========================== -->
+  <div class="stage-frame">
+    <div class="toolbar" role="toolbar" aria-label="Page tools">
+      <button class="tbtn tbtn--icon" type="button" title="Back" aria-label="Go back"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-back"/></svg></button>
+      <button class="tbtn" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-save"/></svg> Save</button>
+      <button class="tbtn" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-export"/></svg> Export <svg class="icon icon--16" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg></button>
+      <button class="tbtn" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg> Notification</button>
+      <button class="tbtn tbtn--run" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg> Run</button>
+
+      <span class="toolbar__spacer"></span>
+
+      <span class="toolbar__sortlabel" id="sortLabel">Sort Results By:</span>
+      <button class="sortbtn" type="button" aria-labelledby="sortLabel sortValue"><span id="sortValue">Last Updated</span> <svg class="icon icon--18" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg></button>
+
+      <div class="viewswitch" role="group" aria-label="Result view">
+        <button class="viewswitch__btn" type="button" data-view="list" title="List view" aria-label="List view" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-v-list"/></svg></button>
+        <button class="viewswitch__btn viewswitch__btn--active" type="button" data-view="table" title="Table view" aria-label="Table view" aria-pressed="true"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">table</span></button>
+        <button class="viewswitch__btn" type="button" data-view="card" title="Card view" aria-label="Card view" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">cards</span></button>
+        <button class="viewswitch__btn" type="button" data-view="calendar" title="Calendar view" aria-label="Calendar view" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-v-cal"/></svg></button>
+        <button class="viewswitch__btn" type="button" data-view="hierarchy" title="Hierarchical folder view" aria-label="Hierarchical folder view" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-v-tree"/></svg></button>
+        <button class="viewswitch__btn" type="button" data-view="chart" title="Chart view" aria-label="Chart view" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-v-chart"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <p class="stage-caption"><strong>Search page toolbar</strong> — Groom Lake (after). Narrow the window to see the toolbar wrap. Append <code>#theme=dark</code> to preview the dark surface.</p>
+
+  <!-- SVG icon sprite (verbatim from the groom lake search page) -->
+  <svg style="display:none" aria-hidden="true">
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10z"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M5 20h14v-2H5zM12 4l-5 5h3v6h4V9h3z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></symbol>
+    <symbol id="i-v-list" viewBox="0 0 24 24"><path d="M4 6h2v2H4zm0 5h2v2H4zm0 5h2v2H4zM8 6h12v2H8zm0 5h12v2H8zm0 5h12v2H8z"/></symbol>
+    <symbol id="i-v-cal" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14zM5 8V6h14v2z"/></symbol>
+    <symbol id="i-v-tree" viewBox="0 0 24 24"><path d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z"/></symbol>
+    <symbol id="i-v-chart" viewBox="0 0 24 24"><path d="M4 20h16v-2H4zm2-3h3v-6H6zm5 0h3V6h-3zm5 0h3v-9h-3z"/></symbol>
+    <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></symbol>
+  </svg>
+
+  <script src="app.js"></script>
+</body>
+</html>

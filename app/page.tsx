@@ -45,11 +45,11 @@ const OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] = [
 const ALL_OUTPUT_IDS = OUTPUTS.flatMap((g) => g.items.map((i) => i.id));
 
 export default function Home() {
-  const [url, setUrl] = useState("https://responsive-search.vercel.app/");
+  const [url, setUrl] = useState("https://forge-demo-toolbar-after.vercel.app/");
   const [note, setNote] = useState(
-    "The search result view modes (list, table, cards, calendar, hierarchy, chart) and their filter panels already exist — this work makes them responsive across screen sizes. No new view modes were added; the change is responsiveness/layout adaptation.",
+    "Restyled the search toolbar to the Groom Lake / Praxis design language.",
   );
-  const [baselineUrl, setBaselineUrl] = useState("");
+  const [baselineUrl, setBaselineUrl] = useState("https://forge-demo-toolbar-before.vercel.app/");
   const [codebasePath, setCodebasePath] = useState("");
   const [framework, setFramework] = useState("vue");
   const [running, setRunning] = useState(false);
