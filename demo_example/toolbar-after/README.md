@@ -13,8 +13,22 @@ its interactive states:
 - **View switcher** — a segmented control (List, Table, Cards, Calendar,
   Hierarchy, Chart); **Table** is active by default. Selecting one moves the
   active state.
+- **Responsive collapse** (viewport < 1140px) — adopts the "before" toolbar's
+  pattern (with Praxis styling): the tool buttons collapse into a **Tools** menu
+  and Sort + the view switch collapse into an **Options** menu, instead of
+  wrapping. The menus reuse the Praxis `.px-pop`/`.px-menu` popover vocabulary
+  and stay in sync with the desktop controls.
 - **Theme** — light by default (to compare fairly against the light "before").
   Append `#theme=dark` to the URL to preview the dark Praxis surface.
+
+### Accessibility remediation
+
+A prior WCAG pass added, layered on top of the source (see the commented block
+in `index.html` and `app.js`): accessible names on icon-only buttons,
+`aria-pressed` view state, a real focus-visible ring, hidden decorative icons,
+`role="toolbar"` grouping, and a darkened light-theme Run gradient for contrast.
+The collapse menus follow the same standard (`aria-haspopup`, `aria-expanded`,
+`role="menu"` / `menuitemradio`).
 
 Matching the source, the **Sort** ("Last Updated") and **Export** buttons are
 styled buttons with a chevron affordance but no popup — a genuine property of

@@ -76,6 +76,37 @@
      4.5:1. Was #1f8f97→#1b838b (~3.9–4.5:1); now ~4.9–7.0:1. Dark theme (dark ink
      on cyan) already passed, so it is left untouched. */
   body[data-theme="light"] { --px-primary-grad: linear-gradient(180deg, #1a7d84, #156268); }
+
+  /* ---- Responsive collapse (adopts the "before" toolbar's pattern) ----
+     Instead of wrapping, at mobile widths the tool buttons collapse into a
+     Tools menu and Sort + the view switch collapse into an Options menu. */
+
+  /* Mobile-only triggers are hidden on the expanded (desktop) toolbar. */
+  .stage-frame .toolbar__collapse { display: none; }
+  .stage-frame .toolbar__menuwrap { position: relative; }
+  .stage-frame .toolbar__trigger { gap: 6px; }
+  .stage-frame .toolbar__trigger-chev { margin-left: -2px; }
+
+  /* Tools / Options popovers — reuse the Praxis .px-pop/.px-menu vocabulary,
+     but position:fixed + JS-anchored so the frame's overflow never clips them. */
+  .stage-frame .toolbar__menu { position: fixed; min-width: 232px; }
+  .toolbar__menu .px-menu__item[aria-checked="true"] { color: var(--ehsq-color-teal-60); font-weight: 700; }
+  .toolbar__menu .px-menu__item[aria-checked="true"] .icon { color: var(--ehsq-color-teal-60); }
+  .toolbar__menu .px-menu__item--run,
+  .toolbar__menu .px-menu__item--run .icon { color: var(--ehsq-color-teal-60); font-weight: 700; }
+  body[data-theme="dark"] .toolbar__menu .px-menu__item[aria-checked="true"],
+  body[data-theme="dark"] .toolbar__menu .px-menu__item[aria-checked="true"] .icon,
+  body[data-theme="dark"] .toolbar__menu .px-menu__item--run,
+  body[data-theme="dark"] .toolbar__menu .px-menu__item--run .icon { color: #37c6cc; }
+
+  @media (max-width: 1140px) {
+    .stage-frame .toolbar { flex-wrap: nowrap; }
+    /* Hide the inline controls; show the two collapse triggers. */
+    .stage-frame .toolbar .toolbar__inline { display: none; }
+    .stage-frame .toolbar .toolbar__collapse { display: inline-flex; align-items: center; }
+    /* Keep the spacer horizontal (page.css pushes it full-width for its wrap layout). */
+    .stage-frame .toolbar .toolbar__spacer { flex: 1; flex-basis: auto; height: auto; }
+  }
 </style>
 </head>
 <body data-variant="praxis" data-theme="light" data-page="search">
@@ -88,17 +119,55 @@
   <div class="stage-frame">
     <div class="toolbar" role="toolbar" aria-label="Page tools">
       <button class="tbtn tbtn--icon" type="button" title="Back" aria-label="Go back"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-back"/></svg></button>
-      <button class="tbtn" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-save"/></svg> Save</button>
-      <button class="tbtn" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-export"/></svg> Export <svg class="icon icon--16" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg></button>
-      <button class="tbtn" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg> Notification</button>
-      <button class="tbtn tbtn--run" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg> Run</button>
+
+      <!-- Mobile-only: Tools trigger (collapses Save / Export / Notifications / Run) -->
+      <div class="toolbar__menuwrap toolbar__collapse">
+        <button class="tbtn toolbar__trigger" type="button" data-action="toggle-tools" aria-haspopup="menu" aria-expanded="false">
+          <svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-dots"/></svg> Tools
+          <svg class="icon icon--16 toolbar__trigger-chev" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg>
+        </button>
+        <div class="px-pop px-menu toolbar__menu toolbar__menu--tools" data-tools-menu role="menu" aria-label="Tools" hidden>
+          <button class="px-menu__item" type="button" role="menuitem"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-save"/></svg> Save</button>
+          <button class="px-menu__item" type="button" role="menuitem"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-export"/></svg> Export</button>
+          <button class="px-menu__item" type="button" role="menuitem"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg> Notifications</button>
+          <button class="px-menu__item px-menu__item--run" type="button" role="menuitem"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg> Run</button>
+        </div>
+      </div>
+
+      <button class="tbtn toolbar__inline" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-save"/></svg> Save</button>
+      <button class="tbtn toolbar__inline" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-export"/></svg> Export <svg class="icon icon--16" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg></button>
+      <button class="tbtn toolbar__inline" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg> Notifications</button>
+      <button class="tbtn tbtn--run toolbar__inline" type="button"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg> Run</button>
 
       <span class="toolbar__spacer"></span>
 
-      <span class="toolbar__sortlabel" id="sortLabel">Sort Results By:</span>
-      <button class="sortbtn" type="button" aria-labelledby="sortLabel sortValue"><span id="sortValue">Last Updated</span> <svg class="icon icon--18" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg></button>
+      <!-- Mobile-only: Options trigger (collapses Sort + the view switch) -->
+      <div class="toolbar__menuwrap toolbar__collapse">
+        <button class="tbtn toolbar__trigger" type="button" data-action="toggle-options" aria-haspopup="menu" aria-expanded="false">
+          <svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-settings"/></svg> Options
+          <svg class="icon icon--16 toolbar__trigger-chev" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg>
+        </button>
+        <div class="px-pop px-menu toolbar__menu toolbar__menu--options" data-options-menu role="menu" aria-label="Options" hidden>
+          <div class="px-menu__head">Sort Results By</div>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="true"  data-sort="Last Updated">Last Updated</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Date Due">Date Due</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Priority">Priority</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Identifier">Identifier</button>
+          <div class="px-menu__sep"></div>
+          <div class="px-menu__head">Display As</div>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="list"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-v-list"/></svg> List</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="true"  data-view="table"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-v-table"/></svg> Table</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="card"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-v-card"/></svg> Cards</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="calendar"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-v-cal"/></svg> Calendar</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="hierarchy"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-v-tree"/></svg> Hierarchy</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="chart"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-v-chart"/></svg> Chart</button>
+        </div>
+      </div>
 
-      <div class="viewswitch" role="group" aria-label="Result view">
+      <span class="toolbar__sortlabel toolbar__inline" id="sortLabel">Sort Results By:</span>
+      <button class="sortbtn toolbar__inline" type="button" aria-labelledby="sortLabel sortValue"><span id="sortValue">Last Updated</span> <svg class="icon icon--18" aria-hidden="true" focusable="false"><use href="#i-chev-down"/></svg></button>
+
+      <div class="viewswitch toolbar__inline" role="group" aria-label="Result view">
         <button class="viewswitch__btn" type="button" data-view="list" title="List view" aria-label="List view" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true" focusable="false"><use href="#i-v-list"/></svg></button>
         <button class="viewswitch__btn viewswitch__btn--active" type="button" data-view="table" title="Table view" aria-label="Table view" aria-pressed="true"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">table</span></button>
         <button class="viewswitch__btn" type="button" data-view="card" title="Card view" aria-label="Card view" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">cards</span></button>
@@ -109,7 +178,7 @@
     </div>
   </div>
 
-  <p class="stage-caption"><strong>Search page toolbar</strong> — Groom Lake (after). Narrow the window to see the toolbar wrap. Append <code>#theme=dark</code> to preview the dark surface.</p>
+  <p class="stage-caption"><strong>Search page toolbar</strong> — Groom Lake (after). Narrow the window below 1140px to see the tools collapse into a Tools menu and Sort + view into an Options menu. Append <code>#theme=dark</code> to preview the dark surface.</p>
 
   <!-- SVG icon sprite (verbatim from the groom lake search page) -->
   <svg style="display:none" aria-hidden="true">
@@ -118,6 +187,10 @@
     <symbol id="i-bell" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1z"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></symbol>
     <symbol id="i-v-list" viewBox="0 0 24 24"><path d="M4 6h2v2H4zm0 5h2v2H4zm0 5h2v2H4zM8 6h12v2H8zm0 5h12v2H8zm0 5h12v2H8z"/></symbol>
+    <symbol id="i-v-table" viewBox="0 0 24 24"><path d="M4 4h16v16H4zm2 4v3h5V8zm7 0v3h5V8zM6 13v3h5v-3zm7 0v3h5v-3z"/></symbol>
+    <symbol id="i-v-card" viewBox="0 0 24 24"><path d="M4 5h16v6H4zm0 8h16v6H4z"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 0-1.88l2-1.56-2-3.46-2.36.95a7.3 7.3 0 0 0-1.62-.94l-.36-2.5h-4l-.36 2.5c-.58.24-1.12.55-1.62.94l-2.36-.95-2 3.46 2 1.56a7.5 7.5 0 0 0 0 1.88l-2 1.56 2 3.46 2.36-.95c.5.39 1.04.7 1.62.94l.36 2.5h4l.36-2.5c.58-.24 1.12-.55 1.62-.94l2.36.95 2-3.46zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></symbol>
     <symbol id="i-v-cal" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14zM5 8V6h14v2z"/></symbol>
     <symbol id="i-v-tree" viewBox="0 0 24 24"><path d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z"/></symbol>
     <symbol id="i-v-chart" viewBox="0 0 24 24"><path d="M4 20h16v-2H4zm2-3h3v-6H6zm5 0h3V6h-3zm5 0h3v-9h-3z"/></symbol>
