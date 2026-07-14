@@ -16,11 +16,13 @@ const CHROME_PATHS = [
 type Action = { do: "click" | "setViewport" | "wait"; target?: string; width?: number; height?: number; ms?: number };
 
 // Click by CSS selector, falling back to matching a control's visible text /
-// aria-label — so the agent can name "Cards" without knowing a selector.
-async function clickTarget(page: import("puppeteer-core").Page, target: string): Promise<boolean> {
+// aria-label — so the agent can name "Cards" without knowing a selector. Runs
+// against a Frame so it works whether the component lives in the main document
+// or inside an embedded <iframe> (Page.mainFrame() is a Frame).
+async function clickTarget(ctx: import("puppeteer-core").Frame, target: string): Promise<boolean> {
   if (!target) return false;
   try {
-    const el = await page.$(target);
+    const el = await ctx.$(target);
     if (el) {
       await el.click();
       return true;
@@ -28,7 +30,7 @@ async function clickTarget(page: import("puppeteer-core").Page, target: string):
   } catch {
     /* not a valid selector — fall through to text matching */
   }
-  return page.evaluate((t: string) => {
+  return ctx.evaluate((t: string) => {
     const norm = (s: string | null) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
     const want = norm(t);
     const cands = Array.from(
@@ -156,6 +158,62 @@ export async function inspectClickables(url: string): Promise<{ labels: string[]
 }
 
 /**
+ * Locate the frame that actually contains the component. Demo/embed pages often
+ * render the real component inside an <iframe> (e.g. a before/after comparison
+ * that loads `component.html?embed=1` in each pane), so the selector won't match
+ * the top document — we have to search child frames, drive clicks inside the
+ * matching one, and know its pixel offset to translate frame-local coordinates
+ * into page coordinates for the screenshot clip.
+ *
+ * When several frames match (side-by-side light/dark or before/after panes) we
+ * disambiguate with a keyword from the screen's key/caption that also appears in
+ * a frame's URL; otherwise we take the first match.
+ */
+async function resolveTarget(
+  page: import("puppeteer-core").Page,
+  selector: string,
+  hint: string,
+): Promise<{ frame: import("puppeteer-core").Frame; offset: { x: number; y: number } } | null> {
+  const matches: import("puppeteer-core").Frame[] = [];
+  for (const f of page.frames()) {
+    try {
+      if (await f.$(selector)) matches.push(f);
+    } catch {
+      /* detached / cross-origin frame — skip */
+    }
+  }
+  if (!matches.length) return null;
+
+  let chosen = matches[0];
+  const h = hint.toLowerCase();
+  for (const kw of ["dark", "light", "before", "after", "mobile", "desktop"]) {
+    if (!h.includes(kw)) continue;
+    const m = matches.find((f) => f.url().toLowerCase().includes(kw));
+    if (m) {
+      chosen = m;
+      break;
+    }
+  }
+
+  if (chosen === page.mainFrame()) return { frame: chosen, offset: { x: 0, y: 0 } };
+  try {
+    const fe = await chosen.frameElement();
+    if (!fe) return { frame: chosen, offset: { x: 0, y: 0 } };
+    const box = await fe.boundingBox();
+    const inset = await fe.evaluate((el) => {
+      const s = getComputedStyle(el as HTMLElement);
+      return {
+        x: (parseFloat(s.borderLeftWidth) || 0) + (parseFloat(s.paddingLeft) || 0),
+        y: (parseFloat(s.borderTopWidth) || 0) + (parseFloat(s.paddingTop) || 0),
+      };
+    });
+    return { frame: chosen, offset: { x: (box?.x ?? 0) + inset.x, y: (box?.y ?? 0) + inset.y } };
+  } catch {
+    return { frame: chosen, offset: { x: 0, y: 0 } };
+  }
+}
+
+/**
  * Capture one screenshot per visualManifest entry from the live prototype.
  *
  * Local-first: drives the system Chrome via puppeteer-core. Degrades gracefully
@@ -222,11 +280,47 @@ export async function captureScreens(opts: {
         await page.goto(opts.prototypeUrl, { waitUntil: "networkidle2", timeout: 30000 });
         await new Promise((r) => setTimeout(r, 600));
 
+        // Find the frame that holds the component (may be an embedded iframe), so
+        // clicks land on the real controls and the aperture is measured where the
+        // component actually lives. Retry once — iframes can settle a beat late.
+        const selector = (m.selector || opts.defaultSelector || "").trim();
+        const hint = `${m.screenKey} ${m.caption ?? ""} ${m.state ?? ""}`;
+        let target: Awaited<ReturnType<typeof resolveTarget>> = null;
+        if (selector) {
+          target = await resolveTarget(page, selector, hint);
+          if (!target) {
+            await new Promise((r) => setTimeout(r, 600));
+            target = await resolveTarget(page, selector, hint);
+          }
+        }
+
+        // If the component is embedded in a child <iframe>, capture against the
+        // frame's OWN url instead of through the parent. The parent iframe clips
+        // anything that overflows its box — so a menu/flyout that pops out below
+        // the component would be cut off. Loading the component page directly
+        // (which the frame's src already points at, theme/variant included) lets
+        // those overflow into the full viewport where they render and screenshot
+        // correctly. Falls back to the in-frame path if the navigation fails.
+        if (target && target.frame !== page.mainFrame()) {
+          const frameUrl = target.frame.url();
+          if (/^https?:/i.test(frameUrl)) {
+            try {
+              await page.goto(frameUrl, { waitUntil: "networkidle2", timeout: 30000 });
+              await new Promise((r) => setTimeout(r, 600));
+              const reResolved = await resolveTarget(page, selector, hint);
+              if (reResolved) target = reResolved; // now the main frame, offset 0
+            } catch {
+              /* keep the original in-frame target */
+            }
+          }
+        }
+        const ctx = target?.frame ?? page.mainFrame();
+
         // Drive the prototype into this screen's state (best-effort; a failed step
         // never sinks the capture — we still shoot whatever's on screen).
         for (const a of actions) {
           try {
-            if (a.do === "click") await clickTarget(page, a.target ?? "");
+            if (a.do === "click") await clickTarget(ctx, a.target ?? "");
             else if (a.do === "wait") await new Promise((r) => setTimeout(r, Math.min(a.ms ?? 0, 5000)));
             // setViewport already applied pre-goto
           } catch {
@@ -236,13 +330,67 @@ export async function captureScreens(opts: {
         if (actions.some((a) => a.do === "click")) await new Promise((r) => setTimeout(r, 900));
 
         const file = join(outDir, `${m.screenKey}.png`);
-        const selector = (m.selector || opts.defaultSelector || "").trim();
         let shot = false;
-        if (selector) {
-          const el = await page.$(selector);
-          if (el) {
-            await el.screenshot({ path: file as `${string}.png` });
-            shot = true;
+        if (target) {
+          // Smart aperture: capture the component PLUS any menu/popover/flyout that
+          // is currently open (a click may have opened one that renders outside the
+          // component's own box), sized to whatever is actually visible. Full-screen
+          // scrims and far-off elements are excluded so the frame stays tight.
+          // Measured in the component frame's own coordinates.
+          const clip = await ctx.evaluate((sel: string) => {
+            const el = document.querySelector(sel) as HTMLElement | null;
+            if (!el) return null;
+            const sx = window.scrollX, sy = window.scrollY, vw = window.innerWidth, vh = window.innerHeight;
+            const visible = (e: Element) => {
+              const s = getComputedStyle(e as HTMLElement);
+              const r = e.getBoundingClientRect();
+              return r.width > 1 && r.height > 1 && s.display !== "none" && s.visibility !== "hidden" && parseFloat(s.opacity || "1") > 0.01;
+            };
+            const toBox = (r: DOMRect) => ({ left: r.left + sx, top: r.top + sy, right: r.right + sx, bottom: r.bottom + sy });
+            const comp = el.getBoundingClientRect();
+            const boxes = [toBox(comp)];
+            // Proximity window around the component — a real flyout is near it.
+            const near = { left: comp.left - 900, top: comp.top - 900, right: comp.right + 900, bottom: comp.bottom + 900 };
+            const overlays = document.querySelectorAll(
+              '[role="menu"],[role="listbox"],[role="dialog"],[aria-modal="true"],[class*="menu"],[class*="popover"],[class*="pop"],[class*="flyout"],[class*="dropdown"],[class*="panel"],[class*="overlay"]',
+            );
+            overlays.forEach((e) => {
+              // Keep descendants of the component too: a menu/popover is often a
+              // child of the component (e.g. `.toolbar__menu`) yet renders fixed/
+              // absolute *outside* its box. Only skip the component itself and any
+              // ancestor/wrapper that contains the whole component.
+              if (e === el || e.contains(el) || !visible(e)) return;
+              const r = e.getBoundingClientRect();
+              if (r.width >= vw * 0.95 && r.height >= vh * 0.95) return; // scrim/backdrop
+              if (r.right < near.left || r.left > near.right || r.bottom < near.top || r.top > near.bottom) return; // too far
+              boxes.push(toBox(r));
+            });
+            const m = 16;
+            const left = Math.max(0, Math.min(...boxes.map((b) => b.left)) - m);
+            const top = Math.max(0, Math.min(...boxes.map((b) => b.top)) - m);
+            const right = Math.min(document.documentElement.scrollWidth, Math.max(...boxes.map((b) => b.right)) + m);
+            const bottom = Math.min(document.documentElement.scrollHeight, Math.max(...boxes.map((b) => b.bottom)) + m);
+            return { x: Math.round(left), y: Math.round(top), width: Math.round(right - left), height: Math.round(bottom - top) };
+          }, selector);
+          if (clip && clip.width > 0 && clip.height > 0) {
+            // Translate frame-local coords → page coords, then clamp to the live
+            // viewport. We screenshot with captureBeyondViewport:false so that
+            // position:fixed menus/flyouts actually render — the default (true)
+            // re-lays-out the page for a full-document capture and silently drops
+            // fixed-positioned content, which is exactly what open menus use.
+            const dims = await page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }));
+            const x = Math.max(0, clip.x + target.offset.x);
+            const y = Math.max(0, clip.y + target.offset.y);
+            const w = Math.min(clip.width, dims.w - x);
+            const h = Math.min(clip.height, dims.h - y);
+            if (w > 0 && h > 0) {
+              await page.screenshot({
+                path: file as `${string}.png`,
+                clip: { x, y, width: w, height: h },
+                captureBeyondViewport: false,
+              });
+              shot = true;
+            }
           }
         }
         if (!shot) {
