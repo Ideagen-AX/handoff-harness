@@ -3,7 +3,48 @@ import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, SlideSpecSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec } from "./types";
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype } from "./tools";
-import { captureScreens } from "./capture";
+import { captureScreens, capturePrototypeState } from "./capture";
+
+type DiffPart = { type: "text"; text: string } | { type: "image"; image: string };
+
+// Before/after prototype diff: for each state, capture a screenshot AND its
+// rendered HTML/CSS markup, then have the model compare them both visually and at
+// the code level. This is what makes a URL baseline useful for styling/layout
+// changes — a text fetch misses them. Returns null when neither state could be
+// captured (falls back to the plain text diff).
+async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string): Promise<string | null> {
+  const [before, after] = await Promise.all([capturePrototypeState(beforeUrl), capturePrototypeState(afterUrl)]);
+  if (!before.image && !before.html && !after.image && !after.html) return null;
+
+  const cap = (h: string | null) => (h ? h.replace(/\s+/g, " ").trim().slice(0, 30000) : "(unavailable)");
+  const bothImages = !!(before.image && after.image);
+  const content: DiffPart[] = [
+    {
+      type: "text",
+      text: [
+        "You are comparing two versions of the same UI — a BEFORE state and an AFTER state.",
+        bothImages
+          ? "For each you have a screenshot AND its rendered HTML/CSS markup."
+          : "For each you have its rendered HTML/CSS markup.",
+        "Produce a precise, factual diff of what changed from BEFORE to AFTER — both visually (layout, spacing, styling, grouping, responsive behaviour) AND at the code level (markup structure, added/removed elements, class changes, inline styles, CSS rules in <style>). Ground every claim in the screenshots and markup; do not speculate.",
+        note ? `Designer's note for context: ${note}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+  ];
+  if (before.image) content.push({ type: "text", text: "— BEFORE screenshot —" }, { type: "image", image: before.image });
+  content.push({ type: "text", text: `— BEFORE markup —\n${cap(before.html)}` });
+  if (after.image) content.push({ type: "text", text: "— AFTER screenshot —" }, { type: "image", image: after.image });
+  content.push({ type: "text", text: `— AFTER markup —\n${cap(after.html)}` });
+
+  const { text } = await generateText({
+    model: MODEL_UNDERSTAND,
+    maxOutputTokens: 2200,
+    messages: [{ role: "user", content }],
+  });
+  return text.trim();
+}
 import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples, readCodeSpec } from "./specs";
 import { AUDIENCES } from "./audiences";
 
@@ -31,12 +72,20 @@ async function understand(input: {
   const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype };
   if (useCodebase) tools.readCodebase = makeCodebaseTool(input.codebasePath!);
 
+  // For a URL baseline, diff the two prototypes up front — visually AND at the
+  // code level (screenshot + rendered HTML/CSS). Styling changes don't show up in
+  // fetched text. Falls back to the plain text diff if capture is unavailable.
+  const diffSummary =
+    !useCodebase && input.baselineUrl ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, input.note) : null;
+
   let basisInstruction: string;
   if (useCodebase) {
     basisInstruction =
       "BASELINE: the current source code is available via readCodebase (the 'before'). Explore it — list directories, then read the files that implement the affected area — then diff it against the prototype to determine what ACTUALLY changed. Set changeBasis.method = 'codebase-diff'.";
   } else if (input.baselineUrl) {
-    basisInstruction = `BASELINE: a baseline URL of the current state is provided. Call fetchPrototype on it (${input.baselineUrl}) as the 'before', then diff against the prototype. Set changeBasis.method = 'url-diff'.`;
+    basisInstruction = diffSummary
+      ? "BASELINE: a before/after diff of the two prototypes — comparing both the screenshots and the rendered HTML/CSS (BEFORE = baseline URL, AFTER = prototype) — is provided below. Treat it as the authoritative record of what changed, especially styling and layout, and base whatChanged/beforeAfter on it. Set changeBasis.method = 'url-diff'."
+      : `BASELINE: a baseline URL of the current state is provided. Call fetchPrototype on it (${input.baselineUrl}) as the 'before', then diff against the prototype. Set changeBasis.method = 'url-diff'.`;
   } else {
     basisInstruction =
       "BASELINE: none provided. Infer what changed from the designer's note plus product/design-system knowledge, and set changeBasis.method = 'inferred'. State clearly in changeBasis.note AND in openQuestions that whatChanged/beforeAfter are inferred and must be verified against the real prior state.";
@@ -69,6 +118,7 @@ async function understand(input: {
   const promptText = [
     `Prototype URL (the AFTER state): ${input.prototypeUrl}`,
     input.baselineUrl && !useCodebase ? `Baseline URL (the BEFORE state): ${input.baselineUrl}` : "",
+    diffSummary ? `\nBefore/after diff (authoritative — visual + code, BEFORE=baseline, AFTER=prototype):\n${diffSummary}\n` : "",
     useCodebase ? "Current source code (the BEFORE state) is available via the readCodebase tool." : "",
     "",
     `Designer's note about what changed and why:`,

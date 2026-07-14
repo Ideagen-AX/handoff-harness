@@ -72,6 +72,45 @@ async function firstExisting(paths: string[]): Promise<string | null> {
 const PUBLIC_CAPTURES = join(process.cwd(), "public", "captures");
 
 /**
+ * Capture a prototype's state for a before/after diff: a viewport screenshot
+ * (vision input) AND its rendered HTML/CSS markup (code-level input). One page
+ * load. Prefers the system browser (captures SPA output + <style> blocks + inline
+ * styles); falls back to a raw HTTP fetch of the source when no browser is
+ * available (limited for SPAs, but better than nothing). Fields are null when
+ * unavailable.
+ */
+export async function capturePrototypeState(url: string): Promise<{ image: string | null; html: string | null }> {
+  if (!process.env.VERCEL) {
+    const executablePath = await firstExisting(CHROME_PATHS);
+    if (executablePath) {
+      let browser: import("puppeteer-core").Browser | null = null;
+      try {
+        const { launch } = await import("puppeteer-core");
+        browser = await launch({ executablePath, headless: true, args: ["--no-sandbox", "--hide-scrollbars"] });
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+        await new Promise((r) => setTimeout(r, 600));
+        const buf = await page.screenshot({ type: "png" });
+        const html = await page.content();
+        return { image: `data:image/png;base64,${Buffer.from(buf).toString("base64")}`, html };
+      } catch {
+        /* fall through to raw fetch */
+      } finally {
+        await browser?.close().catch(() => {});
+      }
+    }
+  }
+  try {
+    const res = await fetch(url, { headers: { "user-agent": "handoff-harness/0.1" } });
+    if (res.ok) return { image: null, html: await res.text() };
+  } catch {
+    /* nothing */
+  }
+  return { image: null, html: null };
+}
+
+/**
  * Inspect the live prototype for its actual clickable control labels, so the
  * Understand agent can name real click targets (e.g. "Cards", "Custom Filter",
  * "Modal") instead of guessing. Cleans Material-icon ligatures by keeping only

@@ -299,29 +299,30 @@ export default function Home() {
           </div>
         </details>
         <details className="baseline">
-          <summary>Baseline — how it determines what changed (optional)</summary>
+          <summary>Baseline — compare against a &ldquo;before&rdquo; (optional, recommended)</summary>
           <p className="meta" style={{ margin: "8px 0 12px" }}>
-            Give it the <strong>before</strong> state for a true diff. It prefers the codebase; if
-            that isn&apos;t reachable (e.g. on the deployed app) it uses the baseline URL; with
-            neither, it infers the change from your note and flags it as unverified.
+            Give it the <strong>before</strong> state for a real diff. Best for a visual/styling
+            change: point it at a <strong>&ldquo;before&rdquo; prototype URL</strong> — the agent
+            screenshots and reads the rendered HTML/CSS of both and compares them. Or give a local
+            codebase path. With neither, it infers from your note and flags it unverified.
           </p>
           <label className="field">
-            <span className="lab">Current source codebase path (preferred — local runs only)</span>
+            <span className="lab">&ldquo;Before&rdquo; prototype URL — compares the new design against it (visual + code)</span>
+            <input
+              type="url"
+              value={baselineUrl}
+              onChange={(e) => setBaselineUrl(e.target.value)}
+              placeholder="https://search-toolbar-before.vercel.app/"
+              disabled={running}
+            />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span className="lab">Current source codebase path (alternative — local runs only)</span>
             <input
               type="text"
               value={codebasePath}
               onChange={(e) => setCodebasePath(e.target.value)}
               placeholder="/path/to/current/app/source"
-              disabled={running}
-            />
-          </label>
-          <label className="field" style={{ marginBottom: 0 }}>
-            <span className="lab">Baseline URL (fallback — the current live screen)</span>
-            <input
-              type="url"
-              value={baselineUrl}
-              onChange={(e) => setBaselineUrl(e.target.value)}
-              placeholder="https://current-app.example.com/search"
               disabled={running}
             />
           </label>
