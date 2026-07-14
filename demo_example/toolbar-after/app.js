@@ -27,7 +27,8 @@
   function setSort(val) {
     const sv = $('#sortValue');
     if (sv) sv.textContent = val;                    // desktop sort button label
-    $$('[data-options-menu] [data-sort]').forEach(b =>
+    // Keep both the desktop Sort menu and the mobile Options menu in sync
+    $$('[data-sort-menu] [data-sort], [data-options-menu] [data-sort]').forEach(b =>
       b.setAttribute('aria-checked', b.dataset.sort === val ? 'true' : 'false'));
   }
 
@@ -47,7 +48,7 @@
   }
   function closeMenus() {
     $$('.toolbar__menu').forEach(m => { m.hidden = true; });
-    $$('[data-action="toggle-tools"], [data-action="toggle-options"]')
+    $$('[data-action="toggle-tools"], [data-action="toggle-options"], [data-action="toggle-sort"]')
       .forEach(t => t.setAttribute('aria-expanded', 'false'));
   }
   function toggleMenu(menuSel, trigger) {
@@ -65,9 +66,11 @@
     b.addEventListener('click', e => { e.stopPropagation(); toggleMenu('[data-tools-menu]', b); }));
   $$('[data-action="toggle-options"]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); toggleMenu('[data-options-menu]', b); }));
+  $$('[data-action="toggle-sort"]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); toggleMenu('[data-sort-menu]', b); }));
 
-  // Options-menu selections drive the same state as the desktop controls
-  $$('[data-options-menu] [data-sort]').forEach(b =>
+  // Sort + Options selections drive the same state as the desktop controls
+  $$('[data-sort-menu] [data-sort], [data-options-menu] [data-sort]').forEach(b =>
     b.addEventListener('click', () => { setSort(b.dataset.sort); closeMenus(); }));
   $$('[data-options-menu] [data-view]').forEach(b =>
     b.addEventListener('click', () => { setView(b.dataset.view); closeMenus(); }));
@@ -86,14 +89,14 @@
   window.addEventListener('scroll', closeMenus, true);
 
   // ============================ INIT ============================
-  setView('table'); // Table is the default active view (matches the source)
+  setView('list'); // List is the default active view
   setSort('Last Updated');
 
-  // Theme deep-link — the source supports #theme=dark; keep it so both the light
-  // and dark Praxis surfaces can be previewed from the same URL.
+  // Theme — set from ?theme= (used by the dual-theme index iframes) or #theme=.
   function applyTheme() {
-    const p = new URLSearchParams(location.hash.slice(1));
-    const t = p.get('theme');
+    const qs = new URLSearchParams(location.search);
+    const hs = new URLSearchParams(location.hash.slice(1));
+    const t = qs.get('theme') || hs.get('theme');
     if (t === 'dark' || t === 'light') document.body.dataset.theme = t;
   }
   applyTheme();

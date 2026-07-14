@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Search Toolbar — Groom Lake (After)</title>
+
+<!-- Verbatim from the groom lake project — the shared Praxis token layer. -->
+<link rel="stylesheet" href="praxis-core.css" />
+<!-- Material Symbols — the icon set for the whole toolbar (no SVG sprite). -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet" />
+<!-- The search page's own embedded styles (tokens, Gilroy @font-face, .toolbar/.tbtn/.sortbtn/.viewswitch). -->
+<link rel="stylesheet" href="page.css" />
+
+<style>
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ehsq-space-16, 16px);
+    padding: 24px;
+    overflow: auto;
+    box-sizing: border-box;
+    background-color: var(--px-page);
+    background-image: radial-gradient(var(--px-dot) 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-position: -1px -1px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .stage-frame {
+    width: min(1120px, calc(100vw - 48px));
+    background: var(--px-surface);
+    border-radius: 16px;
+    box-shadow:
+      0 0 0 .5px rgba(16, 36, 58, .08),
+      0 20px 48px rgba(16, 36, 58, .14),
+      0 2px 8px rgba(16, 36, 58, .06);
+    overflow: hidden;
+  }
+  .stage-frame .toolbar { margin: 0; }
+
+  .stage-caption {
+    font-family: var(--ehsq-type-font-sans, "Gilroy", sans-serif);
+    font-size: .82rem;
+    color: var(--ehsq-color-text-secondary);
+    text-align: center;
+    letter-spacing: .01em;
+  }
+  .stage-caption strong { color: var(--ehsq-color-text-primary); font-weight: 700; }
+  body[data-theme="dark"] .stage-frame { box-shadow: 0 0 0 .5px rgba(255,255,255,.08), 0 20px 48px rgba(0,0,0,.5); }
+
+  /* ---- Icons: Material Symbols throughout (no SVG sprite) ---- */
+  .toolbar .material-symbols-rounded { line-height: 1; }
+  .tbtn .tb-ico  { font-size: 20px; color: var(--ehsq-color-text-secondary); }
+  .tbtn .tb-chev { font-size: 18px; color: var(--ehsq-color-text-secondary); }
+  .tbtn--run .tb-ico { color: #fff; }
+  body[data-theme="dark"] .tbtn--run .tb-ico { color: var(--px-primary-fg); }
+  .sortbtn .tb-chev { font-size: 18px; color: var(--ehsq-color-text-secondary); }
+  .px-menu__item .material-symbols-rounded { font-size: 20px; color: var(--ehsq-color-text-secondary); }
+
+  /* ---- Accessibility remediation (layered on top of the faithful source) ---- */
+  .stage-frame .tbtn:focus-visible,
+  .stage-frame .sortbtn:focus-visible,
+  .stage-frame .viewswitch__btn:focus-visible {
+    outline: 2px solid var(--ehsq-color-teal-50);
+    outline-offset: 2px;
+  }
+  /* Darken the light-theme primary gradient so the white "Run" label clears 4.5:1. */
+  body[data-theme="light"] { --px-primary-grad: linear-gradient(180deg, #1a7d84, #156268); }
+
+  /* ---- Responsive collapse (adopts the "before" toolbar's pattern) ---- */
+  .stage-frame .toolbar__collapse { display: none; }
+  .stage-frame .toolbar__menuwrap { position: relative; }
+  .stage-frame .toolbar__trigger { gap: 6px; }
+  .stage-frame .toolbar__menu { position: fixed; min-width: 232px; }
+  .toolbar__menu .px-menu__item[aria-checked="true"] { color: var(--ehsq-color-teal-60); font-weight: 700; }
+  .toolbar__menu .px-menu__item[aria-checked="true"] .material-symbols-rounded { color: var(--ehsq-color-teal-60); }
+  .toolbar__menu .px-menu__item--run,
+  .toolbar__menu .px-menu__item--run .material-symbols-rounded { color: var(--ehsq-color-teal-60); font-weight: 700; }
+  body[data-theme="dark"] .toolbar__menu .px-menu__item[aria-checked="true"],
+  body[data-theme="dark"] .toolbar__menu .px-menu__item[aria-checked="true"] .material-symbols-rounded,
+  body[data-theme="dark"] .toolbar__menu .px-menu__item--run,
+  body[data-theme="dark"] .toolbar__menu .px-menu__item--run .material-symbols-rounded { color: #37c6cc; }
+
+  @media (max-width: 1140px) {
+    .stage-frame .toolbar { flex-wrap: nowrap; }
+    .stage-frame .toolbar .toolbar__inline { display: none; }
+    .stage-frame .toolbar .toolbar__collapse { display: inline-flex; align-items: center; }
+    .stage-frame .toolbar .toolbar__spacer { flex: 1; flex-basis: auto; height: auto; }
+  }
+
+  /* ---- Embed mode (when shown inside the dual-theme index via iframe) ---- */
+  html.is-embed body { justify-content: flex-start; padding-top: 44px; }
+  html.is-embed .stage-caption { display: none; }
+</style>
+</head>
+<body data-variant="praxis" data-theme="light" data-page="search">
+<script>
+  // Set theme + embed flag before first paint (avoids a flash inside the iframe).
+  (function () {
+    var qs = new URLSearchParams(location.search);
+    var hs = new URLSearchParams(location.hash.slice(1));
+    var t = qs.get('theme') || hs.get('theme');
+    if (t === 'dark' || t === 'light') document.body.dataset.theme = t;
+    if (qs.has('embed') || window.self !== window.top) document.documentElement.classList.add('is-embed');
+  })();
+</script>
+
+  <!-- ===========================
+       ISOLATED COMPONENT: Search page toolbar
+       Source of truth: "groom lake" project, search-page.html (the AFTER state).
+       Icons use Material Symbols; behaviour ported in app.js. Default view: List.
+       =========================== -->
+  <div class="stage-frame">
+    <div class="toolbar" role="toolbar" aria-label="Page tools">
+      <button class="tbtn tbtn--icon" type="button" title="Back" aria-label="Go back"><span class="material-symbols-rounded tb-ico" aria-hidden="true">arrow_back</span></button>
+
+      <!-- Mobile-only: Tools trigger (collapses Save / Export / Notifications / Run) -->
+      <div class="toolbar__menuwrap toolbar__collapse">
+        <button class="tbtn toolbar__trigger" type="button" data-action="toggle-tools" aria-haspopup="menu" aria-expanded="false">
+          <span class="material-symbols-rounded tb-ico" aria-hidden="true">more_vert</span> Tools
+          <span class="material-symbols-rounded tb-chev" aria-hidden="true">expand_more</span>
+        </button>
+        <div class="px-pop px-menu toolbar__menu toolbar__menu--tools" data-tools-menu role="menu" aria-label="Tools" hidden>
+          <button class="px-menu__item" type="button" role="menuitem"><span class="material-symbols-rounded" aria-hidden="true">save</span> Save</button>
+          <button class="px-menu__item" type="button" role="menuitem"><span class="material-symbols-rounded" aria-hidden="true">ios_share</span> Export</button>
+          <button class="px-menu__item" type="button" role="menuitem"><span class="material-symbols-rounded" aria-hidden="true">notifications</span> Notifications</button>
+          <button class="px-menu__item px-menu__item--run" type="button" role="menuitem"><span class="material-symbols-rounded" aria-hidden="true">refresh</span> Run</button>
+        </div>
+      </div>
+
+      <button class="tbtn toolbar__inline" type="button"><span class="material-symbols-rounded tb-ico" aria-hidden="true">save</span> Save</button>
+      <button class="tbtn toolbar__inline" type="button"><span class="material-symbols-rounded tb-ico" aria-hidden="true">ios_share</span> Export <span class="material-symbols-rounded tb-chev" aria-hidden="true">expand_more</span></button>
+      <button class="tbtn toolbar__inline" type="button"><span class="material-symbols-rounded tb-ico" aria-hidden="true">notifications</span> Notifications</button>
+      <button class="tbtn tbtn--run toolbar__inline" type="button"><span class="material-symbols-rounded tb-ico" aria-hidden="true">refresh</span> Run</button>
+
+      <span class="toolbar__spacer"></span>
+
+      <!-- Mobile-only: Options trigger (collapses Sort + the view switch) -->
+      <div class="toolbar__menuwrap toolbar__collapse">
+        <button class="tbtn toolbar__trigger" type="button" data-action="toggle-options" aria-haspopup="menu" aria-expanded="false">
+          <span class="material-symbols-rounded tb-ico" aria-hidden="true">tune</span> Options
+          <span class="material-symbols-rounded tb-chev" aria-hidden="true">expand_more</span>
+        </button>
+        <div class="px-pop px-menu toolbar__menu toolbar__menu--options" data-options-menu role="menu" aria-label="Options" hidden>
+          <div class="px-menu__head">Sort Results By</div>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="true"  data-sort="Last Updated">Last Updated</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Due Date">Due Date</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Priority">Priority</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Manual">Manual</button>
+          <div class="px-menu__sep"></div>
+          <div class="px-menu__head">Display As</div>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="true"  data-view="list"><span class="material-symbols-rounded" aria-hidden="true">list</span> List</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="table"><span class="material-symbols-rounded" aria-hidden="true">table</span> Table</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="card"><span class="material-symbols-rounded" aria-hidden="true">cards</span> Cards</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="calendar"><span class="material-symbols-rounded" aria-hidden="true">event</span> Calendar</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="hierarchy"><span class="material-symbols-rounded" aria-hidden="true">account_tree</span> Hierarchy</button>
+          <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-view="chart"><span class="material-symbols-rounded" aria-hidden="true">insert_chart</span> Chart</button>
+        </div>
+      </div>
+
+      <span class="toolbar__sortlabel toolbar__inline" id="sortLabel">Sort Results By:</span>
+      <button class="sortbtn toolbar__inline" type="button" data-action="toggle-sort" aria-haspopup="menu" aria-expanded="false" aria-labelledby="sortLabel sortValue"><span id="sortValue">Last Updated</span> <span class="material-symbols-rounded tb-chev" aria-hidden="true">expand_more</span></button>
+      <div class="px-pop px-menu toolbar__menu toolbar__menu--sort" data-sort-menu role="menu" aria-label="Sort results by" hidden>
+        <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="true"  data-sort="Last Updated">Last Updated</button>
+        <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Due Date">Due Date</button>
+        <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Priority">Priority</button>
+        <button class="px-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Manual">Manual</button>
+      </div>
+
+      <div class="viewswitch toolbar__inline" role="group" aria-label="Result view">
+        <button class="viewswitch__btn viewswitch__btn--active" type="button" data-view="list" title="List view" aria-label="List view" aria-pressed="true"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">list</span></button>
+        <button class="viewswitch__btn" type="button" data-view="table" title="Table view" aria-label="Table view" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">table</span></button>
+        <button class="viewswitch__btn" type="button" data-view="card" title="Card view" aria-label="Card view" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">cards</span></button>
+        <button class="viewswitch__btn" type="button" data-view="calendar" title="Calendar view" aria-label="Calendar view" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">event</span></button>
+        <button class="viewswitch__btn" type="button" data-view="hierarchy" title="Hierarchical folder view" aria-label="Hierarchical folder view" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">account_tree</span></button>
+        <button class="viewswitch__btn" type="button" data-view="chart" title="Chart view" aria-label="Chart view" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:22px;line-height:1;">insert_chart</span></button>
+      </div>
+    </div>
+  </div>
+
+  <p class="stage-caption"><strong>Search page toolbar</strong> — Groom Lake (after). Narrow the window below 1140px to see the tools collapse into a Tools menu and Sort + view into an Options menu.</p>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -42,7 +42,7 @@
     { value: 'hierarchy', label: 'Hierarchy', icon: 'account_tree' },
     { value: 'chart',     label: 'Chart',     icon: 'insert_chart' },
   ];
-  const SORT_OPTIONS = ['Last Updated', 'Date Due', 'Priority', 'Identifier'];
+  const SORT_OPTIONS = ['Last Updated', 'Due Date', 'Priority', 'Manual'];
   const SHOW_AS = [
     { value: 'nested', label: 'Nested', icon: 'account_tree' },
     { value: 'flat',   label: 'Flat',   icon: 'table_rows' },
@@ -131,12 +131,33 @@
     e.stopPropagation();
     toggleOverflowMenu('[data-tools-menu]', btn);
   });
+  bind('[data-action="toggle-sort-menu"]', 'click', (e, btn) => {
+    e.stopPropagation();
+    toggleOverflowMenu('[data-sort-menu]', btn);
+  });
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.overflow-menu') &&
-        !e.target.closest('[data-action="toggle-tools-menu"]')) {
+        !e.target.closest('[data-action="toggle-tools-menu"]') &&
+        !e.target.closest('[data-action="toggle-sort-menu"]')) {
       $$('.overflow-menu').forEach(m => fadeOutThenHide(m));
-      $$('[data-action="toggle-tools-menu"]').forEach(t => t.setAttribute('aria-expanded', 'false'));
+      $$('[data-action="toggle-tools-menu"], [data-action="toggle-sort-menu"]')
+        .forEach(t => t.setAttribute('aria-expanded', 'false'));
     }
+  });
+
+  // ===== SORT — desktop Sort dropdown menu (and keeps the Options panel in sync)
+  function setSortValue(val) {
+    sortBy = val;
+    const lbl = $('.ehsq-toolbar__sort-dropdown span'); if (lbl) lbl.textContent = val;
+    $$('[data-sort-menu] [data-sort]').forEach(b =>
+      b.setAttribute('aria-checked', b.dataset.sort === val ? 'true' : 'false'));
+  }
+  bind('[data-sort-menu] [data-sort]', 'click', (e, btn) => {
+    e.stopPropagation();
+    setSortValue(btn.dataset.sort);
+    fadeOutThenHide($('[data-sort-menu]'));
+    const trigger = $('[data-action="toggle-sort-menu"]');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
   });
 
   // =================================================================
@@ -302,8 +323,7 @@
     } else if (id === 'aging') {
       agingFormat = val; if (displayMode === 'chart') renderResults();
     } else if (id === 'sort') {
-      sortBy = val;
-      const lbl = $('.ehsq-toolbar__sort-dropdown span'); if (lbl) lbl.textContent = val;
+      setSortValue(val);
     }
     renderOptionsPanel();
   });

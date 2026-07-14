@@ -82,6 +82,13 @@
       letter-spacing: .01em;
     }
     .stage-caption strong { color: var(--ehsq-color-neutral-80); font-weight: 700; }
+
+    /* Desktop Sort menu — single-select list opened from the Sort dropdown. */
+    .overflow-menu--sort .overflow-menu__item { justify-content: space-between; gap: var(--s-16); }
+    .overflow-menu--sort .overflow-menu__label { flex: 1; }
+    .overflow-menu__check { font-size: 20px; color: var(--ehsq-color-teal-60); visibility: hidden; }
+    .overflow-menu__item[aria-checked="true"] { color: var(--ehsq-color-teal-70); font-weight: 700; }
+    .overflow-menu__item[aria-checked="true"] .overflow-menu__check { visibility: visible; }
   </style>
 </head>
 <body>
@@ -155,7 +162,7 @@
 
         <div class="ehsq-toolbar__sort">
           <span class="ehsq-toolbar__sort-label">Sort:</span>
-          <button class="ehsq-toolbar__sort-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <button class="ehsq-toolbar__sort-dropdown" type="button" data-action="toggle-sort-menu" aria-haspopup="menu" aria-expanded="false">
             <span>Last Updated</span>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
@@ -187,6 +194,14 @@
   </div>
 
   <p class="stage-caption"><strong>Search page toolbar</strong> — Responsive Search (before). Resize the window below 1200px to see the responsive collapse.</p>
+
+  <!-- Desktop Sort menu (opened from the toolbar's Sort dropdown) -->
+  <div class="overflow-menu overflow-menu--sort" data-sort-menu role="menu" aria-label="Sort results by" hidden>
+    <button class="overflow-menu__item" type="button" role="menuitemradio" aria-checked="true"  data-sort="Last Updated"><span class="overflow-menu__label">Last Updated</span><span class="material-symbols-rounded overflow-menu__check" aria-hidden="true">check</span></button>
+    <button class="overflow-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Due Date"><span class="overflow-menu__label">Due Date</span><span class="material-symbols-rounded overflow-menu__check" aria-hidden="true">check</span></button>
+    <button class="overflow-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Priority"><span class="overflow-menu__label">Priority</span><span class="material-symbols-rounded overflow-menu__check" aria-hidden="true">check</span></button>
+    <button class="overflow-menu__item" type="button" role="menuitemradio" aria-checked="false" data-sort="Manual"><span class="overflow-menu__label">Manual</span><span class="material-symbols-rounded overflow-menu__check" aria-hidden="true">check</span></button>
+  </div>
 
   <!-- Mobile Tools dropdown menu -->
   <div class="overflow-menu overflow-menu--tools" data-tools-menu role="menu" hidden>
