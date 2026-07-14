@@ -329,7 +329,12 @@ export async function* runPipeline(input: {
   baselineUrl?: string;
   codebasePath?: string;
   framework?: string;
+  enabledOutputs?: string[];
 }): AsyncGenerator<PipelineEvent> {
+  // Which artifact types to produce. Empty/undefined = all. Component specs are
+  // gated under "design-system" since they're a design-system deliverable.
+  const enabled = input.enabledOutputs?.length ? new Set(input.enabledOutputs) : null;
+  const wants = (id: string) => !enabled || enabled.has(id);
   const basis = input.codebasePath
     ? "against the current codebase"
     : input.baselineUrl
@@ -367,13 +372,17 @@ export async function* runPipeline(input: {
   const jobs: Array<{ id: string; label: string; specText: string; focus?: string }> = [];
   for (const a of AUDIENCES) {
     if (a.id === "slide") continue; // slide uses a dedicated structured generator
+    if (!wants(a.id)) continue;
     jobs.push({ id: a.id, label: a.label, specText: await readAudienceSpec(a.specFile) });
   }
-  jobs.push({ id: "dev", label: "Developer handoff", specText: await readAudienceSpec("dev.md") });
+  if (wants("dev")) {
+    jobs.push({ id: "dev", label: "Developer handoff", specText: await readAudienceSpec("dev.md") });
+  }
 
-  // …plus the conditional offshoot: one component spec per net-new component.
+  // …plus the conditional offshoot: one component spec per net-new component
+  // (gated under the design-system output).
   const newComponents = brief.componentImpact.filter((c) => c.disposition === "net-new");
-  if (newComponents.length) {
+  if (newComponents.length && wants("design-system")) {
     const names = newComponents.map((c) => c.name).join(", ");
     yield {
       type: "status",
@@ -386,10 +395,11 @@ export async function* runPipeline(input: {
     }
   }
 
+  const extra = (wants("slide") ? 1 : 0) + (wants("dev-code") ? 1 : 0);
   yield {
     type: "status",
     stage: "generate",
-    message: `Drafting ${jobs.length + 2} artifacts in parallel…`,
+    message: `Drafting ${jobs.length + extra} artifact${jobs.length + extra === 1 ? "" : "s"}…`,
   };
   const productContext = await readReferenceDoc("product");
   // Artifacts that embed real screenshots inline (prose formats). The slide
@@ -413,32 +423,38 @@ export async function* runPipeline(input: {
   // generator, then fan the rest out concurrently so they READ that cache rather
   // than re-sending it at full price. Concurrent requests can't read a cache
   // that's still being written, so the first must land before the others fire.
-  const [firstJob, ...restJobs] = jobs;
-  yield { type: "artifact", artifact: await genJob(firstJob) };
-
   const framework = input.framework || "vue";
-  const promises = restJobs.map(genJob);
+  const promises: Promise<Artifact>[] = [];
+  if (jobs.length) {
+    const [firstJob, ...restJobs] = jobs;
+    yield { type: "artifact", artifact: await genJob(firstJob) };
+    promises.push(...restJobs.map(genJob));
+  }
   // The slide's dedicated structured generator, streamed alongside the rest.
-  promises.push(
-    guard(
-      (async () => generateSlide({ brief, productContext, examples: await readExamples("slide"), captures }))(),
-      "slide",
-      "Slide",
-    ),
-  );
+  if (wants("slide")) {
+    promises.push(
+      guard(
+        (async () => generateSlide({ brief, productContext, examples: await readExamples("slide"), captures }))(),
+        "slide",
+        "Slide",
+      ),
+    );
+  }
   // The coded developer artifact (framework-parameterized; Vue default), grounded
   // in the design-system reference and focused on the primary net-new component.
-  promises.push(
-    guard(
-      (async () => {
-        const dsReference = await readReferenceDoc("design-system");
-        const { text: codeSpecText } = await readCodeSpec(framework);
-        return generateCode({ brief, productContext, dsReference, codeSpecText, framework, focus: newComponents[0]?.name });
-      })(),
-      "dev-code",
-      `Developer component code (${framework})`,
-    ),
-  );
+  if (wants("dev-code")) {
+    promises.push(
+      guard(
+        (async () => {
+          const dsReference = await readReferenceDoc("design-system");
+          const { text: codeSpecText } = await readCodeSpec(framework);
+          return generateCode({ brief, productContext, dsReference, codeSpecText, framework, focus: newComponents[0]?.name });
+        })(),
+        "dev-code",
+        `Developer component code (${framework})`,
+      ),
+    );
+  }
   for await (const artifact of asCompleted(promises)) {
     yield { type: "artifact", artifact };
   }

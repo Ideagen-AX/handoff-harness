@@ -31,6 +31,19 @@ function packageFor(audienceId: string): string {
   return p ? p.id : "other";
 }
 
+// The toggleable outputs, grouped by package, for the pre-run selection step.
+// (Component specs are conditional and ride along with "design-system".)
+const OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] = [
+  { pkg: "Design system", items: [{ id: "design-system", label: "DS updates + component specs" }] },
+  { pkg: "Engineering", items: [{ id: "dev", label: "Developer handoff (spec)" }, { id: "dev-code", label: "Coded component" }] },
+  { pkg: "QA", items: [{ id: "qa", label: "QA test cases" }] },
+  { pkg: "Documentation & support", items: [{ id: "product-docs", label: "Product docs" }, { id: "support-summary", label: "Support summary" }, { id: "release-notes", label: "Release notes" }] },
+  { pkg: "Executive comms", items: [{ id: "one-pager", label: "1-Pager" }, { id: "slide", label: "Slide (.pptx)" }] },
+  { pkg: "Case study", items: [{ id: "case-study", label: "Case study" }] },
+  { pkg: "Analytics & success", items: [{ id: "analytics-plan", label: "Analytics plan" }] },
+];
+const ALL_OUTPUT_IDS = OUTPUTS.flatMap((g) => g.items.map((i) => i.id));
+
 export default function Home() {
   const [url, setUrl] = useState("https://responsive-search.vercel.app/");
   const [note, setNote] = useState(
@@ -45,7 +58,12 @@ export default function Home() {
   const [brief, setBrief] = useState<ChangeBrief | null>(null);
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [artifacts, setArtifacts] = useState<UiArtifact[]>([]);
+  const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(ALL_OUTPUT_IDS.map((id) => [id, true])),
+  );
+  const [selected, setSelected] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
 
   async function run() {
     setRunning(true);
@@ -53,6 +71,7 @@ export default function Home() {
     setBrief(null);
     setCaptures([]);
     setArtifacts([]);
+    setSelected(null);
     setStatus("Starting…");
 
     const ac = new AbortController();
@@ -62,7 +81,14 @@ export default function Home() {
       const res = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prototypeUrl: url, note, baselineUrl, codebasePath, framework }),
+        body: JSON.stringify({
+          prototypeUrl: url,
+          note,
+          baselineUrl,
+          codebasePath,
+          framework,
+          enabledOutputs: ALL_OUTPUT_IDS.filter((id) => enabled[id]),
+        }),
         signal: ac.signal,
       });
       if (!res.body) throw new Error("No response stream");
@@ -98,15 +124,14 @@ export default function Home() {
         break;
       case "brief":
         setBrief(ev.brief);
+        setSelected((s) => s ?? "brief"); // show the brief first as it lands
         break;
       case "captures":
         setCaptures(ev.captures);
         break;
       case "artifact":
-        setArtifacts((prev) => [
-          ...prev,
-          { ...ev.artifact, approved: false },
-        ]);
+        setArtifacts((prev) => [...prev, { ...ev.artifact, approved: false }]);
+        setSelected((s) => s ?? ev.artifact.audienceId);
         break;
       case "error":
         setError(ev.message);
@@ -252,6 +277,27 @@ export default function Home() {
             <option value="svelte">Svelte (best-effort — no DS mapping yet)</option>
           </select>
         </label>
+        <details className="baseline" open>
+          <summary>Outputs — {enabledCount} of {ALL_OUTPUT_IDS.length} selected</summary>
+          <div className="out-select">
+            {OUTPUTS.map((g) => (
+              <div key={g.pkg} className="out-group">
+                <div className="out-group-title">{g.pkg}</div>
+                {g.items.map((i) => (
+                  <label key={i.id} className="out-check">
+                    <input
+                      type="checkbox"
+                      checked={!!enabled[i.id]}
+                      disabled={running}
+                      onChange={() => setEnabled((e) => ({ ...e, [i.id]: !e[i.id] }))}
+                    />
+                    <span>{i.label}</span>
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+        </details>
         <details className="baseline">
           <summary>Baseline — how it determines what changed (optional)</summary>
           <p className="meta" style={{ margin: "8px 0 12px" }}>
@@ -281,7 +327,7 @@ export default function Home() {
           </label>
         </details>
         <div className="btn-row">
-          <button className="primary" onClick={run} disabled={running || !url}>
+          <button className="primary" onClick={run} disabled={running || !url || enabledCount === 0}>
             {running ? "Running…" : "Generate handoff"}
           </button>
           {running && (
@@ -298,33 +344,63 @@ export default function Home() {
         {error && <p className="err">Error: {error}</p>}
       </div>
 
-      {brief && <BriefCard brief={brief} />}
+      {(brief || artifacts.length > 0) && (
+        <div className="workspace">
+          <nav className="card nav">
+            <div className="nav-head">
+              Outputs · {artifacts.filter((a) => a.approved).length}/{artifacts.length} approved
+            </div>
+            {brief && (
+              <button className={`nav-item ${selected === "brief" ? "active" : ""}`} onClick={() => setSelected("brief")}>
+                <span className="nav-item-label">Change brief</span>
+              </button>
+            )}
+            {captures.length > 0 && (
+              <button
+                className={`nav-item ${selected === "captures" ? "active" : ""}`}
+                onClick={() => setSelected("captures")}
+              >
+                <span className="nav-item-label">Captured screens</span>
+              </button>
+            )}
+            {PACKAGES.map((pkg) => {
+              const items = artifacts.filter((a) => packageFor(a.audienceId) === pkg.id);
+              if (!items.length) return null;
+              return (
+                <div key={pkg.id} className="nav-group">
+                  <div className="nav-group-title">{pkg.title}</div>
+                  {items.map((a) => (
+                    <button
+                      key={a.audienceId}
+                      className={`nav-item ${selected === a.audienceId ? "active" : ""}`}
+                      onClick={() => setSelected(a.audienceId)}
+                    >
+                      <span className="nav-item-label">{a.label}</span>
+                      {a.approved && <span className="nav-check">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </nav>
 
-      {captures.length > 0 && <CaptureGallery captures={captures} />}
-
-      {artifacts.length > 0 && (
-        <>
-          <div className="section-title">
-            Review packages · {artifacts.filter((a) => a.approved).length}/{artifacts.length} approved
-          </div>
-          {PACKAGES.map((pkg) => {
-            const items = artifacts.filter((a) => packageFor(a.audienceId) === pkg.id);
-            if (!items.length) return null;
-            const done = items.filter((a) => a.approved).length;
-            return (
-              <details key={pkg.id} className="card pkg" open>
-                <summary>
-                  <span className="pkg-title">{pkg.title}</span>
-                  <span className={`pkg-count ${done === items.length ? "ok" : ""}`}>
-                    {done}/{items.length} approved
-                  </span>
-                </summary>
-                {pkg.blurb && <p className="pkg-blurb">{pkg.blurb}</p>}
-                {items.map(renderArtifact)}
-              </details>
-            );
-          })}
-        </>
+          <section className="viewer">
+            {selected === "brief" && brief ? (
+              <BriefCard brief={brief} />
+            ) : selected === "captures" ? (
+              <CaptureGallery captures={captures} />
+            ) : (
+              (() => {
+                const a = artifacts.find((x) => x.audienceId === selected);
+                return a ? (
+                  renderArtifact(a)
+                ) : (
+                  <div className="viewer-empty">Select an output on the left to view it.</div>
+                );
+              })()
+            )}
+          </section>
+        </div>
       )}
     </div>
   );
