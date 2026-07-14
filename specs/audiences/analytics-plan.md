@@ -26,7 +26,13 @@ proven false.
 3. **Metrics table** — `Metric | Signal / PX event to instrument | Direction | Baseline | Target | Type (primary / secondary / guardrail)`
 4. **Instrumentation notes (Gainsight PX)** — the concrete events, features, or pages to
    tag; where a custom event is needed vs. what PX captures automatically
-5. **Guardrails** — metrics that must hold steady (e.g. task-completion time, error rate,
+5. **Data-ids for Gainsight** — a table of the exact `data-id` selectors wired into the
+   component's markup for PX to attach to: `data-id | Element | Event | Metric it serves`.
+   When an **"Instrumentation plan — data-ids (authoritative)"** block is provided below,
+   reproduce THOSE exact data-ids — do not invent or rename them. These same data-ids appear
+   in the generated coded component, so the plan and the code stay in lockstep. Note that PX
+   observes elements by these `data-id` attributes.
+6. **Guardrails** — metrics that must hold steady (e.g. task-completion time, error rate,
    support ticket volume)
 6. **Open measurement questions** — anything from `openQuestions` that blocks clean
    measurement, plus anything not currently instrumentable

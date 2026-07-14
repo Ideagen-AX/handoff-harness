@@ -204,6 +204,40 @@ export const SlideSpecSchema = z.object({
 });
 export type SlideSpec = z.infer<typeof SlideSpecSchema>;
 
+// The bridge between the analytics plan and the coded component. The analytics
+// stage decides which UI elements must be observable in Gainsight PX and assigns
+// each a stable `data-id`; the analytics-plan artifact documents these, and the
+// generated component wires the SAME data-ids into its markup so PX has a unique
+// selector to attach to. One source of truth → the two always agree.
+export const InstrumentationPlanSchema = z.object({
+  points: z
+    .array(
+      z.object({
+        dataId: z
+          .string()
+          .describe(
+            "The unique data-id attribute VALUE to attach to the element for Gainsight to select on. kebab-case, prefixed by the component (e.g. 'search-toolbar-cards-view'). Must be stable and unique across the component.",
+          ),
+        element: z
+          .string()
+          .describe(
+            "The specific UI control/element to instrument, described precisely enough to locate it in the markup (e.g. 'the Cards view-mode toggle button').",
+          ),
+        event: z
+          .enum(["click", "view", "change", "submit", "hover"])
+          .describe("The interaction Gainsight PX should observe on this element."),
+        metric: z
+          .string()
+          .describe("Which success metric or intended outcome (from the brief) this instrumentation serves."),
+        note: z.string().describe("What this measures and why it matters — one line."),
+      }),
+    )
+    .describe(
+      "The elements to instrument with data-ids so Gainsight PX can observe them. Only what a metric actually needs — typically 3–8 points, not every element.",
+    ),
+});
+export type InstrumentationPlan = z.infer<typeof InstrumentationPlanSchema>;
+
 // One downstream audience the harness fans out to.
 export type Audience = {
   id: string;

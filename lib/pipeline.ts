@@ -1,6 +1,6 @@
 import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type ToolSet } from "ai";
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
-import { ChangeBriefSchema, SlideSpecSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec } from "./types";
+import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan } from "./types";
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype } from "./tools";
 import { captureScreens, capturePrototypeState } from "./capture";
@@ -183,6 +183,7 @@ async function generate(opts: {
   examples?: string;
   captures?: Capture[];
   focus?: string;
+  extra?: string; // extra context appended after the spec (e.g. the instrumentation plan)
 }): Promise<Artifact> {
   const usableCaptures = (opts.captures ?? []).filter((c) => c.ok && c.url);
   const capturesBlock = usableCaptures.length
@@ -212,6 +213,7 @@ async function generate(opts: {
           opts.examples,
         ].join("\n")
       : "",
+    opts.extra ? `\n${opts.extra}\n` : "",
     "",
     opts.focus ? `Write the artifact, focusing ONLY on: ${opts.focus}.` : `Write the artifact for: ${opts.label}.`,
   ].join("\n");
@@ -325,10 +327,60 @@ async function generateSlide(opts: {
   return { audienceId: "slide", label: "Slide", content, slideSpec };
 }
 
+// ── Instrumentation plan (the analytics ↔ code bridge) ───────────────────────
+// From the brief's success metrics and UI, decide which elements Gainsight PX
+// must observe and assign each a stable data-id. This ONE structured plan is then
+// (a) documented in the analytics-plan artifact and (b) wired into the coded
+// component's markup — so the data-ids in the doc and the code always match.
+async function generateInstrumentation(opts: {
+  brief: ChangeBrief;
+  productContext: string;
+  subject?: string;
+}): Promise<InstrumentationPlan> {
+  const { object } = await generateObject({
+    model: MODEL_GENERATE,
+    maxOutputTokens: 3000,
+    schema: InstrumentationPlanSchema,
+    system: [
+      "You are planning analytics instrumentation for a UI change. Decide which UI elements Gainsight PX must observe to measure whether this change succeeds, and assign each a stable, unique data-id.",
+      "Your data-ids are AUTHORITATIVE: they will be documented in the analytics plan AND wired verbatim into the coded component's markup as `data-id` attributes, so PX has a unique selector. Make them sensible, unique, kebab-case.",
+      opts.subject
+        ? `Component/subject: ${opts.subject}. Derive a short kebab-case prefix from it (e.g. 'search-toolbar-') and prefix every data-id with it.`
+        : "Derive a short kebab-case prefix from the change's component and prefix every data-id with it.",
+      "",
+      "### Product context",
+      opts.productContext,
+    ].join("\n"),
+    prompt: [
+      "Derive the instrumentation plan from this change brief. Ground every point in the brief's successMetrics and intendedOutcomes, mapped to the ACTUAL UI elements named in whatChanged / visualManifest. One data-id per meaningful, measurable interaction — typically 3–8. Do not instrument everything; only what a metric needs.",
+      "",
+      JSON.stringify(opts.brief, null, 2),
+    ].join("\n"),
+  });
+  return object as InstrumentationPlan;
+}
+
+// Render the plan as a Markdown table for injection into the analytics-plan doc
+// and the code prompt — the single authoritative list of data-ids.
+function instrumentationToMarkdown(plan: InstrumentationPlan | null): string {
+  if (!plan?.points?.length) return "";
+  const rows = plan.points
+    .map((p) => `| \`${p.dataId}\` | ${p.element} | ${p.event} | ${p.metric} |`)
+    .join("\n");
+  return [
+    "### Instrumentation plan — data-ids for Gainsight (authoritative)",
+    "These `data-id` values are the Gainsight PX selectors for this change. They are wired into the coded component's markup, so use THESE exact ids — do not invent or rename them.",
+    "",
+    "| data-id | Element | Event | Metric it serves |",
+    "|---|---|---|---|",
+    rows,
+  ].join("\n");
+}
+
 // The coded developer artifact: a real, DS-grounded starting-point component in
 // the chosen framework (Vue by default). Separate from the dev handoff SPEC — the
 // designer asked for both. Injects the design-system reference so imports/tokens
-// are real, not invented.
+// are real, not invented, and the instrumentation plan so Gainsight data-ids are wired in.
 async function generateCode(opts: {
   brief: ChangeBrief;
   productContext: string;
@@ -336,7 +388,9 @@ async function generateCode(opts: {
   codeSpecText: string;
   framework: string;
   focus?: string;
+  instrumentation?: InstrumentationPlan | null;
 }): Promise<Artifact> {
+  const instrBlock = instrumentationToMarkdown(opts.instrumentation ?? null);
   const { text } = await generateText({
     model: MODEL_GENERATE,
     maxOutputTokens: 8000,
@@ -353,15 +407,26 @@ async function generateCode(opts: {
       "",
       "### Code-target spec",
       opts.codeSpecText,
+      instrBlock
+        ? [
+            "",
+            "### Gainsight instrumentation — REQUIRED",
+            "The analytics plan instruments this change via the data-ids below. Add each `data-id` attribute VERBATIM to the element described, so Gainsight PX has a unique selector to attach to. Put a short comment marking them as Gainsight PX instrumentation. Every data-id below must appear in your markup.",
+            instrBlock,
+          ].join("\n")
+        : "",
     ].join("\n"),
     prompt: [
       opts.focus
         ? `Implement this component: ${opts.focus}. It is the change's primary net-new UI.`
         : "Implement the change's primary new/changed UI as a single focused component.",
+      instrBlock ? "Wire in the required Gainsight data-id attributes on the elements named in the instrumentation plan." : "",
       "Use this change brief as the source of truth:",
       "",
       JSON.stringify(opts.brief, null, 2),
-    ].join("\n"),
+    ]
+      .filter(Boolean)
+      .join("\n"),
   });
   return {
     audienceId: "dev-code",
@@ -479,6 +544,24 @@ export async function* runPipeline(input: {
     message: `Drafting ${jobs.length + extra} artifact${jobs.length + extra === 1 ? "" : "s"}…`,
   };
   const productContext = await readReferenceDoc("product");
+
+  // The analytics ↔ code bridge: one instrumentation plan (Gainsight data-ids),
+  // shared by the analytics-plan doc and the coded component so they agree on what
+  // PX observes and which selectors it attaches to. Computed once, before the
+  // fan-out, whenever either of those two outputs is wanted. Best-effort.
+  let instrumentation: InstrumentationPlan | null = null;
+  if (wants("analytics-plan") || wants("dev-code")) {
+    try {
+      instrumentation = await generateInstrumentation({ brief, productContext, subject: input.subject });
+      const nPts = instrumentation?.points?.length ?? 0;
+      if (nPts) {
+        yield { type: "status", stage: "instrument", message: `Instrumentation plan: ${nPts} data-id${nPts > 1 ? "s" : ""} for Gainsight` };
+      }
+    } catch {
+      instrumentation = null; // the plan and code still generate without it
+    }
+  }
+
   // Artifacts that embed real screenshots inline (prose formats). The slide
   // references screenKeys instead and the deck exporter places the images.
   const IMAGE_ARTIFACTS = new Set(["case-study", "one-pager"]);
@@ -491,6 +574,8 @@ export async function* runPipeline(input: {
           productContext,
           examples: await readExamples(j.id),
           captures: IMAGE_ARTIFACTS.has(j.id) ? captures : undefined,
+          // The analytics plan documents the exact data-ids wired into the code.
+          extra: j.id === "analytics-plan" ? instrumentationToMarkdown(instrumentation) || undefined : undefined,
         }))(),
       j.id,
       j.label,
@@ -525,7 +610,7 @@ export async function* runPipeline(input: {
         (async () => {
           const dsReference = await readReferenceDoc("design-system");
           const { text: codeSpecText } = await readCodeSpec(framework);
-          return generateCode({ brief, productContext, dsReference, codeSpecText, framework, focus: newComponents[0]?.name });
+          return generateCode({ brief, productContext, dsReference, codeSpecText, framework, focus: newComponents[0]?.name, instrumentation });
         })(),
         "dev-code",
         `Developer component code (${framework})`,

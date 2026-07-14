@@ -16,6 +16,11 @@ grounded in the real design system.
 - Accessibility is mandatory (WCAG 2.2): semantic elements, keyboard operability, `aria-*`
   where needed, visible focus, roles for custom controls.
 - Responsive behaviour per the brief (this product's changes are often about adaptation).
+- **Analytics instrumentation:** when an instrumentation plan is provided, add its
+  `data-id` attributes VERBATIM to the exact elements named — these are the unique selectors
+  Gainsight PX attaches to. Put them on the real interactive element (button, input, toggle),
+  keep the values exactly as given, and add a short comment marking them as Gainsight PX
+  instrumentation. Every data-id in the plan must appear in the markup.
 
 **Output format — ONE Markdown document, in this order:**
 1. A short **banner**: `> ⚠️ Starting point — review required. Generated from the change brief; not tested.`
