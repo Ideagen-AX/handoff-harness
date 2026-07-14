@@ -18,8 +18,10 @@ warranted); the full Fixes table and sibling features are assembled at release t
 No marketing adjectives, no hype. Calm and factual.
 
 **Format:** Match the reference example's structure:
-1. **"Who is this article for?"** line — the audience + an access/permissions note
-2. **One-paragraph summary** of the change
+1. **One-line summary** — the very first line: a single sentence (a TL;DR) capturing the
+   release in one line, before anything else. Bold it.
+2. **"Who is this article for?"** line — the audience + an access/permissions note
+3. **One-paragraph summary** of the change
 3. **Features** — an `###` heading per capability, then prose explaining *how it works*
    ("This works by… once complete… is automatically…"). Enumerate prerequisites/integrations.
 4. **Known issues** — only if `risksEdgeCases` / `openQuestions` surface real ones: each with
@@ -27,6 +29,7 @@ No marketing adjectives, no hype. Calm and factual.
    where appropriate.
 
 **Must include:**
+- A bold one-line summary as the first line
 - The "Who is this article for?" opener
 - Mechanism-first feature description (how it works, step through the flow)
 - Any prerequisites/integration conditions stated plainly

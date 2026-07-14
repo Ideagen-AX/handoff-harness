@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const { prototypeUrl, note, baselineUrl, codebasePath, framework, enabledOutputs } = await req.json();
+  const { prototypeUrl, note, baselineUrl, codebasePath, framework, enabledOutputs, subject, componentSelector } =
+    await req.json();
 
   if (!prototypeUrl || typeof prototypeUrl !== "string") {
     return new Response(JSON.stringify({ error: "prototypeUrl is required" }), {
@@ -29,6 +30,8 @@ export async function POST(req: Request) {
           codebasePath: codebasePath || undefined,
           framework: framework || undefined,
           enabledOutputs: Array.isArray(enabledOutputs) ? enabledOutputs : undefined,
+          subject: subject || undefined,
+          componentSelector: componentSelector || undefined,
         })) {
           send(event);
         }

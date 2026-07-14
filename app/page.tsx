@@ -52,6 +52,8 @@ export default function Home() {
   const [baselineUrl, setBaselineUrl] = useState("https://forge-demo-toolbar-before.vercel.app/");
   const [codebasePath, setCodebasePath] = useState("");
   const [framework, setFramework] = useState("vue");
+  const [subject, setSubject] = useState("Search page toolbar");
+  const [componentSelector, setComponentSelector] = useState(".toolbar");
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -88,6 +90,8 @@ export default function Home() {
           codebasePath,
           framework,
           enabledOutputs: ALL_OUTPUT_IDS.filter((id) => enabled[id]),
+          subject,
+          componentSelector,
         }),
         signal: ac.signal,
       });
@@ -280,6 +284,26 @@ export default function Home() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}
+            disabled={running}
+          />
+        </label>
+        <label className="field">
+          <span className="lab">Component / subject — what the change is about (keeps the analysis on the component, not the demo page)</span>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="e.g. Search page toolbar"
+            disabled={running}
+          />
+        </label>
+        <label className="field">
+          <span className="lab">Component selector — scopes screenshots to the component (optional CSS)</span>
+          <input
+            type="text"
+            value={componentSelector}
+            onChange={(e) => setComponentSelector(e.target.value)}
+            placeholder=".toolbar"
             disabled={running}
           />
         </label>

@@ -167,6 +167,7 @@ export async function captureScreens(opts: {
   prototypeUrl: string;
   manifest: ChangeBrief["visualManifest"];
   runId: string;
+  defaultSelector?: string; // scope shots to the component when an entry has no selector
 }): Promise<Capture[]> {
   const manifest = opts.manifest ?? [];
   const placeholder = (reason: string): Capture[] =>
@@ -232,10 +233,10 @@ export async function captureScreens(opts: {
             /* keep going */
           }
         }
-        if (actions.some((a) => a.do === "click")) await new Promise((r) => setTimeout(r, 500));
+        if (actions.some((a) => a.do === "click")) await new Promise((r) => setTimeout(r, 900));
 
         const file = join(outDir, `${m.screenKey}.png`);
-        const selector = (m.selector ?? "").trim();
+        const selector = (m.selector || opts.defaultSelector || "").trim();
         let shot = false;
         if (selector) {
           const el = await page.$(selector);

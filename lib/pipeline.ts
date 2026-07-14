@@ -12,7 +12,7 @@ type DiffPart = { type: "text"; text: string } | { type: "image"; image: string 
 // the code level. This is what makes a URL baseline useful for styling/layout
 // changes — a text fetch misses them. Returns null when neither state could be
 // captured (falls back to the plain text diff).
-async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string): Promise<string | null> {
+async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string, subject?: string): Promise<string | null> {
   const [before, after] = await Promise.all([capturePrototypeState(beforeUrl), capturePrototypeState(afterUrl)]);
   if (!before.image && !before.html && !after.image && !after.html) return null;
 
@@ -22,11 +22,15 @@ async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string)
     {
       type: "text",
       text: [
-        "You are comparing two versions of the same UI — a BEFORE state and an AFTER state.",
+        subject
+          ? `You are comparing two versions of a single UI COMPONENT — the ${subject} — in a BEFORE state and an AFTER state.`
+          : "You are comparing two versions of the same UI — a BEFORE state and an AFTER state.",
         bothImages
           ? "For each you have a screenshot AND its rendered HTML/CSS markup."
           : "For each you have its rendered HTML/CSS markup.",
-        "Produce a precise, factual diff of what changed from BEFORE to AFTER — both visually (layout, spacing, styling, grouping, responsive behaviour) AND at the code level (markup structure, added/removed elements, class changes, inline styles, CSS rules in <style>). Ground every claim in the screenshots and markup; do not speculate.",
+        "IMPORTANT — these are ISOLATED COMPONENT DEMOS: the component is framed inside a demo page (a centered 'stage' card, a page background, possibly an <iframe> or other wrapper). That framing is SCAFFOLDING, not part of the component. Do NOT report changes to the page background, the stage/frame card, wrappers, iframes, or overall page format/structure — report ONLY changes to the component itself and its own behaviour. If the toolbar sits on a white rounded card, that card is the demo stage, not the toolbar.",
+        "Produce a precise, factual diff of what changed from BEFORE to AFTER — both visually (layout, spacing, styling, grouping, states, responsive behaviour) AND at the code level (markup structure, added/removed elements, class changes, inline styles, CSS rules in <style>). Ground every claim in the screenshots and markup; do not speculate.",
+        "Express colours, spacing, radii and type as design-system TOKENS — the CSS custom properties you see in the markup (e.g. --px-* / --ehsq-*) or DS token names — not raw hex values. Only give a hex value when no token applies, and say so.",
         note ? `Designer's note for context: ${note}` : "",
       ]
         .filter(Boolean)
@@ -56,7 +60,10 @@ async function understand(input: {
   note: string;
   baselineUrl?: string;
   codebasePath?: string;
+  subject?: string;
+  componentSelector?: string;
 }): Promise<ChangeBrief> {
+  const subject = input.subject?.trim();
   const guidance = await readChangeBriefGuidance();
 
   // Establish the "before" state: codebase (preferred) → baseline URL → inference.
@@ -76,7 +83,9 @@ async function understand(input: {
   // code level (screenshot + rendered HTML/CSS). Styling changes don't show up in
   // fetched text. Falls back to the plain text diff if capture is unavailable.
   const diffSummary =
-    !useCodebase && input.baselineUrl ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, input.note) : null;
+    !useCodebase && input.baselineUrl
+      ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, input.note, subject)
+      : null;
 
   let basisInstruction: string;
   if (useCodebase) {
@@ -103,10 +112,16 @@ async function understand(input: {
       "You are a senior product designer preparing a design-handoff change brief.",
       "Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('design-system'); (4) call inspectPrototype on the prototype URL to get its ACTUAL clickable control labels; (5) establish the baseline per the BASELINE instruction below; (6) produce the structured change brief.",
       "When filling each visualManifest entry's `actions`, use the EXACT control labels returned by inspectPrototype as click targets (e.g. if the layout control reads 'Modal', target 'Modal' — not a guessed 'Filter layout'). If inspectPrototype returned no labels, fall back to the most likely visible label and note lower confidence.",
+      subject
+        ? `SUBJECT: this change is about the ${subject}. The prototype is an ISOLATED DEMO that frames the ${subject} in a stage/page (centered card, page background, maybe an iframe/wrapper). Analyse and report ONLY the ${subject} and its own behaviour. IGNORE the demo scaffolding — page background, the stage/frame card it sits on, wrappers, iframes, page format/structure — and never report scaffolding as a component change (e.g. do NOT say "the toolbar became a rounded card" when that card is the demo stage).`
+        : "",
+      "Express styling (colours, spacing, radii, type) as design-system TOKENS — the CSS variables in the markup or DS token names from the reference — not raw hex values. Only use a hex value when no token applies, and flag it.",
       basisInstruction,
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
       "Populate the downstream-feeding fields deliberately: decisionLog (the reasoning trail — decisions, rationale, alternatives, honest tradeoffs), intendedOutcomes + successMetrics (what success looks like and how it could be measured in Gainsight), useCases (persona + scenario + concrete example), and visualManifest (the views worth capturing, each with a caption and annotation callouts, ordered by narrative importance).",
-      "For each visualManifest entry, also fill `actions` — the steps to drive the prototype INTO that state before its screenshot. To reach a mode/tab/panel, add a click whose `target` is the control's VISIBLE label (e.g. 'Cards', 'Calendar', 'Filters'). For a responsive/size-dependent state, add a setViewport with a realistic width (e.g. 480 mobile, 834 tablet, 1440 desktop). Leave `actions` empty only for the default landing view. Distinct states MUST have distinct actions, or their screenshots will be identical.",
+      "For each visualManifest entry, also fill `actions` — the steps to drive the prototype INTO that state before its screenshot. To reach a mode/tab/panel/menu, add a click whose `target` is the control's EXACT visible label from inspectPrototype (e.g. 'Options', 'Table', 'Cards'). For a responsive/size-dependent state, add a setViewport with a realistic width (e.g. 480 mobile, 834 tablet, 1440 desktop). Leave `actions` empty only for the default view. Distinct states MUST have distinct actions, or their screenshots come out identical.",
+      "Capture the component's DISTINCT, meaningful states — not the same view repeatedly. For a toolbar that means e.g.: default, responsive/mobile (setViewport), each display-mode selected (click each mode), any menu/panel open (click it), and an active/pressed control. Give each a distinct screenKey and the actions to reach it.",
+      "Set each visualManifest entry's `selector` to a CSS selector that scopes the screenshot to the COMPONENT (not the whole page) — the component is small and centered on the demo page, so an unscoped shot makes every state look the same. Use a selector wide enough to include any open menu/popover for menu-open states. If a component selector was provided with the run, prefer it; otherwise infer one from the markup/inspection.",
       "CRITICAL — do not confuse ENHANCED with NEW. A change is often an improvement to something that already exists (making existing views responsive, faster, or more accessible), NOT the introduction of a brand-new capability. Never state that a feature, mode, or view is 'new' or 'added' unless a baseline (codebase or baseline URL) confirms it was absent before. Without that confirmation, describe the change as an enhancement to existing behaviour and record the assumption in openQuestions. Read the designer's note literally but skeptically — 'added X' in a note may mean 'made existing X responsive'.",
       "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing. Where you must infer a decision or metric that the inputs don't state, still flag it in openQuestions.",
       "",
@@ -380,6 +395,8 @@ export async function* runPipeline(input: {
   codebasePath?: string;
   framework?: string;
   enabledOutputs?: string[];
+  subject?: string;
+  componentSelector?: string;
 }): AsyncGenerator<PipelineEvent> {
   // Which artifact types to produce. Empty/undefined = all. Component specs are
   // gated under "design-system" since they're a design-system deliverable.
@@ -406,7 +423,7 @@ export async function* runPipeline(input: {
       message: `Capturing ${manifest.length} screen${manifest.length > 1 ? "s" : ""} from the prototype…`,
     };
     const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    captures = await captureScreens({ prototypeUrl: input.prototypeUrl, manifest, runId });
+    captures = await captureScreens({ prototypeUrl: input.prototypeUrl, manifest, runId, defaultSelector: input.componentSelector });
     yield { type: "captures", captures };
     const failed = captures.filter((c) => !c.ok).length;
     if (failed) {
