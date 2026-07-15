@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Design-handoff communications agent — an AI SDK harness that fans a completed change out into audience-tailored artifacts for human review.",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

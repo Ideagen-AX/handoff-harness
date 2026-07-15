@@ -74,17 +74,32 @@ async function firstExisting(paths: string[]): Promise<string | null> {
  * the installed system Chrome/Edge. Returns null when no browser is available,
  * so every caller can degrade gracefully rather than throw.
  */
+// Records why the last serverless launch failed, so callers can surface it in
+// their degradation note (aids diagnosing the Vercel Chromium path).
+export let lastLaunchError: string | null = null;
+
 export async function launchBrowser(): Promise<import("puppeteer-core").Browser | null> {
   const { launch } = await import("puppeteer-core");
   if (IS_SERVERLESS) {
     try {
+      // @sparticuz/chromium only unpacks its bundled shared libraries (libnss3,
+      // etc.) when it detects an AWS-Lambda runtime via AWS_EXECUTION_ENV /
+      // AWS_LAMBDA_JS_RUNTIME. Vercel doesn't set those, so the libs are never
+      // extracted and Chromium fails with "libnss3.so: cannot open shared object
+      // file". Vercel's runtime is Amazon Linux 2023 — advertise a Node 20/AL2023
+      // runtime so the package extracts al2023.tar.br to /tmp/al2023/lib (already
+      // on LD_LIBRARY_PATH).
+      process.env.AWS_LAMBDA_JS_RUNTIME = "nodejs20.x";
       const chromium = (await import("@sparticuz/chromium")).default;
+      const executablePath = await chromium.executablePath();
       return await launch({
         args: [...chromium.args, "--hide-scrollbars"],
-        executablePath: await chromium.executablePath(),
+        executablePath,
         headless: true,
       });
-    } catch {
+    } catch (e) {
+      lastLaunchError = String((e as Error)?.message || e).slice(0, 300);
+      console.error("[launchBrowser] serverless chromium failed:", lastLaunchError);
       return null; // chromium binary unavailable
     }
   }
@@ -255,7 +270,11 @@ export async function captureScreens(opts: {
 
   const browser = await launchBrowser();
   if (!browser) {
-    return placeholder("No browser available for capture; attach screenshots manually.");
+    return placeholder(
+      lastLaunchError
+        ? `No browser available for capture: ${lastLaunchError}`
+        : "No browser available for capture; attach screenshots manually.",
+    );
   }
 
   try {

@@ -4,9 +4,9 @@ const nextConfig = {
   // serverless function bundles. Browser routes also need the serverless Chromium
   // binary (@sparticuz/chromium) traced in so capture/PDF work on Vercel.
   outputFileTracingIncludes: {
-    "/api/run": ["./specs/**/*", "./node_modules/@sparticuz/chromium/**"],
-    "/api/export": ["./node_modules/@sparticuz/chromium/**"],
-    "/api/slide-pdf": ["./specs/templates/**/*", "./node_modules/@sparticuz/chromium/**"],
+    "/api/run": ["./specs/**/*", "./node_modules/@sparticuz/chromium/**/*"],
+    "/api/export": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/slide-pdf": ["./specs/templates/**/*", "./node_modules/@sparticuz/chromium/**/*"],
     "/api/deck": ["./specs/templates/**/*"],
     "/api/bundle": ["./specs/templates/**/*"],
     "/api/email": ["./specs/templates/**/*"],
