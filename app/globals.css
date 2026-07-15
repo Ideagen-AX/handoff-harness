@@ -233,7 +233,7 @@ button.ghost { background: transparent; box-shadow: none; }
 
 /* Live activity feed — fixed in the right margin during (and after) a run. */
 .activity-feed {
-  position: fixed; top: 84px; right: 16px; width: 320px;
+  position: fixed; top: 84px; left: 16px; width: 320px;
   max-height: calc(100vh - 108px);
   display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--border);
@@ -270,9 +270,9 @@ button.ghost { background: transparent; box-shadow: none; }
 .activity-item.done .msg { color: var(--accent-strong); font-weight: 600; }
 .activity-item.error .msg { color: var(--danger); font-weight: 600; }
 
-/* On wide screens, shift the centered content left so nothing hides behind the feed. */
+/* On wide screens, shift the centered content right so nothing hides behind the feed. */
 @media (min-width: 1300px) {
-  body.feed-open .wrap { margin-right: 352px; }
+  body.feed-open .wrap { margin-left: 352px; }
 }
 /* On phones, the fixed panel would crowd the content — hide it (timer/status still show). */
 @media (max-width: 720px) {

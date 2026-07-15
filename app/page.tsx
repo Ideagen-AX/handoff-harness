@@ -344,7 +344,7 @@ export default function Home() {
           <div className="activity-feed-head">
             <span className="af-title">{running && <span className="spinner" />} Activity</span>
             <button className="af-toggle" onClick={() => setFeedOpen((o) => !o)} title={feedOpen ? "Collapse" : "Expand"}>
-              {feedOpen ? "→" : "←"}
+              {feedOpen ? "←" : "→"}
             </button>
           </div>
           {feedOpen && (

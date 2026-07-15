@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { resolve, relative, join, basename } from "node:path";
 import { readReferenceDoc } from "./specs";
-import { inspectClickables } from "./capture";
+import { inspectClickables, exploreState } from "./capture";
 
 // Crude but dependency-free HTML → readable text. Good enough to feed a model.
 function htmlToText(html: string): string {
@@ -124,6 +124,33 @@ export const inspectPrototype = tool({
   execute: async ({ url }) => {
     const { labels, note } = await inspectClickables(url);
     return { url, labels, count: labels.length, note };
+  },
+});
+
+// TOOL 5 — interactively drive the prototype to reveal UI hidden behind a
+// trigger (a drawer, modal, flyout menu, or inactive tab/toggle) and read the
+// resulting markup. This is what lets the brief describe the drawer's actual
+// contents instead of only the trigger button.
+export const explorePrototype = tool({
+  description:
+    "Interactively DRIVE the live prototype into a state and read the RESULTING markup. Use this to open UI that is HIDDEN behind a trigger — a drawer, modal, flyout menu, or an inactive tab/toggle — so you can analyse its ACTUAL contents, not just the initial screen. Give the ordered actions to reach the state (click a control by its visible label, set a viewport width, or wait). Returns the revealed region's markup, its now-visible control labels, and readable text. Call it once per distinct hidden state that matters (e.g. open the drawer; switch to each tab). If the subject is behind a trigger, you MUST open it here before describing what changed.",
+  inputSchema: z.object({
+    url: z.string().describe("The full URL of the hosted prototype"),
+    actions: z
+      .array(
+        z.object({
+          do: z.enum(["click", "setViewport", "wait"]),
+          target: z.string().optional().describe("For 'click': the control's EXACT visible label/text (e.g. 'Filters') or a CSS selector"),
+          width: z.number().optional().describe("For 'setViewport': viewport width in px (e.g. 480, 1440)"),
+          height: z.number().optional().describe("For 'setViewport': viewport height in px"),
+          ms: z.number().optional().describe("For 'wait': milliseconds to wait"),
+        }),
+      )
+      .describe("Ordered steps to reach the state, e.g. [{do:'click', target:'Filters'}] to open the filter drawer"),
+    selector: z.string().optional().describe("Optional CSS selector scoping the read to the component/region"),
+  }),
+  execute: async ({ url, actions, selector }) => {
+    return exploreState(url, { actions, selector });
   },
 });
 

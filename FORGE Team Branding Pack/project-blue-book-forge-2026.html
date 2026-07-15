@@ -28,7 +28,9 @@ body{margin:0;font-family:"Gilroy","Helvetica Neue",Arial,sans-serif;background:
 .brand{position:absolute;top:30px;left:8vw;display:flex;align-items:center;gap:12px;z-index:3}
 .brand .word{font-weight:500;letter-spacing:-.05em;font-size:clamp(16px,1.6vw,24px)}
 .brand svg{width:26px;height:36px}
-.slideno{position:absolute;top:36px;right:8vw;font-size:clamp(10px,1vw,14px);color:rgba(255,255,255,.55);z-index:3;letter-spacing:.15em}
+/* Sits in-line with the fixed "Back Home" pack button (top:64px, right:18px),
+   to its left with a clear gap so the two never touch at any width. */
+.slideno{position:absolute;top:78px;right:180px;font-size:clamp(10px,1vw,14px);color:rgba(255,255,255,.55);z-index:65;letter-spacing:.15em}
 .eyebrow{font-size:clamp(11px,1.2vw,16px);letter-spacing:.2em;text-transform:uppercase;color:var(--brightpink);font-weight:700;margin-bottom:2.2vh;display:flex;align-items:center;gap:10px}
 .eyebrow .dot{width:9px;height:9px;border-radius:50%;background:var(--brightpink);animation:blink 2.4s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}

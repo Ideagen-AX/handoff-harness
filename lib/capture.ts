@@ -187,6 +187,94 @@ export async function inspectClickables(url: string): Promise<{ labels: string[]
 }
 
 /**
+ * Drive the prototype into a state (open a drawer, switch a tab, toggle a mode)
+ * and return the RESULTING rendered markup + now-visible control labels — so the
+ * Understand agent can analyse UI that's hidden behind a trigger, not just the
+ * initial screen. Reuses the same action-driving + iframe-resolution the capture
+ * step uses. Degrades gracefully (returns ok:false) when no browser is available.
+ */
+export async function exploreState(
+  url: string,
+  opts: { actions?: Action[]; selector?: string },
+): Promise<{ ok: boolean; markup?: string; text?: string; labels?: string[]; note?: string }> {
+  const browser = await launchBrowser();
+  if (!browser) {
+    return { ok: false, note: lastLaunchError ? `No browser available: ${lastLaunchError}` : "No browser available for exploration." };
+  }
+  try {
+    const page = await browser.newPage();
+    const actions = (opts.actions ?? []) as Action[];
+    const vp = actions.find((a) => a.do === "setViewport" && (a.width ?? 0) > 0);
+    await page.setViewport({
+      width: vp?.width ?? 1440,
+      height: vp?.height && vp.height > 0 ? vp.height : 900,
+      deviceScaleFactor: 1,
+    });
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    await new Promise((r) => setTimeout(r, 600));
+
+    // Operate inside the frame that holds the component (demo pages embed it in
+    // an <iframe>); navigate to the frame's own URL so its DOM is readable.
+    const selector = (opts.selector || "").trim();
+    let target = selector ? await resolveTarget(page, selector, "") : null;
+    if (target && target.frame !== page.mainFrame()) {
+      const frameUrl = target.frame.url();
+      if (/^https?:/i.test(frameUrl)) {
+        try {
+          await page.goto(frameUrl, { waitUntil: "networkidle2", timeout: 30000 });
+          await new Promise((r) => setTimeout(r, 500));
+          target = await resolveTarget(page, selector, "");
+        } catch {
+          /* keep the original in-frame target */
+        }
+      }
+    }
+    const ctx = target?.frame ?? page.mainFrame();
+
+    // Drive into the state (best-effort; a failed step never sinks the read).
+    for (const a of actions) {
+      try {
+        if (a.do === "click") await clickTarget(ctx, a.target ?? "");
+        else if (a.do === "wait") await new Promise((r) => setTimeout(r, Math.min(a.ms ?? 0, 5000)));
+      } catch {
+        /* keep going */
+      }
+    }
+    if (actions.some((a) => a.do === "click")) await new Promise((r) => setTimeout(r, 800));
+
+    // Read the resulting markup. Prefer a newly-visible drawer/modal/menu/panel
+    // (the revealed content the caller wants); else the component; else the body.
+    const { markup, labels } = await ctx.evaluate((sel: string) => {
+      const clean = (s: string) => (s || "").replace(/\s+/g, " ").trim();
+      const root = (sel ? (document.querySelector(sel) as HTMLElement | null) : null) || document.body;
+      const overlay = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '[role="dialog"],[aria-modal="true"],[class*="drawer"],[class*="modal"],[role="menu"],[class*="flyout"],[class*="popover"],[class*="panel"]',
+        ),
+      ).find((e) => {
+        const r = e.getBoundingClientRect();
+        const st = getComputedStyle(e);
+        return r.width > 40 && r.height > 40 && st.display !== "none" && st.visibility !== "hidden" && parseFloat(st.opacity || "1") > 0.01;
+      });
+      const el = overlay || root;
+      const labels = new Set<string>();
+      el.querySelectorAll<HTMLElement>("button,[role=button],[role=tab],a,label,input,select,[class*=toggle],[class*=tab]").forEach((e) => {
+        const t = clean(e.textContent || "") || clean(e.getAttribute("aria-label") || "") || clean(e.getAttribute("placeholder") || "");
+        if (t && t.length <= 40) labels.add(t);
+      });
+      return { markup: clean(el.outerHTML).slice(0, 12000), labels: Array.from(labels) };
+    }, selector);
+
+    const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000);
+    return { ok: true, markup, text, labels };
+  } catch (err) {
+    return { ok: false, note: `Exploration failed: ${String(err)}` };
+  } finally {
+    await browser?.close().catch(() => {});
+  }
+}
+
+/**
  * Locate the frame that actually contains the component. Demo/embed pages often
  * render the real component inside an <iframe> (e.g. a before/after comparison
  * that loads `component.html?embed=1` in each pane), so the selector won't match

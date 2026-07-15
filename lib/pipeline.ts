@@ -2,7 +2,7 @@ import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type 
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan, type StoredRun } from "./types";
 import { stat } from "node:fs/promises";
-import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype } from "./tools";
+import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype, explorePrototype } from "./tools";
 import { captureScreens, capturePrototypeState } from "./capture";
 import { APP_VERSION } from "./version";
 import { saveRun, projectSlug } from "./library";
@@ -44,6 +44,11 @@ function toolActivity(toolName: string, input: unknown): string {
   switch (toolName) {
     case "fetchPrototype": return "Fetched the prototype page";
     case "inspectPrototype": return "Inspected the prototype's live controls";
+    case "explorePrototype": {
+      const acts = Array.isArray(arg.actions) ? (arg.actions as Array<Record<string, unknown>>) : [];
+      const click = acts.find((a) => a.do === "click" && typeof a.target === "string");
+      return click ? `Opened “${click.target}” to inspect hidden UI` : "Explored a hidden UI state";
+    }
     case "readReference": {
       const name = typeof arg.name === "string" ? arg.name : "";
       return name ? `Read the ${name} reference` : "Read a reference doc";
@@ -156,7 +161,7 @@ async function understand(input: {
     }
   }
 
-  const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype };
+  const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype, explorePrototype };
   if (useCodebase) tools.readCodebase = makeCodebaseTool(codeRoot!);
 
   // For a URL baseline, diff the two prototypes up front — visually AND at the
@@ -185,7 +190,9 @@ async function understand(input: {
   const agent = new ToolLoopAgent({
     model: MODEL_UNDERSTAND,
     tools,
-    stopWhen: stepCountIs(useCodebase ? 32 : 18),
+    // Extra headroom over the base tool set so the agent can open a few hidden
+    // states (drawer, modal, each tab) via explorePrototype before emitting.
+    stopWhen: stepCountIs(useCodebase ? 36 : 26),
     // The change brief is a large object; give it room so it isn't truncated
     // into invalid JSON (the cause of intermittent "no object generated").
     maxOutputTokens: 16000,
@@ -197,7 +204,7 @@ async function understand(input: {
     },
     instructions: [
       "You are a senior product designer preparing a design-handoff change brief.",
-      `Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('${designRef}') — the design source to compare against, its components/tokens/conventions; (4) call inspectPrototype on the prototype URL to get its ACTUAL clickable control labels; (5) establish the baseline per the BASELINE instruction below; (6) produce the structured change brief. Judge componentImpact against THIS design source's components.`,
+      `Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('${designRef}') — the design source to compare against, its components/tokens/conventions; (4) call inspectPrototype on the prototype URL to get its ACTUAL clickable control labels; (5) if the subject is HIDDEN behind a trigger (a drawer, modal, flyout menu, or an inactive tab/toggle — you'll see the trigger label but not its contents), call explorePrototype with the click action(s) to OPEN it and read the revealed markup — once per hidden state that matters (open the drawer; switch to each tab); (6) establish the baseline per the BASELINE instruction below; (7) produce the structured change brief. Judge componentImpact against THIS design source's components.`,
       "When filling each visualManifest entry's `actions`, use the EXACT control labels returned by inspectPrototype as click targets (e.g. if the layout control reads 'Modal', target 'Modal' — not a guessed 'Filter layout'). If inspectPrototype returned no labels, fall back to the most likely visible label and note lower confidence.",
       subject
         ? `SUBJECT: this change is about the ${subject}. The prototype is an ISOLATED DEMO that frames the ${subject} in a stage/page (centered card, page background, maybe an iframe/wrapper). Analyse and report ONLY the ${subject} and its own behaviour. IGNORE the demo scaffolding — page background, the stage/frame card it sits on, wrappers, iframes, page format/structure — and never report scaffolding as a component change (e.g. do NOT say "the toolbar became a rounded card" when that card is the demo stage).`
@@ -205,7 +212,8 @@ async function understand(input: {
       "Express styling (colours, spacing, radii, type) as design-system TOKENS — the CSS variables in the markup or DS token names from the reference — not raw hex values. Only use a hex value when no token applies, and flag it.",
       basisInstruction,
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
-      "Call each tool AT MOST ONCE — you have everything after fetchPrototype, the two readReference calls, inspectPrototype, and the baseline step. Do NOT re-fetch or re-inspect. As soon as you have that context, STOP calling tools and emit the structured change brief; the very next step after gathering must be the final brief, not another tool call.",
+      "NEVER describe UI you could have opened as unexaminable. If a component is hidden behind a trigger (drawer, modal, flyout, inactive tab/toggle), you MUST use explorePrototype to open it and analyse its real contents — do not write that you could 'only see the trigger'. The screenshot stage will open these states too, so your analysis must match what will be shown.",
+      "Call fetchPrototype, each readReference, and inspectPrototype AT MOST ONCE. explorePrototype MAY be called several times — once per distinct hidden state worth opening (the drawer, each tab, a toggled mode) — but don't re-open the same state. Once you've opened the states that matter and have your context, STOP calling tools and emit the structured change brief; do not loop.",
       "Populate the downstream-feeding fields deliberately: decisionLog (the reasoning trail — decisions, rationale, alternatives, honest tradeoffs), intendedOutcomes + successMetrics (what success looks like and how it could be measured in Gainsight), useCases (persona + scenario + concrete example), and visualManifest (the views worth capturing, each with a caption and annotation callouts, ordered by narrative importance).",
       "For each visualManifest entry, also fill `actions` — the steps to drive the prototype INTO that state before its screenshot. To reach a mode/tab/panel/menu, add a click whose `target` is the control's EXACT visible label from inspectPrototype (e.g. 'Options', 'Table', 'Cards'). For a responsive/size-dependent state, add a setViewport with a realistic width (e.g. 480 mobile, 834 tablet, 1440 desktop). Leave `actions` empty only for the default view. Distinct states MUST have distinct actions, or their screenshots come out identical.",
       "IMPORTANT for collapsed/overflow menus: some controls only exist at a particular width — e.g. discrete buttons that collapse into an overflow / 'more' / 'Tools' / 'Options' menu on narrower screens (or are inline on wide screens). If a menu/trigger only appears at a certain width, the click action MUST be preceded by a setViewport to a width where that trigger is actually visible (put the setViewport action first, then the click). Clicking a control that is hidden at the current width opens nothing — the shot will look like the default. So for a 'menu open' state on a component that collapses, set the narrower viewport AND click the trigger.",
