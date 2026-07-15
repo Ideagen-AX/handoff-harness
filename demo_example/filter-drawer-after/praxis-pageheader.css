@@ -1,0 +1,31 @@
+/* =====================================================================
+   PRAXIS PAGE HEADER — shared page-header component (workspace, record,
+   search). Breadcrumb + icon + title on a --px-page fill that covers the
+   fixed body dot-grid, an inset hairline divider centred in the gap to the
+   toolbar, and (below) the toolbar fade. Content differs per page; the
+   underpinnings are shared. Each page sets --ph-pad-x to its own horizontal
+   content rhythm (workspace 32px, record 24px, search 20px). Header icons
+   use the Material Symbols font (loaded on every page).
+   ===================================================================== */
+.pageheader{position:relative;padding:16px var(--ph-pad-x,24px) 10px;background:var(--px-page);}
+.pageheader::after{content:"";position:absolute;left:var(--ph-pad-x,24px);right:var(--ph-pad-x,24px);
+  bottom:0;height:1px;background:var(--ehsq-color-border-default);}
+
+.breadcrumb{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;
+  font-size:.8125rem;font-weight:600;color:var(--ehsq-color-text-secondary);}
+.breadcrumb a{color:var(--ehsq-color-text-secondary);text-decoration:none;}
+.breadcrumb a:hover{color:var(--ehsq-color-text-primary);}
+.breadcrumb__home{display:inline-flex;align-items:center;color:var(--ehsq-color-text-disabled);}
+.breadcrumb__sep{display:inline-flex;align-items:center;color:var(--ehsq-color-text-disabled);}
+.breadcrumb__current{display:inline-flex;align-items:center;gap:6px;color:var(--ehsq-color-text-primary);}
+.breadcrumb .material-symbols-rounded{font-size:18px;line-height:1;}
+
+.pageheader__titlerow{display:flex;align-items:center;gap:12px;}
+.pageheader__icon{width:32px;height:32px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;background:var(--ehsq-color-pink-50);color:var(--ehsq-color-white);
+  box-shadow:0 1px 2px rgba(16,36,58,.18),inset 0 .5px 0 rgba(255,255,255,.25);}
+.pageheader__icon .material-symbols-rounded{font-size:20px;}
+.pageheader__icon .icon{width:20px;height:20px;}
+.pageheader__title{margin:0;font-size:var(--ehsq-type-size-xl);font-weight:700;line-height:1.25;
+  color:var(--ehsq-color-text-primary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pageheader__status{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;}

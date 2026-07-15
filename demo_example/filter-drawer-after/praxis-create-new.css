@@ -1,0 +1,251 @@
+/* =====================================================================
+   PRAXIS CREATE NEW — the shared "create a new record" component.
+
+   A nav-anchored frosted flyout (opens right of the nav-rail Create button)
+   with three views: Shortcuts, All, Templates. Praxis material throughout:
+   frosted glass + lit-edge elevation, light header, rounded Find pill, a
+   top segmented view-switch, and lit-edge tiles whose icons are tinted by
+   the record type's solution.
+
+   Consumed by both the workspace and the record page. Also lightly Praxis-
+   ifies the shared shell classes (.cn-overlay / .cn-modal / .cn-head …) that
+   the Save-workspace dialog reuses.
+   ===================================================================== */
+
+/* Material Symbols base — so the component's icons render wherever it's used
+   (the record page doesn't otherwise define this class). Matches concierge-base. */
+.material-symbols-rounded{
+  font-family:"Material Symbols Rounded"; font-weight:normal; font-style:normal;
+  font-size:24px; line-height:1; letter-spacing:normal; text-transform:none;
+  display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr;
+  -webkit-font-feature-settings:"liga"; -webkit-font-smoothing:antialiased;
+  user-select:none; vertical-align:middle;
+}
+
+/* ---- Scrim (also used by the Save-workspace dialog) ---- */
+.cn-overlay{
+  position:fixed; inset:0; z-index:120;
+  display:grid; place-items:center;
+  background:rgba(16,36,58,.18);
+  padding:var(--ehsq-space-24);
+  opacity:1;
+  transition:opacity .18s ease, display .18s allow-discrete;
+}
+.cn-overlay[hidden]{ display:none; opacity:0; }
+@starting-style{ .cn-overlay:not([hidden]){ opacity:0; } }
+
+/* ---- Standalone scrim — for pages that anchor the flyout directly (e.g. the
+       record page uses its own [hidden]-toggled .cn-flyout, not .cn-overlay).
+       Sits just below the flyout (z120) to dim the page like the workspace. ---- */
+.cn-scrim{
+  position:fixed; inset:0; z-index:119;
+  background:rgba(16,36,58,.18);
+  opacity:1; transition:opacity .18s ease, display .18s allow-discrete;
+}
+.cn-scrim[hidden]{ display:none; opacity:0; }
+@starting-style{ .cn-scrim:not([hidden]){ opacity:0; } }
+
+/* ---- Create New flyout panel — anchored to the nav rail (position:fixed
+       ignores the scrim's centering) ---- */
+.cn-flyout{
+  position:fixed; z-index:120;
+  top:calc(var(--appbar-height, 64px) + 8px);
+  left:calc(var(--ehsq-navrail-width, 56px) + 8px);
+  width:468px;
+  max-width:calc(100vw - var(--ehsq-navrail-width, 56px) - 24px);
+  max-height:calc(100vh - var(--appbar-height, 64px) - 24px);
+  display:flex; flex-direction:column; overflow:hidden;
+  /* Frosted glass so the solid tiles read against it (a solid panel made the
+     white/dark tiles blend in). Translucent fill (theme-aware via color-mix)
+     so the blur actually shows through; heavy blur for a clean frost. */
+  background:color-mix(in srgb, var(--px-surface) 60%, transparent);
+  -webkit-backdrop-filter:saturate(1.35) blur(16px); backdrop-filter:saturate(1.35) blur(16px);
+  border:0; border-radius:16px;
+  box-shadow:var(--px-overlay), inset 0 .5px 0 var(--px-edge);
+  color:var(--ehsq-color-text-primary);
+  /* Open/close animation + smooth widen when switching to the All view. */
+  opacity:1; transform:none; transform-origin:top left;
+  transition:opacity .18s ease,
+             transform .24s var(--ehsq-ease-default, cubic-bezier(.32,.72,0,1)),
+             width .26s var(--ehsq-ease-default, cubic-bezier(.32,.72,0,1)),
+             display .24s allow-discrete;
+}
+/* Standalone use (record page toggles the flyout's own [hidden], no scrim) */
+.cn-flyout[hidden]{ display:none; opacity:0; transform:translateY(-8px) scale(.985); }
+@starting-style{
+  .cn-flyout:not([hidden]){ opacity:0; transform:translateY(-8px) scale(.985); }
+}
+
+/* ---- Wide multi-column view (All tab) — less scrolling ---- */
+.cn-flyout--wide{ width:1080px; }
+.cn-flyout--wide .cn-content{ column-count:3; column-gap:20px; }
+.cn-flyout--wide .cn-group{ break-inside:avoid; margin-top:0; margin-bottom:16px; }
+.cn-flyout--wide .cn-grid{ grid-template-columns:1fr; }  /* items stack within each narrower group column */
+
+/* ---- Save-workspace dialog panel — centered Praxis card ---- */
+.cn-modal{
+  width:768px; max-width:100%; max-height:min(86vh, 820px);
+  display:flex; flex-direction:column; overflow:hidden;
+  background:var(--px-surface); border:0; border-radius:16px;
+  box-shadow:var(--px-overlay), inset 0 .5px 0 var(--px-edge);
+  color:var(--ehsq-color-text-primary);
+}
+
+/* ---- Light header (shared) ---- */
+.cn-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px 8px; flex-shrink:0;
+}
+.cn-head__title{ display:flex; align-items:center; gap:8px; font-size:16px; font-weight:700; color:var(--ehsq-color-text-primary); }
+.cn-head__title .material-symbols-rounded{ font-size:20px; color:var(--ehsq-color-interactive-default); }
+.cn-close{
+  width:30px; height:30px; display:grid; place-items:center;
+  border:0; background:transparent; color:var(--ehsq-color-text-secondary);
+  border-radius:8px; cursor:pointer;
+}
+.cn-close .material-symbols-rounded{ font-size:20px; }
+.cn-close:hover{ background:var(--px-hover); color:var(--ehsq-color-text-primary); }
+
+/* ---- Controls: Find pill + segmented view switch (top) ---- */
+.cn-controls{ padding:0 16px 8px; display:flex; flex-direction:column; gap:10px; flex-shrink:0; }
+.cn-find{
+  display:flex; align-items:center; gap:8px; height:38px; padding:0 12px;
+  border-radius:999px; background:var(--px-surface); box-shadow:var(--px-tool-shadow);
+}
+.cn-find .material-symbols-rounded{ font-size:20px; color:var(--ehsq-color-text-secondary); flex-shrink:0; }
+.cn-find input{
+  flex:1; min-width:0; border:0; outline:0; background:transparent; padding:0;
+  font:inherit; font-size:14px; font-weight:600; color:var(--ehsq-color-text-primary);
+}
+.cn-find input::placeholder{ color:var(--ehsq-color-text-secondary); font-weight:500; }
+
+.cn-seg{
+  display:flex; gap:2px; padding:3px;
+  background:var(--px-chip); border-radius:12px; flex-shrink:0;
+}
+.cn-seg__btn{
+  flex:1; height:30px; border:0; background:transparent; border-radius:9px;
+  font:inherit; font-size:13px; font-weight:600; color:var(--ehsq-color-text-secondary);
+  cursor:pointer; transition:background var(--dur-fast,.18s) ease, color var(--dur-fast,.18s) ease;
+}
+.cn-seg__btn:hover{ color:var(--ehsq-color-text-primary); }
+.cn-seg__btn--active{ background:var(--px-surface); color:var(--ehsq-color-interactive-default); box-shadow:var(--px-tool-shadow); }
+.cn-seg[hidden]{ display:none; }
+
+/* ---- Body (scrolls) ---- */
+.cn-body{ padding:4px 16px 16px; overflow-y:auto; flex:1; }
+
+/* ---- Solution groups ---- */
+.cn-group + .cn-group{ margin-top:16px; }
+.cn-group__head{ display:flex; align-items:center; gap:8px; height:32px; }
+.cn-group__icon{
+  width:24px; height:24px; border-radius:8px; display:grid; place-items:center; flex-shrink:0;
+  background:color-mix(in srgb, var(--cn-tone, var(--ehsq-color-teal-70)) 14%, transparent);
+  color:var(--cn-tone, var(--ehsq-color-teal-70));
+}
+.cn-group__icon .material-symbols-rounded{ font-size:16px; }
+.cn-group__title{ font-size:13px; font-weight:700; letter-spacing:.01em; color:var(--ehsq-color-text-primary); }
+
+/* PREVIEW: Module Selector's section-label group headers applied to Create New
+   (solid tone marker + uppercase tracked title in the solution colour). */
+.cn-flyout .cn-group__head{ gap:8px; height:24px; }
+.cn-flyout .cn-group__icon{ width:22px; height:22px; border-radius:6px; background:var(--cn-tone); color:#fff; }
+.cn-flyout .cn-group__icon .material-symbols-rounded{ font-size:15px; }
+.cn-flyout .cn-group__title{ text-transform:uppercase; font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--cn-tone); }
+
+/* Solution tones (icons take a brand color per solution) */
+.cn-group--pink{   --cn-tone:var(--ehsq-color-pink-60); }
+.cn-group--teal{   --cn-tone:var(--ehsq-color-teal-70); }
+.cn-group--blue{   --cn-tone:var(--ehsq-color-blue-60); }
+.cn-group--orange{ --cn-tone:var(--ehsq-color-orange-60); }
+.cn-group--purple{ --cn-tone:var(--ehsq-color-purple-60); }
+.cn-group--green{  --cn-tone:var(--ehsq-color-green-60); }
+
+/* ---- Record-type tiles ---- */
+.cn-grid{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; padding:8px 0 2px; }
+.cn-item{
+  display:flex; align-items:center; gap:10px; height:46px; padding:0 10px;
+  background:var(--px-surface); border:0; border-radius:10px; box-shadow:var(--px-tool-shadow);
+  font:inherit; font-size:14px; font-weight:600; color:var(--ehsq-color-text-primary);
+  text-align:left; cursor:pointer; min-width:0;
+  transition:box-shadow var(--dur-fast,.18s) ease;
+}
+.cn-item:hover{ box-shadow:var(--px-tool-shadow-hover); }
+.cn-item__icon{
+  width:28px; height:28px; border-radius:8px; display:grid; place-items:center; flex-shrink:0;
+  background:color-mix(in srgb, var(--cn-tone, var(--ehsq-color-teal-70)) 14%, transparent);
+  color:var(--cn-tone, var(--ehsq-color-teal-70));
+}
+.cn-item__icon .material-symbols-rounded{ font-size:18px; }
+.cn-item__label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---- Template cards (a record type, partially filled — richer than a tile) ---- */
+.cn-tpl-list{ display:flex; flex-direction:column; gap:8px; padding:8px 0 2px; }
+.cn-tpl{
+  display:flex; align-items:flex-start; gap:10px; width:100%; padding:10px;
+  background:var(--px-surface); border:0; border-radius:12px; box-shadow:var(--px-tool-shadow);
+  font:inherit; text-align:left; cursor:pointer;
+  transition:box-shadow var(--dur-fast,.18s) ease;
+}
+.cn-tpl:hover{ box-shadow:var(--px-tool-shadow-hover); }
+.cn-tpl__icon{
+  width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex-shrink:0;
+  background:color-mix(in srgb, var(--cn-tone, var(--ehsq-color-teal-70)) 14%, transparent);
+  color:var(--cn-tone, var(--ehsq-color-teal-70));
+}
+.cn-tpl__icon .material-symbols-rounded{ font-size:20px; }
+.cn-tpl__body{ min-width:0; flex:1; }
+.cn-tpl__name{ font-size:14px; font-weight:600; color:var(--ehsq-color-text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cn-tpl__meta{ font-size:12px; color:var(--ehsq-color-text-secondary); margin-top:1px; }
+
+.cn-manage-note{ font-size:var(--ehsq-type-size-sm); color:var(--ehsq-color-text-secondary); margin:8px 0 0; }
+
+/* ---- Footer (Save dialog + manage mode) ---- */
+.cn-footer{
+  flex-shrink:0; min-height:56px;
+  display:flex; align-items:center; justify-content:space-between; gap:var(--ehsq-space-16);
+  padding:10px 16px; border-top:1px solid var(--ehsq-color-border-default);
+  font-size:var(--ehsq-type-size-sm); color:var(--ehsq-color-text-secondary);
+}
+.cn-footer[hidden]{ display:none; }
+
+/* ---- Manage mode (quick-action picker): searchable checklist ---- */
+.cn-flyout--manage .cn-find{ width:100%; }
+.cn-list{ display:flex; flex-direction:column; }
+.cn-section-label{
+  font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ehsq-color-text-tertiary); padding:14px 0 4px;
+}
+.cn-row{
+  display:flex; align-items:center; gap:var(--ehsq-space-12);
+  min-height:46px; padding:5px 8px; width:100%;
+  border:0; border-radius:10px; background:transparent; cursor:pointer; font:inherit; text-align:left;
+  transition:background var(--dur-fast,.18s) ease;
+}
+.cn-row:hover{ background:var(--px-hover); }
+.cn-row__icon{
+  width:30px; height:30px; border-radius:8px; display:grid; place-items:center; flex-shrink:0;
+  background:var(--px-chip); color:var(--ehsq-color-text-secondary);
+}
+/* Glyph nested in its own span so the container keeps its grid centering
+   (a merged .cn-row__icon.material-symbols-rounded lets the font's display win). */
+.cn-row__icon .material-symbols-rounded{ font-size:18px; }
+.cn-row--selected .cn-row__icon{ background:var(--ehsq-color-teal-10); color:var(--ehsq-color-teal-80); }
+.cn-row__label{ font-size:14px; font-weight:600; color:var(--ehsq-color-text-primary); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cn-row__check{ margin-left:auto; font-size:22px !important; color:var(--ehsq-color-border-strong, #c8cfd7); flex-shrink:0; }
+.cn-row--selected .cn-row__check{ color:var(--ehsq-color-teal-70); }
+
+/* ---- Narrow screens (≤768px): dock the flyout to a full-width bottom sheet;
+       the "All" wide view collapses from 3 columns to 1, and the Save dialog
+       modal fills the width. ---- */
+@media (max-width: 768px){
+  .cn-flyout,
+  .cn-flyout--wide{
+    top:auto; left:0; right:0; bottom:0;
+    width:100%; max-width:100%; max-height:88vh;
+    border-radius:16px 16px 0 0;
+  }
+  .cn-flyout--wide .cn-content{ column-count:1; }
+  .cn-grid{ grid-template-columns:1fr; }
+  .cn-modal{ width:100%; max-width:100%; }
+}

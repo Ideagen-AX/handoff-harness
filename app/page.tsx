@@ -31,10 +31,10 @@ const OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] = [
 const ALL_OUTPUT_IDS = OUTPUTS.flatMap((g) => g.items.map((i) => i.id));
 
 export default function Home() {
-  const [projectName, setProjectName] = useState("Groom Lake Toolbar");
+  const [projectName, setProjectName] = useState("Praxis Toolbar");
   const [url, setUrl] = useState("https://forge-demo-toolbar-after.vercel.app/");
   const [designDescription, setDesignDescription] = useState(
-    "The Search page toolbar, restyled to the Groom Lake / Praxis design language: rounder, gradient-filled controls, refined icons, and a first-class dark mode. The control set and spacing are unchanged.",
+    "The Search page toolbar, restyled to the Praxis design language: rounder, gradient-filled controls, refined icons, and a first-class dark mode. The control set and spacing are unchanged.",
   );
   const [projectContext, setProjectContext] = useState(
     "Part of the wider EHSQ-E reskin toward the Praxis design language. This toolbar appears on Search pages across multiple modules (Incidents, Audits, CAPA, MOC).",
@@ -311,7 +311,7 @@ export default function Home() {
         </label>
         <label className="field">
           <span className="lab">Design project — groups this run in the library</span>
-          <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Groom Lake Toolbar" disabled={running} />
+          <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Praxis Toolbar" disabled={running} />
         </label>
         <label className="field">
           <span className="lab">Prototype URL</span>

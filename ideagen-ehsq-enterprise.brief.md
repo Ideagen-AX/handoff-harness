@@ -396,7 +396,7 @@ that can't send data to external AI APIs. (NG — confirm.)
 > **Design-system direction (⚠️ supersedes the skill, confirmed with owner 2026-07):** The earlier
 > "adopting Helix" framing is **out of date.** Helix adoption is **not** the current plan. The team
 > is moving toward a **new, emerging design system** inspired by recent **Mazlan prototypes** and
-> the internal **Groom Lake** project, and — with Claude Code now in the picture — Helix itself is
+> the internal **Praxis** project, and — with Claude Code now in the picture — Helix itself is
 > being reinvented. EHSQ-E may **inform the next Helix** rather than conform to the current one.
 > Until the new system is named and documented, do not assume Helix component parity is a goal.
 > See §12.
@@ -441,7 +441,7 @@ Standard EHS/quality terminology used across the product: ✅
 | **Priya** (Ideagen EHS Priya) | Mid-market EHS counterpart; includes **ProcessMap** (§8) ✅ |
 | **Contextual Awareness** | The "concierge UI" project; future home of a Mazlan dashboarding agent (§12) ✅ |
 | **Miramar** | Codename for the current **Vue 3 front-end**; legacy UI predates it (§9) ✅ |
-| **Groom Lake** | Internal project informing the new emerging design language (§9, §12) ✅ |
+| **Praxis** | Internal project informing the new emerging design language (§9, §12) ✅ |
 | **SPC** | Statistical Process Control — quality-domain capability on the roadmap (§12) ✅ |
 | **Helix** | Ideagen's design system; adoption is **no longer the plan** — see §9 ✅ |
 | **VPAT / ACR** | Accessibility Conformance Report documenting WCAG/508 conformance (§6) ✅ |
@@ -481,7 +481,7 @@ to be prescriptive. ⚠️
   major, ongoing area of activity. Detailed sequencing/end-state: 🔎 to source.
 - **Design-system redesign (supersedes prior "Helix adoption" narrative — see §9):** the team is
   pushing into a **new, emerging design system**, inspired by recent **Mazlan prototypes** and the
-  internal **Groom Lake** project. Notably, EHSQ-E may **inform the next generation of Helix**
+  internal **Praxis** project. Notably, EHSQ-E may **inform the next generation of Helix**
   rather than simply adopt it — Helix itself is being reinvented in light of Claude Code entering
   the picture. ✅
 - **Mazlan trajectory (concrete → planned):** ✅

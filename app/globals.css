@@ -5,8 +5,8 @@
 @font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-Bold.woff2") format("woff2"), url("/fonts/Gilroy-Bold.woff") format("woff"); font-weight: 700; font-style: normal; font-display: swap; }
 
 /* =====================================================================
-   Praxis (Groom Lake) design language — light default + dark override.
-   Mirrors praxis-core.css from the Groom Lake prototype: slate layered
+   Praxis design language — light default + dark override.
+   Mirrors praxis-core.css from the Praxis prototype: slate layered
    elevation with lit edges, 8/12/16 geometry, teal primary gradient,
    magenta selection, dot-grid page texture, Gilroy type.
    ===================================================================== */

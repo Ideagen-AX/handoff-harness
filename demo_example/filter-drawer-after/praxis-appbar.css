@@ -1,0 +1,134 @@
+/* =====================================================================
+   PRAXIS APP HEADER — the single, global app-header component.
+
+   One definition of the top app bar, consumed by both the record page and
+   the workspace so the header is literally the same component everywhere.
+   Faithfully carries the record page's styling (the canonical look).
+
+   Scope note: this file owns the header's VISUAL treatment (bar fill, brand,
+   search pill, Mazlan pill, avatar, icon buttons) but deliberately does NOT
+   set the bar's positioning — each page's shell keeps that (the record page
+   uses a relative bar inside a flex column; the workspace uses a fixed bar
+   with a .page top margin). Loaded LAST on each page so it is authoritative.
+   ===================================================================== */
+
+/* Bar fill + spacing (Praxis). Position/height stay in each page's shell. */
+body[data-variant="praxis"] .appbar{
+  background:var(--px-page); color:var(--ehsq-color-text-primary);
+  gap:var(--ehsq-space-16); padding:0 var(--ehsq-space-16);
+}
+
+/* Brand + logo */
+.appbar__brand{display:flex;align-items:center;flex-shrink:0;text-decoration:none;}
+.appbar__brand:hover{text-decoration:none;}
+.appbar__logo-img{height:26px;width:auto;display:block;}
+.appbar__logo-img--onlight{display:none;}
+.appbar__logo-img--ondark{display:block;}
+body[data-variant="praxis"] .appbar__logo-img--onlight{display:block;}
+body[data-variant="praxis"] .appbar__logo-img--ondark{display:none;}
+body[data-variant="praxis"][data-theme="dark"] .appbar__logo-img--onlight{display:none;}
+body[data-variant="praxis"][data-theme="dark"] .appbar__logo-img--ondark{display:block;}
+
+/* Search — Miramar base: white boxed field with module divider + teal button */
+.appbar__search{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:840px;margin:0;
+  display:flex;align-items:center;height:48px;border-radius:var(--ehsq-radius-md);overflow:hidden;background:#fff;}
+.appbar__module{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;width:256px;height:100%;padding:0 12px;
+  background:var(--ehsq-color-neutral-05);color:var(--ehsq-color-text-secondary);font-size:.8125rem;font-weight:600;white-space:nowrap;
+  border:0;border-right:1px solid var(--ehsq-color-border-default);font-family:inherit;cursor:pointer;}
+.appbar__search input{flex:1;border:0;outline:0;height:100%;padding:0 14px;font-family:inherit;font-size:.875rem;font-weight:600;
+  background:transparent;color:var(--ehsq-color-text-primary);min-width:0;}
+.appbar__search-btn{width:40px;height:100%;border:0;background:var(--ehsq-color-interactive-default);color:#fff;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.appbar__search-btn:hover{background:var(--ehsq-color-interactive-hover);}
+/* Praxis: fully-rounded floating pill; module + magnifier are borderless */
+body[data-variant="praxis"] .appbar__search{height:44px;border-radius:var(--ehsq-radius-full);overflow:visible;
+  background:var(--ehsq-color-surface-default);padding:0 6px 0 4px;box-shadow:0 0 0 1px rgba(16,36,58,.08),0 1px 2px rgba(16,36,58,.05);}
+body[data-variant="praxis"][data-theme="dark"] .appbar__search{box-shadow:0 0 0 1px rgba(255,255,255,.10);}
+body[data-variant="praxis"] .appbar__module{justify-content:flex-start;gap:6px;width:auto;height:56%;padding:0 16px 0 14px;
+  background:transparent;border-right:1px solid var(--ehsq-color-border-default);}
+body[data-variant="praxis"] .appbar__search-btn{background:transparent;color:var(--ehsq-color-text-secondary);border-radius:var(--ehsq-radius-full);}
+body[data-variant="praxis"] .appbar__search-btn:hover{background:transparent;color:var(--ehsq-color-text-primary);}
+
+/* Right-side cluster */
+.appbar__right{display:flex;align-items:center;gap:var(--ehsq-space-8);margin-left:auto;}
+.appbar__ai{position:relative;}
+
+/* Mazlan pill (branded four-dot mark + label) */
+.appbar__mazlan{display:inline-flex;align-items:center;gap:var(--ehsq-space-8);height:36px;padding:0 var(--ehsq-space-12);
+  background:rgba(255,255,255,.12);color:var(--ehsq-color-text-inverse);border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;font-family:inherit;font-size:var(--ehsq-type-size-sm);font-weight:600;cursor:pointer;flex-shrink:0;
+  transition:background .15s,border-color .15s;}
+.appbar__mazlan:hover{background:rgba(255,255,255,.2);}
+/* Light neutral pill — same lit-edge surface convention as the nav-rail tools
+   and the search pill. The four-dot mark keeps its teal→pink signature (its
+   dark-slate dot reads on the light surface, so no white-dot override needed). */
+body[data-variant="praxis"] .appbar__mazlan{
+  background:var(--px-surface); color:var(--ehsq-color-text-secondary); border:0;
+  box-shadow:0 0 0 .5px rgba(16,36,58,.06),0 1px 2px rgba(16,36,58,.05);
+}
+body[data-variant="praxis"] .appbar__mazlan:hover{
+  filter:none; color:var(--ehsq-color-text-primary);
+  box-shadow:0 0 0 .5px rgba(16,36,58,.09),0 2px 6px -1px rgba(16,36,58,.14);
+}
+body[data-variant="praxis"][data-theme="dark"] .appbar__mazlan{
+  background:rgba(255,255,255,.06); color:var(--ehsq-color-text-secondary); border:0;
+  box-shadow:0 0 0 .5px rgba(255,255,255,.10);
+}
+body[data-variant="praxis"][data-theme="dark"] .appbar__mazlan:hover{
+  background:rgba(255,255,255,.10); color:#fff;
+}
+
+/* Avatar */
+.appbar__avatar{width:34px;height:34px;border-radius:50%;background:var(--ehsq-color-teal-60) center/cover no-repeat;color:#fff;
+  border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8125rem;overflow:hidden;}
+body[data-variant="praxis"] .appbar__avatar{border-color:rgba(16,36,58,.12);}
+body[data-variant="praxis"][data-theme="dark"] .appbar__avatar{border-color:rgba(255,255,255,.22);}
+
+/* Icon buttons */
+.appbar__iconbtn{width:40px;height:40px;border:0;background:transparent;color:rgba(255,255,255,.85);border-radius:var(--ehsq-radius-md);
+  display:flex;align-items:center;justify-content:center;transition:background var(--ehsq-motion-fast),color var(--ehsq-motion-fast);}
+.appbar__iconbtn:hover{background:rgba(255,255,255,.12);color:#fff;}
+body[data-variant="praxis"] .appbar__iconbtn{color:var(--ehsq-color-text-secondary);}
+body[data-variant="praxis"] .appbar__iconbtn:hover{background:rgba(16,36,58,.06);color:var(--ehsq-color-text-primary);}
+body[data-variant="praxis"][data-theme="dark"] .appbar__iconbtn:hover{background:rgba(255,255,255,.10);}
+
+/* =====================================================================
+   RESPONSIVE — app-wide breakpoints (used consistently across the app):
+     lg  ≤1024px  tablet landscape / small laptop
+     md  ≤768px   tablet portrait / large phone — the bar compresses and the
+                  centered search pill stops floating and flows inline
+     sm  ≤480px   phone — tightest spacing
+   The 840px absolutely-centered search pill is the main thing that must adapt;
+   below md it becomes an in-flow flex child that takes the remaining width.
+   ===================================================================== */
+@media (max-width:1024px){
+  .appbar__search{ width:min(600px, calc(100vw - 340px)); }
+}
+@media (max-width:768px){
+  /* Centered 840px pill → in-flow element taking the remaining width */
+  .appbar__search{
+    position:static; transform:none; left:auto; top:auto;
+    width:auto; flex:1 1 auto; min-width:0; margin:0;
+  }
+  body[data-variant="praxis"] .appbar__search{ width:auto; }
+  /* Mazlan pill is too wide for a phone bar — drop it (still reachable via
+     the nav rail / profile menu) so the search + avatar keep room. */
+  .appbar__mazlan{ display:none; }
+  /* The app-bar module-selector chip's true home is the Search page; hide it
+     on other pages so the search input keeps a usable width there. */
+  body:not([data-page="search"]) .msel{ display:none; }
+  /* On the Search page, trim the secondary right-side icon buttons (theme
+     toggle, sign-out) so module selector + input + avatar all fit. */
+  body[data-page="search"] .appbar__right .iconbtn-ghost{ display:none; }
+}
+@media (max-width:480px){
+  /* Extra squeeze: shorten the page switcher so brand + switcher don't crowd
+     out the search field on the narrowest phones. */
+  .appswitch__trigger{ max-width:104px; padding:0 4px 0 6px; }
+  .appswitch__trigger span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}
+@media (max-width:480px){
+  body[data-variant="praxis"] .appbar{ gap:8px; padding:0 8px; }
+  .appbar__logo-img{ height:22px; }
+  .appbar__avatar{ width:30px; height:30px; }
+}

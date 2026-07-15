@@ -1,0 +1,2251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Filter Drawer — Praxis (After)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet" />
+  <!-- CSS extracted verbatim from the Praxis search page so the drawer renders identically. -->
+  <link rel="stylesheet" href="praxis-core.css" />
+  <link rel="stylesheet" href="praxis-create-new.css" />
+  <link rel="stylesheet" href="praxis-module-selector.css" />
+  <link rel="stylesheet" href="inline.css" />
+  <link rel="stylesheet" href="praxis-appbar.css" />
+  <link rel="stylesheet" href="praxis-navrail.css" />
+  <link rel="stylesheet" href="praxis-pageheader.css" />
+  <style>
+  /* Isolation frame only — a blank page holding the filter drawer + its trigger.
+     Not part of the component. */
+  html, body { height: 100%; margin: 0; }
+  body {
+    min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--px-page, #f0f2f4);
+    font-family: 'Gilroy', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+</style>
+</head>
+<body data-variant="praxis" data-theme="light" data-page="search">
+
+  <!-- icon sprite (only the filter glyph the trigger references) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-filter" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4zM3 6v2h18V6zm3 7h12v-2H6z"/></symbol></defs></svg>
+
+  <!-- Trigger (verbatim from source) -->
+  <button class="pill-btn" id="openFilterDrawer" data-action="open-filter-drawer"><svg class="icon icon--18"><use href="#i-filter"></use></svg> Add Filters</button>
+
+  <!-- Isolated component: filter drawer (rendered snapshot from Praxis) -->
+  <div class="drawer-scrim" data-drawer-scrim="" hidden></div>
+  <aside class="filter-drawer" data-filter-drawer="" aria-label="Filters" role="dialog" aria-modal="true" hidden>
+  <header class="filter-drawer__head">
+    <h2>Filter Results</h2>
+    <button class="fdw-icon-btn filter-drawer__close" type="button" aria-label="Close filters" data-action="close-filter-drawer">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  </header>
+
+  <!-- Toolbar: search + type-filter row, then the Custom Filter toggle -->
+  <div class="filter-drawer__toolbar">
+    <div class="filter-toolbar-row">
+      <div class="filter-search-input">
+        <input type="search" placeholder="Search Filters" aria-label="Search filters">
+        <span class="material-symbols-rounded" aria-hidden="true">search</span>
+      </div>
+      <button class="filter-select filter-type-select" type="button" data-action="open-type-menu" aria-haspopup="listbox" aria-label="Filter by category">
+        <span data-type-label="">All types</span>
+        <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+      </button>
+    </div>
+    <button class="custom-filter-btn" type="button" data-action="toggle-custom-builder">
+      <span class="material-symbols-rounded custom-filter-btn__icon" aria-hidden="true">account_tree</span>
+      <span class="custom-filter-btn__label">Custom Filter</span>
+    </button>
+  </div>
+
+  <div class="filter-drawer__main">
+    <!-- Standard filter list — favorites first, then the "More Filters" roll-up -->
+    <div class="filter-drawer__body">
+      <div class="custom-summary" data-custom-summary="" hidden=""></div>
+      <div data-filter-list="">
+      <div class="filter-row" data-filter-type="list" data-filter-name="Current Assignee">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Current Assignee</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav is-on" type="button" data-action="toggle-fav" aria-pressed="true" title="Remove from favorites">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Current Assignee operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Current Task">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Current Task</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav is-on" type="button" data-action="toggle-fav" aria-pressed="true" title="Remove from favorites">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Current Task operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Date Due">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Date Due</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav is-on" type="button" data-action="toggle-fav" aria-pressed="true" title="Remove from favorites">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Date Due operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Department">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Department</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav is-on" type="button" data-action="toggle-fav" aria-pressed="true" title="Remove from favorites">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Department operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Site">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Site</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav is-on" type="button" data-action="toggle-fav" aria-pressed="true" title="Remove from favorites">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Site operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-more" data-more-filters="">
+        <button class="filter-more__head" type="button" data-action="toggle-more-filters" aria-expanded="false">
+          <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+          <span class="material-symbols-rounded filter-row__icon" aria-hidden="true">filter_list</span>
+          <h3 class="filter-row__title">More Filters</h3>
+          <span class="filter-more__count">87</span>
+        </button>
+        <div class="filter-more__body"><div class="filter-more__list">
+      <div class="filter-row" data-filter-type="boolean" data-filter-name="Search Models">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">dataset</span>
+            <h3 class="filter-row__title">Search Models</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><label class="onoff">
+            <span class="onoff__label onoff__label--off">Off</span>
+            <input type="checkbox" class="switch">
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+            <span class="onoff__label onoff__label--on">On</span>
+          </label></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Read Status">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">mark_email_read</span>
+            <h3 class="filter-row__title">Read Status</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><div class="segmented segmented--lg" role="radiogroup" aria-label="Read Status">
+            <button class="segmented__opt segmented__opt--active" role="radio" aria-checked="true">All</button><button class="segmented__opt" role="radio" aria-checked="false">Unread</button>
+          </div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Status">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">flag</span>
+            <h3 class="filter-row__title">Status</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><div class="segmented segmented--lg" role="radiogroup" aria-label="Status">
+            <button class="segmented__opt segmented__opt--active" role="radio" aria-checked="true">Open</button><button class="segmented__opt" role="radio" aria-checked="false">Closed</button><button class="segmented__opt" role="radio" aria-checked="false">Cancelled</button>
+          </div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="text" data-filter-name="Action Description">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">notes</span>
+            <h3 class="filter-row__title">Action Description</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Action Description operator">
+            <span>Contains</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Contains text…" aria-label="Action Description"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Action Item Completed By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Action Item Completed By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Action Item Completed By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Action Item Completed Date">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Action Item Completed Date</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Action Item Completed Date operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Action Owner">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Action Owner</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Action Owner operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="text" data-filter-name="Action Title">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">notes</span>
+            <h3 class="filter-row__title">Action Title</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Action Title operator">
+            <span>Contains</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Contains text…" aria-label="Action Title"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Action Type">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Action Type</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Action Type operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Applicable Root Causes – Selected">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Applicable Root Causes – Selected</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Applicable Root Causes – Selected operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Approvals – Approval">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Approvals – Approval</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Approvals – Approval operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Approvals – Approval Type">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Approvals – Approval Type</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Approvals – Approval Type operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Approvals – Assignee">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Approvals – Assignee</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Approvals – Assignee operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Asset">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Asset</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Asset operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Assigned Date">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Assigned Date</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Assigned Date operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="person" data-filter-name="Assigned To">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">person</span>
+            <h3 class="filter-row__title">Assigned To</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Assigned To operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Find Person(s)" aria-label="Assigned To"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Audit">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Audit</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Audit operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Audit Program ID">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Audit Program ID</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Audit Program ID operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Before Extension">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Before Extension</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Before Extension operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Capital Expenditure Involved">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Capital Expenditure Involved</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Capital Expenditure Involved operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Checklist – Answer">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Checklist – Answer</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Checklist – Answer operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Checklist Templates – Reference">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Checklist Templates – Reference</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Checklist Templates – Reference operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Comment – By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Comment – By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Comment – By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Completed By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Completed By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Completed By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Cost Owner">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Cost Owner</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Cost Owner operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="person" data-filter-name="Created By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">person</span>
+            <h3 class="filter-row__title">Created By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Created By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Find Person(s)" aria-label="Created By"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Created On">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Created On</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Created On operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Creation Process">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Creation Process</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Creation Process operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Date Closed">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Date Closed</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Date Closed operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Date Created">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Date Created</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Date Created operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Document(s) for Review">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Document(s) for Review</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Document(s) for Review operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Driving Questions – Integrated">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Driving Questions – Integrated</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Driving Questions – Integrated operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Driving Questions – Target">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Driving Questions – Target</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Driving Questions – Target operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Driving Questions – Yes / No">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Driving Questions – Yes / No</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Driving Questions – Yes / No operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Due Date Extension – Extended">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Due Date Extension – Extended</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Due Date Extension – Extended operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Due Date Extension – Reason">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Due Date Extension – Reason</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Due Date Extension – Reason operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Due Date Extension – Status">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Due Date Extension – Status</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Due Date Extension – Status operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Due Date Extension Approved">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Due Date Extension Approved</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Due Date Extension Approved operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="E-Signature Task">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">E-Signature Task</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="E-Signature Task operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="EEM or EPM">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">EEM or EPM</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="EEM or EPM operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Effectiveness">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Effectiveness</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Effectiveness operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Effectiveness Owner">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Effectiveness Owner</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Effectiveness Owner operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Effectiveness Review Required">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Effectiveness Review Required</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Effectiveness Review Required operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Effectiveness Start Date">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Effectiveness Start Date</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Effectiveness Start Date operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="number" data-filter-name="Event Management – ID">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">123</span>
+            <h3 class="filter-row__title">Event Management – ID</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Event Management – ID operator">
+            <span>Equals</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="number" placeholder="Enter a Number" aria-label="Event Management – ID"><span class="material-symbols-rounded" aria-hidden="true">123</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="boolean" data-filter-name="Events Management">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">check_box</span>
+            <h3 class="filter-row__title">Events Management</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><label class="onoff">
+            <span class="onoff__label onoff__label--off">Off</span>
+            <input type="checkbox" class="switch">
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+            <span class="onoff__label onoff__label--on">On</span>
+          </label></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Findings – Finding">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Findings – Finding</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Findings – Finding operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="ForceState">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">ForceState</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="ForceState operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Generated From">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Generated From</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Generated From operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Generated From – Module">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Generated From – Module</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Generated From – Module operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Hierarchy Of Controls">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Hierarchy Of Controls</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Hierarchy Of Controls operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="text" data-filter-name="Identifier">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">notes</span>
+            <h3 class="filter-row__title">Identifier</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Identifier operator">
+            <span>Contains</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Contains text…" aria-label="Identifier"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Incident">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Incident</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Incident operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="person" data-filter-name="Initiated By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">person</span>
+            <h3 class="filter-row__title">Initiated By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Initiated By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Find Person(s)" aria-label="Initiated By"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Initiated On">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Initiated On</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Initiated On operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="person" data-filter-name="Last Comment Added By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">person</span>
+            <h3 class="filter-row__title">Last Comment Added By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Last Comment Added By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Find Person(s)" aria-label="Last Comment Added By"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Last Comment Added On">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Last Comment Added On</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Last Comment Added On operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="person" data-filter-name="Last Updated By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">person</span>
+            <h3 class="filter-row__title">Last Updated By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Last Updated By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Find Person(s)" aria-label="Last Updated By"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Last Updated On">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Last Updated On</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Last Updated On operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Last Updating Process">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Last Updating Process</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Last Updating Process operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Location">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Location</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Location operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Mobile – CheckedOut By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Mobile – CheckedOut By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Mobile – CheckedOut By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Observation Date">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Observation Date</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Observation Date operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Onsite When">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Onsite When</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Onsite When operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Options – Selected Options">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Options – Selected Options</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Options – Selected Options operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Originator">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Originator</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Originator operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Payment Status">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Payment Status</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Payment Status operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Predecessors – Reference">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Predecessors – Reference</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Predecessors – Reference operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Priority">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Priority</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Priority operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Reporting Authority">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Reporting Authority</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Reporting Authority operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Requested Due Date Extension">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Requested Due Date Extension</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Requested Due Date Extension operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Schedule">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Schedule</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Schedule operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Signer">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Signer</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Signer operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Source">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Source</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Source operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Sub-Actions – Action">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Sub-Actions – Action</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Sub-Actions – Action operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Supplemental Form – Identifier">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Supplemental Form – Identifier</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Supplemental Form – Identifier operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="text" data-filter-name="System Identifier">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">notes</span>
+            <h3 class="filter-row__title">System Identifier</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="System Identifier operator">
+            <span>Contains</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Contains text…" aria-label="System Identifier"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Tracker Owner">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Tracker Owner</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Tracker Owner operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Training – Assignment">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Training – Assignment</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Training – Assignment operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Training – Course">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Training – Course</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Training – Course operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Training – Trainee">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Training – Trainee</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Training – Trainee operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="date" data-filter-name="Verification Date">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">calendar_today</span>
+            <h3 class="filter-row__title">Verification Date</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Verification Date operator">
+            <span>Is On or After</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-date" type="button"><span>Choose a Date</span><span class="material-symbols-rounded" aria-hidden="true">calendar_today</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Verification Performed">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Verification Performed</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Verification Performed operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="person" data-filter-name="Verified By">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">person</span>
+            <h3 class="filter-row__title">Verified By</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Verified By operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><div class="filter-search"><input type="search" placeholder="Find Person(s)" aria-label="Verified By"><span class="material-symbols-rounded" aria-hidden="true">search</span></div></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Verifier">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Verifier</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Verifier operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Working Step">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Working Step</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Working Step operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div>
+      <div class="filter-row" data-filter-type="list" data-filter-name="Working Task">
+        <header class="filter-row__head">
+          <button class="filter-row__toggle" type="button" data-action="toggle-frow" aria-expanded="false">
+            <span class="material-symbols-rounded filter-row__caret" aria-hidden="true">chevron_right</span>
+            <span class="filter-row__icon material-symbols-rounded" aria-hidden="true">list</span>
+            <h3 class="filter-row__title">Working Task</h3>
+          </button>
+          <button class="filter-row__quick" type="button" data-action="toggle-quick" aria-pressed="false" title="Show as a quick filter">
+            <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+          </button>
+          <button class="filter-row__fav" type="button" data-action="toggle-fav" aria-pressed="false" title="Favorite — move to top">
+            <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+          </button>
+        </header>
+        <div class="filter-row__body">
+          <div class="filter-row__controls"><button class="filter-select filter-op" type="button" data-role="op" aria-label="Working Task operator">
+            <span>Is One Of</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="filter-row__value" data-value-area=""><button class="filter-select" type="button"><span>Select Value(s)</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div></div>
+        </div>
+        <div class="filter-row__chips" data-row-chips="" hidden=""></div>
+      </div></div></div>
+      </div></div>
+    </div>
+
+    <!-- Custom filter expression builder — overlays the filter list -->
+    <div class="custom-builder" data-custom-builder="" hidden="">
+      <div class="custom-builder__head">
+        <div>
+          <h3>Custom Filter</h3>
+          <p>Chain filters with AND / OR and group them with brackets. Groups read as parentheses in the expression below.</p>
+        </div>
+        <button class="cf-example-btn" type="button" data-action="cf-load-example">Load example</button>
+      </div>
+      <div class="custom-builder__tree" data-builder-root=""></div>
+      <div class="custom-builder__preview">
+        <span class="custom-builder__preview-label">Expression</span>
+        <div class="custom-builder__preview-body" data-builder-preview="" aria-live="polite"></div>
+      </div>
+      <div class="custom-builder__actions">
+        <button class="fdw-btn fdw-btn--clear" type="button" data-action="cf-clear">Clear</button>
+        <button class="fdw-btn fdw-btn--primary" type="button" data-action="cf-apply">Apply Expression</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="filter-drawer__foot">
+    <button class="fdw-btn fdw-btn--clear" type="button" data-action="clear-all" data-restore-defaults="" hidden="">Restore Defaults</button>
+    <button class="fdw-btn fdw-btn--secondary" type="button" data-action="close-filter-drawer">Cancel</button>
+    <button class="fdw-btn fdw-btn--primary" type="button" data-action="close-filter-drawer" data-apply-btn="" disabled="">Apply</button>
+  </footer>
+</aside>
+
+  <script>
+(function(){
+  var drawer  = document.querySelector('[data-filter-drawer]');
+  var scrim   = document.querySelector('[data-drawer-scrim]');
+  var openBtn = document.querySelector('[data-action="open-filter-drawer"]');
+  if(!drawer||!scrim) return;
+  // force closed initial state
+  drawer.hidden = true; drawer.removeAttribute('data-open');
+  scrim.hidden = true;  scrim.removeAttribute('data-open');
+  function open(){
+    drawer.hidden=false; scrim.hidden=false;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      drawer.setAttribute('data-open',''); scrim.setAttribute('data-open','');
+    });});
+    document.body.style.overflow='hidden';
+  }
+  function close(){
+    drawer.removeAttribute('data-open'); scrim.removeAttribute('data-open');
+    setTimeout(function(){ drawer.hidden=true; scrim.hidden=true; document.body.style.overflow=''; }, 380);
+  }
+  openBtn && openBtn.addEventListener('click', open);
+  scrim.addEventListener('click', close);
+  document.querySelectorAll('[data-action="close-filter-drawer"]').forEach(function(b){ b.addEventListener('click', close); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !drawer.hidden) close(); });
+})();
+</script>
+</body>
+</html>

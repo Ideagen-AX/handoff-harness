@@ -20,14 +20,14 @@ export type DemoCase = {
 export const DEMO_CASES: DemoCase[] = [
   {
     id: "toolbar",
-    label: "Search toolbar — Groom Lake restyle",
-    projectName: "Groom Lake Toolbar",
+    label: "Search toolbar — Praxis restyle",
+    projectName: "Praxis Toolbar",
     url: "https://forge-demo-toolbar-after.vercel.app/",
     baselineUrl: "https://forge-demo-toolbar-before.vercel.app/",
     subject: "Search page toolbar",
     componentSelector: ".toolbar",
     designDescription:
-      "The Search page toolbar, restyled to the Groom Lake / Praxis design language: rounder, gradient-filled controls, refined icons, and a first-class dark mode. The control set and spacing are unchanged.",
+      "The Search page toolbar, restyled to the Praxis design language: rounder, gradient-filled controls, refined icons, and a first-class dark mode. The control set and spacing are unchanged.",
     projectContext:
       "Part of the wider EHSQ-E reskin toward the Praxis design language. This toolbar appears on Search pages across multiple modules (Incidents, Audits, CAPA, MOC).",
     focusAreas:
@@ -39,14 +39,14 @@ export const DEMO_CASES: DemoCase[] = [
   },
   {
     id: "filter-drawer",
-    label: "Search filter drawer — Groom Lake redesign",
-    projectName: "Groom Lake Filters",
+    label: "Search filter drawer — Praxis redesign",
+    projectName: "Praxis Filters",
     url: "https://filter-drawer-after.vercel.app/",
     baselineUrl: "https://filter-drawer-before.vercel.app/",
     subject: "Search filter drawer",
     componentSelector: ".filter-drawer",
     designDescription:
-      "The Search filter drawer, redesigned in the Groom Lake / Praxis design language — the right-hand panel for building and applying filters, with restyled filter rows, date controls, and a 'more filters' section.",
+      "The Search filter drawer, redesigned in the Praxis design language — the right-hand panel for building and applying filters, with restyled filter rows, date controls, and a 'more filters' section.",
     projectContext:
       "Part of the EHSQ-E reskin toward Praxis. The filter drawer opens from the Search toolbar across modules to refine result sets.",
     focusAreas:

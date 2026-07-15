@@ -1,0 +1,18 @@
+<svg viewBox="0 0 34.64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hexagon background with gradient -->
+  <path d="M0 10V30L17.32 40L34.64 30V10L17.32 0L0 10Z" fill="url(#hub-gradient)"/>
+  <!-- Lower hexagon overlay -->
+  <path opacity="0.2" d="M0 30L17.32 40L34.64 30V10L0 30Z" fill="white"/>
+  <!-- Chevron arrow and isometric blocks -->
+  <g transform="translate(8.63, 9.04)">
+    <path d="M9.00864 0.101495C8.74042-0.0338317 8.42452-0.0338317 8.1563 0.101495L0.527035 4.48411C0.0561657 4.72168-0.134566 5.29907 0.100869 5.77422C0.336302 6.24936 0.908498 6.44183 1.37937 6.20425L8.58247 2.03816L15.7856 6.20425C16.2564 6.44183 16.8286 6.24936 17.0641 5.77422C17.2995 5.29907 17.1088 4.72168 16.6379 4.48411L9.00864 0.101495Z" fill="white"/>
+    <path d="M1.40778 16.032V18.3046H1.5929V16.1254L5.21802 18.3046V22.8811L8.98198 20.5928V16.032L5.21802 13.7437L1.40778 16.032Z" fill="white"/>
+    <path d="M8.98198 6.87905L5.17174 9.16728V11.4244H5.34143L5.35684 9.27624L8.98198 11.4555V16.0164L12.7305 13.7437V9.16728L8.98198 6.87905Z" fill="white"/>
+  </g>
+  <defs>
+    <linearGradient id="hub-gradient" x1="3.66" y1="33.66" x2="30.98" y2="6.34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E2408E"/>
+      <stop offset="0.99812" stop-color="#45BBCE"/>
+    </linearGradient>
+  </defs>
+</svg>
