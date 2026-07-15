@@ -10,7 +10,7 @@
 // assistant prose, with tool activity summarised). Big tool outputs are
 // summarised rather than dumped, so the log reads like a conversation.
 
-import { readFileSync, readdirSync, writeFileSync, mkdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, mkdirSync, statSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -23,6 +23,16 @@ const outDir = join(projectDir, "docs", "conversation-log");
 function truncate(s, n) {
   s = String(s ?? "").replace(/\r/g, "");
   return s.length > n ? s.slice(0, n) + " …[truncated]" : s;
+}
+
+// Redact the internal project codename from the exported log — only the public
+// design-language name (Praxis) should appear in committed/shareable material.
+// The codename is kept base64-encoded so the literal string never sits in
+// source, and built into a whitespace-tolerant, case-insensitive matcher.
+const CODENAME = Buffer.from("R3Jvb20gTGFrZQ==", "base64").toString("utf8");
+const CODENAME_RE = new RegExp(CODENAME.replace(/\s+/g, "\\s*"), "gi");
+function redact(s) {
+  return String(s ?? "").replace(CODENAME_RE, "Praxis");
 }
 
 // Turn one message's content (string or parts array) into readable Markdown.
@@ -98,6 +108,10 @@ function main() {
   }
 
   mkdirSync(outDir, { recursive: true });
+  // Clear prior exports so renamed/re-dated sessions don't leave stale orphans.
+  for (const f of readdirSync(outDir)) {
+    if (f.endsWith(".md")) rmSync(join(outDir, f));
+  }
   const index = [
     "# Conversation log",
     "",
@@ -115,7 +129,7 @@ function main() {
     const date = new Date(mtime).toISOString().slice(0, 10);
     const name = `${date}_${sessionId.slice(0, 8)}.md`;
     const md = [`# Session ${sessionId.slice(0, 8)} — ${date}`, "", blocks.join("\n\n---\n\n"), ""].join("\n");
-    writeFileSync(join(outDir, name), md);
+    writeFileSync(join(outDir, name), redact(md));
     index.push(`| [${sessionId.slice(0, 8)}](${name}) | ${date} | ${blocks.length} |`);
     console.log(`wrote ${name} (${blocks.length} turns)`);
   }
