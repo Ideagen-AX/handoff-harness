@@ -6,6 +6,7 @@ import type { ChangeBrief, PipelineEvent, Capture, SlideSpec, InstrumentationPla
 import { APP_VERSION } from "@/lib/version";
 import { createExporters } from "@/app/lib/exports";
 import { ArtifactCard, BriefCard, CaptureGallery, InstrumentationPanel } from "@/app/components/RunViews";
+import ThemeToggle from "@/app/components/ThemeToggle";
 
 type UiArtifact = {
   audienceId: string;
@@ -83,6 +84,16 @@ export default function Home() {
   const titleFlashedRef = useRef(false);
   const artifactCountRef = useRef(0);
   const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
+
+  // Which top-level tab is active, derived from the current selection: one of the
+  // fixed views ("brief" | "captures" | "instrumentation") or a package id.
+  const activeSection =
+    selected === "brief" || selected === "captures" || selected === "instrumentation"
+      ? selected
+      : (() => {
+          const a = artifacts.find((x) => x.audienceId === selected);
+          return a ? packageFor(a.audienceId) : null;
+        })();
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
 
@@ -276,6 +287,7 @@ export default function Home() {
           <nav className="topnav">
             <span className="topnav-active">Generator</span>
             <Link href="/library">Library →</Link>
+            <ThemeToggle />
           </nav>
         </div>
         <h1>One change, every audience</h1>
@@ -286,7 +298,12 @@ export default function Home() {
         </p>
       </header>
 
-      <div className="card">
+      <details className="card setup" open>
+        <summary className="setup-summary">
+          <span className="setup-title">Handoff setup</span>
+          <span className="setup-meta">{enabledCount} of {ALL_OUTPUT_IDS.length} outputs selected</span>
+        </summary>
+        <div className="setup-body">
         <label className="field">
           <span className="lab">Design project — groups this run in the library</span>
           <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Groom Lake Toolbar" disabled={running} />
@@ -395,48 +412,58 @@ export default function Home() {
             <Link href={`/library?project=${savedRun.project}&run=${savedRun.id}`}>view this run →</Link>
           </p>
         )}
-      </div>
+        </div>
+      </details>
 
       {(brief || artifacts.length > 0) && (
-        <div className="workspace">
-          <nav className="card nav">
-            <div className="nav-head">Outputs · {artifacts.filter((a) => a.approved).length}/{artifacts.length} approved</div>
-            <button className="nav-download" onClick={downloadAll} disabled={running} title="Download the brief, all artifacts, screenshots and the deck as a .zip">
+        <div className="results">
+          <div className="results-head">
+            <div className="nav-head" style={{ margin: 0 }}>
+              Outputs · {artifacts.filter((a) => a.approved).length}/{artifacts.length} approved
+            </div>
+            <button className="nav-download" style={{ width: "auto", margin: 0 }} onClick={downloadAll} disabled={running} title="Download the brief, all artifacts, screenshots and the deck as a .zip">
               ⤓ Download all (.zip)
             </button>
+          </div>
+
+          <div className="tabbar" role="tablist">
             {brief && (
-              <button className={`nav-item ${selected === "brief" ? "active" : ""}`} onClick={() => setSelected("brief")}>
-                <span className="nav-item-label">Change brief</span>
+              <button role="tab" aria-selected={selected === "brief"} className={`tab ${selected === "brief" ? "active" : ""}`} onClick={() => setSelected("brief")}>
+                Change brief
               </button>
             )}
             {captures.length > 0 && (
-              <button className={`nav-item ${selected === "captures" ? "active" : ""}`} onClick={() => setSelected("captures")}>
-                <span className="nav-item-label">Captured screens</span>
+              <button role="tab" aria-selected={selected === "captures"} className={`tab ${selected === "captures" ? "active" : ""}`} onClick={() => setSelected("captures")}>
+                Captured screens
               </button>
             )}
             {instrumentation && instrumentation.points.length > 0 && (
-              <button className={`nav-item ${selected === "instrumentation" ? "active" : ""}`} onClick={() => setSelected("instrumentation")}>
-                <span className="nav-item-label">Instrumentation</span>
+              <button role="tab" aria-selected={selected === "instrumentation"} className={`tab ${selected === "instrumentation" ? "active" : ""}`} onClick={() => setSelected("instrumentation")}>
+                Instrumentation
               </button>
             )}
             {PACKAGES.map((pkg) => {
               const items = artifacts.filter((a) => packageFor(a.audienceId) === pkg.id);
               if (!items.length) return null;
+              const allApproved = items.every((a) => a.approved);
               return (
-                <div key={pkg.id} className="nav-group">
-                  <div className="nav-group-title">{pkg.title}</div>
-                  {items.map((a) => (
-                    <button key={a.audienceId} className={`nav-item ${selected === a.audienceId ? "active" : ""}`} onClick={() => setSelected(a.audienceId)}>
-                      <span className="nav-item-label">{a.label}</span>
-                      {a.approved && <span className="nav-check">✓</span>}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  key={pkg.id}
+                  role="tab"
+                  aria-selected={activeSection === pkg.id}
+                  className={`tab ${activeSection === pkg.id ? "active" : ""}`}
+                  onClick={() => setSelected(items[0].audienceId)}
+                  title={items.length > 1 ? `${items.length} outputs` : undefined}
+                >
+                  {pkg.title}
+                  {items.length > 1 && <span className="tab-count">{items.length}</span>}
+                  {allApproved && <span className="tab-check">✓</span>}
+                </button>
               );
             })}
-          </nav>
+          </div>
 
-          <section className="viewer">
+          <div className="tabpanel">
             {selected === "brief" && brief ? (
               <div>
                 <div className="btn-row" style={{ marginBottom: 12 }}>
@@ -453,23 +480,40 @@ export default function Home() {
             ) : (
               (() => {
                 const a = artifacts.find((x) => x.audienceId === selected);
-                return a ? (
-                  <ArtifactCard
-                    artifact={a}
-                    framework={framework}
-                    exporters={exporters}
-                    editable
-                    approved={a.approved}
-                    onToggleApprove={() => toggleApprove(a.audienceId)}
-                    onEdit={(content) => updateArtifact(a.audienceId, content)}
-                    onCopy={() => copy(a.content)}
-                  />
-                ) : (
-                  <div className="viewer-empty">Select an output on the left to view it.</div>
+                if (!a) return <div className="viewer-empty">Select a tab to view its output.</div>;
+                const pkgId = packageFor(a.audienceId);
+                const siblings = artifacts.filter((x) => packageFor(x.audienceId) === pkgId);
+                return (
+                  <div>
+                    {siblings.length > 1 && (
+                      <div className="subtabs">
+                        {siblings.map((s) => (
+                          <button
+                            key={s.audienceId}
+                            className={`subtab ${selected === s.audienceId ? "active" : ""}`}
+                            onClick={() => setSelected(s.audienceId)}
+                          >
+                            {s.label}
+                            {s.approved && <span className="tab-check">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <ArtifactCard
+                      artifact={a}
+                      framework={framework}
+                      exporters={exporters}
+                      editable
+                      approved={a.approved}
+                      onToggleApprove={() => toggleApprove(a.audienceId)}
+                      onEdit={(content) => updateArtifact(a.audienceId, content)}
+                      onCopy={() => copy(a.content)}
+                    />
+                  </div>
                 );
               })()
             )}
-          </section>
+          </div>
         </div>
       )}
     </div>
