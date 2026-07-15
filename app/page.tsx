@@ -8,6 +8,7 @@ import { createExporters } from "@/app/lib/exports";
 import { RunTabs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { DESIGN_SOURCES, DEFAULT_DESIGN_SOURCE } from "@/lib/designSources";
+import { DEMO_CASES, DEFAULT_DEMO_CASE } from "@/lib/demoCases";
 
 type UiArtifact = {
   audienceId: string;
@@ -46,6 +47,8 @@ export default function Home() {
   );
   const [baselineUrl, setBaselineUrl] = useState("https://forge-demo-toolbar-before.vercel.app/");
   const [codebasePath, setCodebasePath] = useState("");
+  const [codebaseScope, setCodebaseScope] = useState("");
+  const [demoCase, setDemoCase] = useState(DEFAULT_DEMO_CASE);
   const [framework, setFramework] = useState("vue");
   const [designSource, setDesignSource] = useState(DEFAULT_DESIGN_SOURCE);
   const [subject, setSubject] = useState("Search page toolbar");
@@ -70,6 +73,25 @@ export default function Home() {
   const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
+
+  // Populate every setup field from a pre-built demo case (optional). "custom"
+  // (no matching case) leaves the fields untouched for manual entry.
+  function applyDemoCase(id: string) {
+    setDemoCase(id);
+    const c = DEMO_CASES.find((x) => x.id === id);
+    if (!c) return;
+    setProjectName(c.projectName);
+    setUrl(c.url);
+    setBaselineUrl(c.baselineUrl);
+    setSubject(c.subject);
+    setComponentSelector(c.componentSelector);
+    setDesignDescription(c.designDescription);
+    setProjectContext(c.projectContext);
+    setFocusAreas(c.focusAreas);
+    setDesignDecisions(c.designDecisions);
+    setDesignSource(c.designSource);
+    setFramework(c.framework);
+  }
 
   // Restore the tab title once you come back to a flashed tab.
   useEffect(() => {
@@ -168,7 +190,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prototypeUrl: url, baselineUrl, codebasePath, framework,
+          prototypeUrl: url, baselineUrl, codebasePath, codebaseScope, framework,
           enabledOutputs: ALL_OUTPUT_IDS.filter((id) => enabled[id]),
           subject, componentSelector,
           projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
@@ -278,6 +300,15 @@ export default function Home() {
           <span className="setup-meta">{enabledCount} of {ALL_OUTPUT_IDS.length} outputs selected</span>
         </summary>
         <div className="setup-body">
+        <label className="field demo-case">
+          <span className="lab">Demo case — optional; populates the fields below so you can watch a run</span>
+          <select value={demoCase} onChange={(e) => applyDemoCase(e.target.value)} disabled={running}>
+            {DEMO_CASES.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+            <option value="custom">— Custom (fill in yourself) —</option>
+          </select>
+        </label>
         <label className="field">
           <span className="lab">Design project — groups this run in the library</span>
           <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Groom Lake Toolbar" disabled={running} />
@@ -360,9 +391,13 @@ export default function Home() {
             <span className="lab">&ldquo;Before&rdquo; prototype URL — compares the new design against it (visual + code)</span>
             <input type="url" value={baselineUrl} onChange={(e) => setBaselineUrl(e.target.value)} placeholder="https://search-toolbar-before.vercel.app/" disabled={running} />
           </label>
-          <label className="field" style={{ marginBottom: 0 }}>
+          <label className="field">
             <span className="lab">Current source codebase path (alternative — local runs only)</span>
-            <input type="text" value={codebasePath} onChange={(e) => setCodebasePath(e.target.value)} placeholder="/path/to/current/app/source" disabled={running} />
+            <input type="text" value={codebasePath} onChange={(e) => setCodebasePath(e.target.value)} placeholder="/path/to/miramar" disabled={running} />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span className="lab">Codebase scope — a subpath to diff against, so it doesn&rsquo;t scan the whole app (recommended for large repos)</span>
+            <input type="text" value={codebaseScope} onChange={(e) => setCodebaseScope(e.target.value)} placeholder="e.g. src/components/Search" disabled={running} />
           </label>
         </details>
 

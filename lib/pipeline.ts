@@ -65,6 +65,7 @@ async function understand(input: {
   note: string;
   baselineUrl?: string;
   codebasePath?: string;
+  codebaseScope?: string;
   subject?: string;
   componentSelector?: string;
   designDescription?: string;
@@ -93,17 +94,24 @@ async function understand(input: {
       .join("\n\n") || input.note?.trim() || "";
 
   // Establish the "before" state: codebase (preferred) → baseline URL → inference.
+  // Scope the codebase to the relevant subpath so we never crawl the whole app —
+  // e.g. codebasePath=/…/Miramar + codebaseScope=src/components/Search.
+  const codeRoot = input.codebasePath
+    ? input.codebaseScope
+      ? join(input.codebasePath, input.codebaseScope)
+      : input.codebasePath
+    : undefined;
   let useCodebase = false;
-  if (input.codebasePath) {
+  if (codeRoot) {
     try {
-      useCodebase = (await stat(input.codebasePath)).isDirectory();
+      useCodebase = (await stat(codeRoot)).isDirectory();
     } catch {
       useCodebase = false; // path not reachable here (e.g. on Vercel) — fall back
     }
   }
 
   const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype };
-  if (useCodebase) tools.readCodebase = makeCodebaseTool(input.codebasePath!);
+  if (useCodebase) tools.readCodebase = makeCodebaseTool(codeRoot!);
 
   // For a URL baseline, diff the two prototypes up front — visually AND at the
   // code level (screenshot + rendered HTML/CSS). Styling changes don't show up in
@@ -562,6 +570,7 @@ export async function* runPipeline(input: {
   note: string;
   baselineUrl?: string;
   codebasePath?: string;
+  codebaseScope?: string;
   framework?: string;
   enabledOutputs?: string[];
   subject?: string;

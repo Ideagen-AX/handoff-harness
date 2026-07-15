@@ -8,7 +8,7 @@ export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const {
-    prototypeUrl, note, baselineUrl, codebasePath, framework, enabledOutputs, subject, componentSelector,
+    prototypeUrl, note, baselineUrl, codebasePath, codebaseScope, framework, enabledOutputs, subject, componentSelector,
     projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
   } = await req.json();
 
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
           note: note ?? "",
           baselineUrl: baselineUrl || undefined,
           codebasePath: codebasePath || undefined,
+          codebaseScope: codebaseScope || undefined,
           framework: framework || undefined,
           enabledOutputs: Array.isArray(enabledOutputs) ? enabledOutputs : undefined,
           subject: subject || undefined,
