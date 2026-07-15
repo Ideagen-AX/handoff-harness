@@ -1,6 +1,6 @@
 {
   "name": "handoff-harness",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Design-handoff communications agent — an AI SDK harness that fans a completed change out into audience-tailored artifacts for human review.",
   "engines": {
