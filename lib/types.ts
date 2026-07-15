@@ -271,7 +271,7 @@ export type PipelineEvent =
   | { type: "captures"; captures: Capture[] }
   | { type: "instrumentation"; plan: InstrumentationPlan }
   | { type: "artifact"; artifact: Artifact }
-  | { type: "done"; savedRunId?: string; project?: string }
+  | { type: "done"; savedRunId?: string; project?: string; durationMs?: number }
   | { type: "error"; message: string };
 
 // A generated run, persisted to the local library for later reference/comparison.
@@ -286,6 +286,7 @@ export type StoredRunMeta = {
   subject?: string;
   artifactCount: number;
   captureCount: number;
+  durationMs?: number; // wall-clock time the run took to generate
 };
 export type StoredRun = StoredRunMeta & {
   input: {

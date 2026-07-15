@@ -4,7 +4,11 @@ import type { PipelineEvent } from "@/lib/types";
 // The Agent SDK friction we avoided (subprocess) doesn't apply here — this is
 // pure in-process AI SDK. Still, generation is I/O heavy, so give it room.
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// Pro-tier ceiling. The full fan-out (understand + serverless capture + ~9
+// artifacts, the heaviest being the 16k coded component) can exceed the old
+// 300s default on a cold run — which killed the stream mid-generation, dropping
+// the last artifact and skipping the library save. 800s gives it room.
+export const maxDuration = 800;
 
 export async function POST(req: Request) {
   const {

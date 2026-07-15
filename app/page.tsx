@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import type { ChangeBrief, PipelineEvent, Capture, SlideSpec, InstrumentationPlan } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
+import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
 import { RunTabs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
@@ -62,6 +63,7 @@ export default function Home() {
   const [instrumentation, setInstrumentation] = useState<InstrumentationPlan | null>(null);
   const [artifacts, setArtifacts] = useState<UiArtifact[]>([]);
   const [savedRun, setSavedRun] = useState<{ id: string; project: string } | null>(null);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() => Object.fromEntries(ALL_OUTPUT_IDS.map((id) => [id, true])));
   const [selected, setSelected] = useState<string | null>(null);
   const [notifyWhenDone, setNotifyWhenDone] = useState(true);
@@ -70,6 +72,13 @@ export default function Home() {
   const origTitleRef = useRef("");
   const titleFlashedRef = useRef(false);
   const artifactCountRef = useRef(0);
+  // Run timer: tick a live elapsed clock while running, frozen to the server's
+  // authoritative duration on the `done` event. `terminalRef` records whether a
+  // terminal event (done/error) arrived, so a stream that just stops (server
+  // timeout) is caught instead of failing silently.
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startRef = useRef(0);
+  const terminalRef = useRef(false);
   const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
@@ -181,7 +190,12 @@ export default function Home() {
     setBrief(null); setCaptures([]); setInstrumentation(null); setArtifacts([]); setSavedRun(null);
     setSelected(null);
     setStatus("Starting…");
+    setElapsedMs(0);
     artifactCountRef.current = 0;
+    terminalRef.current = false;
+    startRef.current = Date.now();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setElapsedMs(Date.now() - startRef.current), 1000);
     primeNotifications();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -212,12 +226,21 @@ export default function Home() {
           handleEvent(JSON.parse(line) as PipelineEvent);
         }
       }
+      // The stream ended cleanly but no `done`/`error` arrived — the server was
+      // cut off mid-run (almost always the function's maxDuration timeout). Don't
+      // fail silently: the last artifact(s) are missing and nothing was saved.
+      if (!terminalRef.current) {
+        const msg = "The run ended early — the server stopped before finishing (likely a timeout). Some outputs may be missing, and this run was not saved to the library. Try again, or generate fewer outputs at once.";
+        setError(msg);
+        notifyComplete(false, msg);
+      }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
         setError(String(e));
         notifyComplete(false, String(e));
       }
     } finally {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       setRunning(false);
       setStatus("");
       abortRef.current = null;
@@ -235,8 +258,15 @@ export default function Home() {
         setArtifacts((prev) => [...prev, { ...ev.artifact, approved: false }]);
         setSelected((s) => s ?? ev.artifact.audienceId);
         break;
-      case "error": setError(ev.message); notifyComplete(false, ev.message); break;
+      case "error":
+        terminalRef.current = true;
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        setError(ev.message); notifyComplete(false, ev.message);
+        break;
       case "done":
+        terminalRef.current = true;
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (typeof ev.durationMs === "number") setElapsedMs(ev.durationMs);
         setStatus("");
         if (ev.savedRunId && ev.project) setSavedRun({ id: ev.savedRunId, project: ev.project });
         notifyComplete(true);
@@ -421,7 +451,15 @@ export default function Home() {
             <span>🔔 Notify me when it&rsquo;s done</span>
           </label>
         </div>
-        {status && <div className="status"><span className="spinner" /> {status}</div>}
+        {status && (
+          <div className="status">
+            <span className="spinner" /> {status}
+            {elapsedMs != null && <span className="elapsed"> · {formatDuration(elapsedMs)}</span>}
+          </div>
+        )}
+        {!running && !error && elapsedMs != null && artifacts.length > 0 && (
+          <p className="notice">⏱ Completed in {formatDuration(elapsedMs)}</p>
+        )}
         {error && <p className="err">Error: {error}</p>}
         {notice && <p className="notice" onClick={() => setNotice("")} title="Dismiss">{notice}</p>}
         {savedRun && (

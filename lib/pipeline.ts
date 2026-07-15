@@ -583,6 +583,8 @@ export async function* runPipeline(input: {
   designSource?: string;
 }): AsyncGenerator<PipelineEvent> {
   const source: DesignSource = getDesignSource(input.designSource);
+  // Wall-clock start — reported on completion and stored with the run.
+  const startedAt = Date.now();
   // Stable id for this run — used for the capture folder AND the library entry.
   const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   // Which artifact types to produce. Empty/undefined = all. Component specs are
@@ -757,6 +759,7 @@ export async function* runPipeline(input: {
   // Every successful run is archived (with its screenshots), stamped with the
   // tool version and grouped under its design project, for later reference and
   // cross-run comparison. Best-effort — a save failure never fails the run.
+  const durationMs = Date.now() - startedAt;
   let savedRunId: string | null = null;
   let savedProject: string | undefined;
   try {
@@ -774,6 +777,7 @@ export async function* runPipeline(input: {
       subject: input.subject,
       artifactCount: collected.length,
       captureCount: captures.filter((c) => c.ok).length,
+      durationMs,
       input: {
         prototypeUrl: input.prototypeUrl,
         baselineUrl: input.baselineUrl,
@@ -797,5 +801,5 @@ export async function* runPipeline(input: {
     /* archival is best-effort */
   }
 
-  yield { type: "done", savedRunId: savedRunId ?? undefined, project: savedProject };
+  yield { type: "done", savedRunId: savedRunId ?? undefined, project: savedProject, durationMs };
 }

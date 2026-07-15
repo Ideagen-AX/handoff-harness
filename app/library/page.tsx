@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import type { StoredRun, StoredRunMeta } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
+import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
 import { RunTabs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
@@ -99,7 +100,7 @@ export default function LibraryPage() {
                   <div key={r.id} className={`lib-run ${run?.id === r.id ? "active" : ""}`}>
                     <button className="nav-item lib-run-main" onClick={() => (compareMode ? openRun(g.project.id, r.id, true) : openRun(g.project.id, r.id))}>
                       <span className="nav-item-label">{r.title}</span>
-                      <span className="lib-run-meta">v{r.version} · {fmtDate(r.createdAt)} · {r.artifactCount} outputs</span>
+                      <span className="lib-run-meta">v{r.version} · {fmtDate(r.createdAt)} · {r.artifactCount} outputs{r.durationMs != null ? ` · ⏱ ${formatDuration(r.durationMs)}` : ""}</span>
                     </button>
                     <button className="lib-del" title="Delete run" onClick={() => del(g.project.id, r.id)}>✕</button>
                   </div>
@@ -163,6 +164,7 @@ function RunView({ run, onError, onNotice }: { run: StoredRun; onError: (s: stri
           <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>{run.title}</h2>
           <div className="meta">
             {run.project.name} · v{run.version} · {fmtDate(run.createdAt)}
+            {run.durationMs != null ? ` · ⏱ ${formatDuration(run.durationMs)}` : ""}
             {run.prototypeUrl ? <> · <a href={run.prototypeUrl} target="_blank" rel="noreferrer">prototype</a></> : null}
             {run.baselineUrl ? <> · <a href={run.baselineUrl} target="_blank" rel="noreferrer">baseline</a></> : null}
           </div>

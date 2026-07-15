@@ -30,6 +30,7 @@ function toMeta(run: StoredRun): StoredRunMeta {
     subject: run.subject,
     artifactCount: run.artifacts?.length ?? 0,
     captureCount: (run.captures ?? []).filter((c) => c.ok).length,
+    durationMs: run.durationMs,
   };
 }
 
