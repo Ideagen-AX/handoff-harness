@@ -51,8 +51,11 @@ async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string,
   });
   return text.trim();
 }
-import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples, readCodeSpec } from "./specs";
+import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples, readCodeSpec, readCodeSpecFile } from "./specs";
 import { AUDIENCES } from "./audiences";
+import { getDesignSource, type DesignSource } from "./designSources";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 // ── Stage 1: UNDERSTAND ──────────────────────────────────────────────────────
 // A real tool-loop agent: it fetches the prototype, optionally reads the
@@ -68,8 +71,10 @@ async function understand(input: {
   projectContext?: string;
   focusAreas?: string;
   designDecisions?: string;
+  designReference?: string;
 }): Promise<ChangeBrief> {
   const subject = input.subject?.trim();
+  const designRef = input.designReference || "design-system";
   const guidance = await readChangeBriefGuidance();
 
   // The designer's rich, structured context — primary truth the agent should use
@@ -131,7 +136,7 @@ async function understand(input: {
     output: Output.object({ schema: ChangeBriefSchema }),
     instructions: [
       "You are a senior product designer preparing a design-handoff change brief.",
-      "Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('design-system'); (4) call inspectPrototype on the prototype URL to get its ACTUAL clickable control labels; (5) establish the baseline per the BASELINE instruction below; (6) produce the structured change brief.",
+      `Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('${designRef}') — the design source to compare against, its components/tokens/conventions; (4) call inspectPrototype on the prototype URL to get its ACTUAL clickable control labels; (5) establish the baseline per the BASELINE instruction below; (6) produce the structured change brief. Judge componentImpact against THIS design source's components.`,
       "When filling each visualManifest entry's `actions`, use the EXACT control labels returned by inspectPrototype as click targets (e.g. if the layout control reads 'Modal', target 'Modal' — not a guessed 'Filter layout'). If inspectPrototype returned no labels, fall back to the most likely visible label and note lower confidence.",
       subject
         ? `SUBJECT: this change is about the ${subject}. The prototype is an ISOLATED DEMO that frames the ${subject} in a stage/page (centered card, page background, maybe an iframe/wrapper). Analyse and report ONLY the ${subject} and its own behaviour. IGNORE the demo scaffolding — page background, the stage/frame card it sits on, wrappers, iframes, page format/structure — and never report scaffolding as a component change (e.g. do NOT say "the toolbar became a rounded card" when that card is the demo stage).`
@@ -411,11 +416,22 @@ async function generateCode(opts: {
   framework: string;
   focus?: string;
   instrumentation?: InstrumentationPlan | null;
+  analytics: { attr: string; directive: boolean };
+  repoConventions?: string | null;
+  label: string;
 }): Promise<Artifact> {
   const instrBlock = instrumentationToMarkdown(opts.instrumentation ?? null);
+  // How the target attaches an analytics id — a Vue directive (v-gs-id="'id'") or
+  // a plain attribute (data-id="id").
+  const attrHowto = opts.analytics.directive
+    ? `the \`${opts.analytics.attr}\` directive, e.g. \`${opts.analytics.attr}="'<id>'"\``
+    : `the \`${opts.analytics.attr}\` attribute, e.g. \`${opts.analytics.attr}="<id>"\``;
   const { text } = await generateText({
     model: MODEL_GENERATE,
-    maxOutputTokens: 8000,
+    // Generous budget: a full SFC (template + script + scoped style) plus the
+    // doc sections is sizable, and adaptive thinking also draws from this pool —
+    // 8k truncated the component mid-template. 16k leaves room to finish.
+    maxOutputTokens: 16000,
     system: [
       `You are a senior front-end engineer writing a starting-point ${opts.framework} component for a design-handoff.`,
       "Follow the code-target spec exactly. Ground every component/token in the design-system reference — do not invent names.",
@@ -429,11 +445,19 @@ async function generateCode(opts: {
       "",
       "### Code-target spec",
       opts.codeSpecText,
+      opts.repoConventions
+        ? [
+            "",
+            "### Target repo conventions — AUTHORITATIVE (from the actual codebase)",
+            "These are read from the real target repository. Where they conflict with anything above, THESE WIN.",
+            opts.repoConventions,
+          ].join("\n")
+        : "",
       instrBlock
         ? [
             "",
-            "### Gainsight instrumentation — REQUIRED",
-            "The analytics plan instruments this change via the data-ids below. Add each `data-id` attribute VERBATIM to the element described, so Gainsight PX has a unique selector to attach to. Put a short comment marking them as Gainsight PX instrumentation. Every data-id below must appear in your markup.",
+            "### Analytics instrumentation — REQUIRED",
+            `The analytics plan instruments this change via the ids below. Attach each id to the element described using ${attrHowto} — this is how the target wires it for Gainsight PX. Use the ids VERBATIM; every one must appear in your markup, on the real interactive element. Add a short comment marking them as analytics instrumentation.`,
             instrBlock,
           ].join("\n")
         : "",
@@ -442,7 +466,7 @@ async function generateCode(opts: {
       opts.focus
         ? `Implement this component: ${opts.focus}. It is the change's primary net-new UI.`
         : "Implement the change's primary new/changed UI as a single focused component.",
-      instrBlock ? "Wire in the required Gainsight data-id attributes on the elements named in the instrumentation plan." : "",
+      instrBlock ? `Wire in the required analytics ids using ${attrHowto} on the elements named in the instrumentation plan.` : "",
       "Use this change brief as the source of truth:",
       "",
       JSON.stringify(opts.brief, null, 2),
@@ -452,7 +476,7 @@ async function generateCode(opts: {
   });
   return {
     audienceId: "dev-code",
-    label: `Developer component code (${opts.framework})`,
+    label: opts.label,
     content: text.trim(),
   };
 }
@@ -482,6 +506,54 @@ async function* asCompleted<T>(promises: Promise<T>[]): AsyncGenerator<T> {
   }
 }
 
+// Extract the first fenced code block from generated Markdown (for lint/preview).
+function extractCodeBlock(md: string): string {
+  const m = md.match(/```(?:vue|html|jsx?|tsx?|javascript|typescript)?\n([\s\S]*?)```/);
+  return m ? m[1] : "";
+}
+
+// #4 — read the TARGET repo's own convention docs (best-effort, local only) so
+// generated code follows the actual repo, not just the built-in profile.
+async function readRepoConventions(codebasePath?: string): Promise<string | null> {
+  if (!codebasePath) return null;
+  const candidates = ["CLAUDE.md", "AGENTS.md", "CONTRIBUTING.md", ".github/CONTRIBUTING.md", "docs/CONVENTIONS.md"];
+  for (const c of candidates) {
+    try {
+      const txt = await readFile(join(codebasePath, c), "utf8");
+      if (txt.trim()) return `From \`${c}\`:\n\n${txt.slice(0, 12000)}`;
+    } catch {
+      /* keep looking */
+    }
+  }
+  return null;
+}
+
+// #5 — best-effort lint of the generated component against the TARGET repo's OWN
+// ESLint, surfacing the same issues the developers' gate would. Local only; never
+// throws; returns null when it can't run.
+async function lintAgainstRepo(code: string, codebasePath?: string): Promise<string | null> {
+  if (!codebasePath || !code.trim()) return null;
+  try {
+    const { existsSync } = await import("node:fs");
+    const bin = join(codebasePath, "node_modules", ".bin", "eslint");
+    if (!existsSync(bin)) return null;
+    const { writeFile, rm } = await import("node:fs/promises");
+    const tmp = join(codebasePath, `.harness-lint-${Date.now().toString(36)}.vue`);
+    try {
+      await writeFile(tmp, code);
+      const { execFile } = await import("node:child_process");
+      const out: string = await new Promise((resolve) => {
+        execFile(bin, ["--no-ignore", "--format", "compact", tmp], { cwd: codebasePath, timeout: 45000, maxBuffer: 2_000_000 }, (_e, stdout, stderr) => resolve(`${stdout || ""}${stderr || ""}`));
+      });
+      return out.split(tmp).join("GeneratedComponent.vue").trim();
+    } finally {
+      await rm(tmp, { force: true }).catch(() => {});
+    }
+  } catch {
+    return null;
+  }
+}
+
 // ── The harness loop ─────────────────────────────────────────────────────────
 // Understand → fan out to every audience → stream each artifact as it lands.
 // Review + distribute happen in the UI (human in the loop).
@@ -499,7 +571,9 @@ export async function* runPipeline(input: {
   projectContext?: string;
   focusAreas?: string;
   designDecisions?: string;
+  designSource?: string;
 }): AsyncGenerator<PipelineEvent> {
+  const source: DesignSource = getDesignSource(input.designSource);
   // Stable id for this run — used for the capture folder AND the library entry.
   const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   // Which artifact types to produce. Empty/undefined = all. Component specs are
@@ -512,7 +586,7 @@ export async function* runPipeline(input: {
       ? "against the baseline URL"
       : "from the note (no baseline — inferred)";
   yield { type: "status", stage: "understand", message: `Building the change brief, diffing ${basis}…` };
-  const brief = await understand(input);
+  const brief = await understand({ ...input, designReference: source.reference });
   yield { type: "brief", brief };
 
   // ── Stage: CAPTURE ─────────────────────────────────────────────────────────
@@ -636,16 +710,32 @@ export async function* runPipeline(input: {
   }
   // The coded developer artifact (framework-parameterized; Vue default), grounded
   // in the design-system reference and focused on the primary net-new component.
+  const codeLabel = source.codeLabel ? `Developer component code (${source.codeLabel})` : `Developer component code (${framework})`;
   if (wants("dev-code")) {
     promises.push(
       guard(
         (async () => {
-          const dsReference = await readReferenceDoc("design-system");
-          const { text: codeSpecText } = await readCodeSpec(framework);
-          return generateCode({ brief, productContext, dsReference, codeSpecText, framework, focus: newComponents[0]?.name, instrumentation });
+          // Ground the code in the CHOSEN design source: its reference + its fixed
+          // conventions spec (or the framework-based spec when it has none).
+          const dsReference = await readReferenceDoc(source.reference);
+          const codeSpecText = source.codeSpec ? await readCodeSpecFile(source.codeSpec) : (await readCodeSpec(framework)).text;
+          const repoConventions = await readRepoConventions(input.codebasePath); // #4
+          const artifact = await generateCode({
+            brief, productContext, dsReference, codeSpecText, framework,
+            focus: newComponents[0]?.name, instrumentation,
+            analytics: source.analytics, repoConventions, label: codeLabel,
+          });
+          // #5 — lint the generated component against the target repo's own ESLint.
+          const lint = await lintAgainstRepo(extractCodeBlock(artifact.content), input.codebasePath);
+          if (lint !== null) {
+            artifact.content += lint
+              ? `\n\n---\n\n### Lint check — target repo ESLint\n\n\`\`\`\n${lint.slice(0, 4000)}\n\`\`\``
+              : `\n\n---\n\n### Lint check — target repo ESLint\n\n✓ No issues reported.`;
+          }
+          return artifact;
         })(),
         "dev-code",
-        `Developer component code (${framework})`,
+        codeLabel,
       ),
     );
   }

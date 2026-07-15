@@ -21,6 +21,13 @@ export async function readComponentSpecTemplate(): Promise<string> {
 // Framework-specific code-target spec (specs/code/<framework>.md). Falls back to
 // Vue — the only target with a design-system mapping today — with a note when an
 // unsupported framework is requested.
+// Read a specific code-conventions spec by name (specs/code/<name>.md) — used
+// when a design source fixes its conventions (e.g. "miramar").
+export async function readCodeSpecFile(name: string): Promise<string> {
+  const safe = name.toLowerCase().replace(/[^a-z0-9-]/gi, "");
+  return readFile(join(SPECS_DIR, "code", `${safe}.md`), "utf8");
+}
+
 export async function readCodeSpec(framework: string): Promise<{ text: string; supported: boolean }> {
   const safe = framework.toLowerCase().replace(/[^a-z0-9-]/gi, "");
   try {

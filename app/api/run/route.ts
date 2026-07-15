@@ -9,7 +9,7 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   const {
     prototypeUrl, note, baselineUrl, codebasePath, framework, enabledOutputs, subject, componentSelector,
-    projectName, designDescription, projectContext, focusAreas, designDecisions,
+    projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
   } = await req.json();
 
   if (!prototypeUrl || typeof prototypeUrl !== "string") {
@@ -39,6 +39,7 @@ export async function POST(req: Request) {
           projectContext: projectContext || undefined,
           focusAreas: focusAreas || undefined,
           designDecisions: designDecisions || undefined,
+          designSource: designSource || undefined,
         })) {
           send(event);
         }

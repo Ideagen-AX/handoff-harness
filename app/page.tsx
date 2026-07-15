@@ -7,6 +7,7 @@ import { APP_VERSION } from "@/lib/version";
 import { createExporters } from "@/app/lib/exports";
 import { RunTabs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
+import { DESIGN_SOURCES, DEFAULT_DESIGN_SOURCE } from "@/lib/designSources";
 
 type UiArtifact = {
   audienceId: string;
@@ -46,6 +47,7 @@ export default function Home() {
   const [baselineUrl, setBaselineUrl] = useState("https://forge-demo-toolbar-before.vercel.app/");
   const [codebasePath, setCodebasePath] = useState("");
   const [framework, setFramework] = useState("vue");
+  const [designSource, setDesignSource] = useState(DEFAULT_DESIGN_SOURCE);
   const [subject, setSubject] = useState("Search page toolbar");
   const [componentSelector, setComponentSelector] = useState(".toolbar");
   const [running, setRunning] = useState(false);
@@ -169,7 +171,7 @@ export default function Home() {
           prototypeUrl: url, baselineUrl, codebasePath, framework,
           enabledOutputs: ALL_OUTPUT_IDS.filter((id) => enabled[id]),
           subject, componentSelector,
-          projectName, designDescription, projectContext, focusAreas, designDecisions,
+          projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
         }),
         signal: ac.signal,
       });
@@ -314,8 +316,17 @@ export default function Home() {
           <input type="text" value={componentSelector} onChange={(e) => setComponentSelector(e.target.value)} placeholder=".toolbar" disabled={running} />
         </label>
         <label className="field">
-          <span className="lab">Developer code target</span>
-          <select value={framework} onChange={(e) => setFramework(e.target.value)} disabled={running}>
+          <span className="lab">Design source — the system the generated code should match</span>
+          <select value={designSource} onChange={(e) => setDesignSource(e.target.value)} disabled={running}>
+            {DESIGN_SOURCES.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+          <span className="meta">{DESIGN_SOURCES.find((s) => s.id === designSource)?.blurb}</span>
+        </label>
+        <label className="field">
+          <span className="lab">Developer code target — framework (used when the design source doesn&rsquo;t fix its own)</span>
+          <select value={framework} onChange={(e) => setFramework(e.target.value)} disabled={running || designSource === "miramar"}>
             <option value="vue">Vue 3 (design-system-mapped)</option>
             <option value="react">React (best-effort — no DS mapping yet)</option>
             <option value="svelte">Svelte (best-effort — no DS mapping yet)</option>
