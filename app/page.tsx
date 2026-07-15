@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import type { ChangeBrief, PipelineEvent, Capture, SlideSpec, InstrumentationPlan } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
@@ -76,10 +76,97 @@ export default function Home() {
   const [savedRun, setSavedRun] = useState<{ id: string; project: string } | null>(null);
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() => Object.fromEntries(ALL_OUTPUT_IDS.map((id) => [id, true])));
   const [selected, setSelected] = useState<string | null>(null);
+  const [notifyWhenDone, setNotifyWhenDone] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const origTitleRef = useRef("");
+  const titleFlashedRef = useRef(false);
+  const artifactCountRef = useRef(0);
   const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
+
+  // Restore the tab title once you come back to a flashed tab.
+  useEffect(() => {
+    origTitleRef.current = document.title;
+    const onVis = () => {
+      if (!document.hidden && titleFlashedRef.current) {
+        document.title = origTitleRef.current;
+        titleFlashedRef.current = false;
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  // Called on the Generate click (a user gesture) so we can ask for notification
+  // permission and unlock audio for a later chime — both require a gesture.
+  function primeNotifications() {
+    if (!notifyWhenDone) return;
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AC) {
+        audioCtxRef.current = audioCtxRef.current ?? new AC();
+        if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume().catch(() => {});
+      }
+    } catch {
+      /* audio unavailable */
+    }
+  }
+
+  // A short two-note chime — rising when done, falling on failure.
+  function playChime(ok: boolean) {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      (ok ? [660, 880] : [440, 330]).forEach((freq, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = freq;
+        o.connect(g);
+        g.connect(ctx.destination);
+        const t = now + i * 0.16;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+        o.start(t);
+        o.stop(t + 0.34);
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Attention-grab when a run finishes: a chime always, plus an OS notification
+  // and a tab-title flash when the tab isn't focused (if it is, the UI updated).
+  function notifyComplete(ok: boolean, detail?: string) {
+    if (!notifyWhenDone) return;
+    playChime(ok);
+    if (typeof document === "undefined" || !document.hidden) return;
+    const title = ok ? "✅ Handoff ready" : "⚠️ Run failed";
+    const n = artifactCountRef.current;
+    const body = ok
+      ? `${n} output${n === 1 ? "" : "s"} for “${projectName}” ready to review.`
+      : detail?.slice(0, 140) || "The run didn’t finish — check the app.";
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        const note = new Notification(title, { body, tag: "handoff-run" });
+        note.onclick = () => {
+          window.focus();
+          note.close();
+        };
+      } catch {
+        /* ignore */
+      }
+    }
+    document.title = `${ok ? "✅" : "⚠️"} ${origTitleRef.current}`;
+    titleFlashedRef.current = true;
+  }
 
   async function run() {
     setRunning(true);
@@ -87,6 +174,8 @@ export default function Home() {
     setBrief(null); setCaptures([]); setInstrumentation(null); setArtifacts([]); setSavedRun(null);
     setSelected(null);
     setStatus("Starting…");
+    artifactCountRef.current = 0;
+    primeNotifications();
     const ac = new AbortController();
     abortRef.current = ac;
     try {
@@ -117,7 +206,10 @@ export default function Home() {
         }
       }
     } catch (e) {
-      if ((e as Error).name !== "AbortError") setError(String(e));
+      if ((e as Error).name !== "AbortError") {
+        setError(String(e));
+        notifyComplete(false, String(e));
+      }
     } finally {
       setRunning(false);
       setStatus("");
@@ -131,11 +223,16 @@ export default function Home() {
       case "brief": setBrief(ev.brief); setSelected((s) => s ?? "brief"); break;
       case "captures": setCaptures(ev.captures); break;
       case "instrumentation": setInstrumentation(ev.plan); break;
-      case "artifact": setArtifacts((prev) => [...prev, { ...ev.artifact, approved: false }]); setSelected((s) => s ?? ev.artifact.audienceId); break;
-      case "error": setError(ev.message); break;
+      case "artifact":
+        artifactCountRef.current += 1;
+        setArtifacts((prev) => [...prev, { ...ev.artifact, approved: false }]);
+        setSelected((s) => s ?? ev.artifact.audienceId);
+        break;
+      case "error": setError(ev.message); notifyComplete(false, ev.message); break;
       case "done":
         setStatus("");
         if (ev.savedRunId && ev.project) setSavedRun({ id: ev.savedRunId, project: ev.project });
+        notifyComplete(true);
         break;
     }
   }
@@ -274,6 +371,20 @@ export default function Home() {
             {running ? "Running…" : "Generate handoff"}
           </button>
           {running && <button className="ghost" onClick={() => abortRef.current?.abort()}>Cancel</button>}
+          <label className="notify-toggle" title="Get an OS notification, a tab-title flash, and a chime when the run finishes — so you can work in another tab meanwhile">
+            <input
+              type="checkbox"
+              checked={notifyWhenDone}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setNotifyWhenDone(on);
+                if (on && typeof Notification !== "undefined" && Notification.permission === "default") {
+                  Notification.requestPermission().catch(() => {});
+                }
+              }}
+            />
+            <span>🔔 Notify me when it&rsquo;s done</span>
+          </label>
         </div>
         {status && <div className="status"><span className="spinner" /> {status}</div>}
         {error && <p className="err">Error: {error}</p>}
