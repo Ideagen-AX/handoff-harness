@@ -31,6 +31,11 @@ const OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] = [
 ];
 const ALL_OUTPUT_IDS = OUTPUTS.flatMap((g) => g.items.map((i) => i.id));
 
+// Leading glyph per activity-feed line kind.
+const FEED_ICON: Record<string, string> = {
+  tool: "•", stage: "▸", milestone: "◆", artifact: "✓", done: "✅", error: "⚠", info: "·",
+};
+
 export default function Home() {
   const [projectName, setProjectName] = useState("Praxis Toolbar");
   const [url, setUrl] = useState("https://forge-demo-toolbar-after.vercel.app/");
@@ -64,6 +69,8 @@ export default function Home() {
   const [artifacts, setArtifacts] = useState<UiArtifact[]>([]);
   const [savedRun, setSavedRun] = useState<{ id: string; project: string } | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+  const [feed, setFeed] = useState<{ ms: number; message: string; kind: string }[]>([]);
+  const [feedOpen, setFeedOpen] = useState(true);
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() => Object.fromEntries(ALL_OUTPUT_IDS.map((id) => [id, true])));
   const [selected, setSelected] = useState<string | null>(null);
   const [notifyWhenDone, setNotifyWhenDone] = useState(true);
@@ -79,6 +86,11 @@ export default function Home() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(0);
   const terminalRef = useRef(false);
+  const feedBodyRef = useRef<HTMLDivElement | null>(null);
+
+  // Append one line to the live activity feed, stamped with run-elapsed time.
+  const pushFeed = (message: string, kind = "info") =>
+    setFeed((prev) => [...prev, { ms: Date.now() - startRef.current, message, kind }]);
   const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
@@ -114,6 +126,20 @@ export default function Home() {
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
+
+  // Keep the feed scrolled to the newest line as it streams.
+  useEffect(() => {
+    const el = feedBodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [feed.length]);
+
+  // While the feed panel is visible and expanded, reflow the main content left
+  // (on wide screens) so nothing hides behind it.
+  useEffect(() => {
+    const on = (running || feed.length > 0) && feedOpen;
+    document.body.classList.toggle("feed-open", on);
+    return () => document.body.classList.remove("feed-open");
+  }, [running, feed.length, feedOpen]);
 
   // Called on the Generate click (a user gesture) so we can ask for notification
   // permission and unlock audio for a later chime — both require a gesture.
@@ -191,6 +217,8 @@ export default function Home() {
     setSelected(null);
     setStatus("Starting…");
     setElapsedMs(0);
+    setFeed([]);
+    setFeedOpen(true);
     artifactCountRef.current = 0;
     terminalRef.current = false;
     startRef.current = Date.now();
@@ -232,6 +260,7 @@ export default function Home() {
       if (!terminalRef.current) {
         const msg = "The run ended early — the server stopped before finishing (likely a timeout). Some outputs may be missing, and this run was not saved to the library. Try again, or generate fewer outputs at once.";
         setError(msg);
+        pushFeed("Run ended early — server stopped (likely a timeout)", "error");
         notifyComplete(false, msg);
       }
     } catch (e) {
@@ -250,6 +279,7 @@ export default function Home() {
   function handleEvent(ev: PipelineEvent) {
     switch (ev.type) {
       case "status": setStatus(ev.message); break;
+      case "activity": pushFeed(ev.message, ev.kind ?? "info"); break;
       case "brief": setBrief(ev.brief); setSelected((s) => s ?? "brief"); break;
       case "captures": setCaptures(ev.captures); break;
       case "instrumentation": setInstrumentation(ev.plan); break;
@@ -257,11 +287,12 @@ export default function Home() {
         artifactCountRef.current += 1;
         setArtifacts((prev) => [...prev, { ...ev.artifact, approved: false }]);
         setSelected((s) => s ?? ev.artifact.audienceId);
+        pushFeed(`✓ ${ev.artifact.label}`, "artifact");
         break;
       case "error":
         terminalRef.current = true;
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        setError(ev.message); notifyComplete(false, ev.message);
+        setError(ev.message); pushFeed(ev.message, "error"); notifyComplete(false, ev.message);
         break;
       case "done":
         terminalRef.current = true;
@@ -269,6 +300,7 @@ export default function Home() {
         if (typeof ev.durationMs === "number") setElapsedMs(ev.durationMs);
         setStatus("");
         if (ev.savedRunId && ev.project) setSavedRun({ id: ev.savedRunId, project: ev.project });
+        pushFeed(`Done in ${formatDuration(typeof ev.durationMs === "number" ? ev.durationMs : Date.now() - startRef.current)}`, "done");
         notifyComplete(true);
         break;
     }
@@ -307,6 +339,28 @@ export default function Home() {
 
   return (
     <div className="wrap">
+      {(running || feed.length > 0) && (
+        <aside className={`activity-feed ${feedOpen ? "" : "collapsed"}`} aria-label="Run activity">
+          <div className="activity-feed-head">
+            <span className="af-title">{running && <span className="spinner" />} Activity</span>
+            <button className="af-toggle" onClick={() => setFeedOpen((o) => !o)} title={feedOpen ? "Collapse" : "Expand"}>
+              {feedOpen ? "→" : "←"}
+            </button>
+          </div>
+          {feedOpen && (
+            <div className="activity-feed-body" ref={feedBodyRef}>
+              {feed.length === 0 && <div className="activity-item"><span className="msg">Starting…</span></div>}
+              {feed.map((f, i) => (
+                <div key={i} className={`activity-item ${f.kind}`}>
+                  <span className="t">{formatDuration(f.ms) || "0s"}</span>
+                  <span className="ic">{FEED_ICON[f.kind] ?? "·"}</span>
+                  <span className="msg">{f.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+      )}
       <header className="masthead">
         <div className="topbar">
           <div className="kicker">Design Handoff Harness <span className="ver">v{APP_VERSION}</span></div>

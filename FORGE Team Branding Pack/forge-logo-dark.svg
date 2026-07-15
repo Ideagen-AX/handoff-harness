@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" role="img" aria-label="Ideagen FORGE">
+  <!-- Ideagen cubes -->
+  <g transform="translate(24,20) scale(1.6)">
+    <polygon fill="#45bbce" points="0,28.9 0,36.2 0.6,36.2 0.6,29.3 12.2,36.2 24.2,28.9 12.2,21.7"/>
+    <polygon fill="#039db7" points="12.2,36.2 12.2,50.7 24.2,43.4 24.2,28.9"/>
+    <polygon fill="#e2408e" points="12.1,7.2 12.1,14.4 12.6,14.4 12.6,7.6 24.2,14.5 36.2,7.2 24.2,0"/>
+    <polygon fill="#ffffff" points="24.2,14.5 24.2,28.9 36.2,21.7 36.2,7.2" opacity="0.92"/>
+  </g>
+  <!-- FORGE wordmark -->
+  <text x="110" y="76" font-family="Gilroy, 'Helvetica Neue', Arial, sans-serif" font-size="56" font-weight="800" letter-spacing="6" fill="#ffffff">FORGE</text>
+  <text x="112" y="102" font-family="Gilroy, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="7.5" fill="#FF54A4">IDEAGEN · 2026</text>
+  <!-- gradient full stop -->
+  <defs>
+    <linearGradient id="bloom" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5CC9D0"/>
+      <stop offset="1" stop-color="#FF54A4"/>
+    </linearGradient>
+  </defs>
+  <circle cx="342" cy="70" r="7" fill="url(#bloom)"/>
+</svg>

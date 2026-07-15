@@ -267,6 +267,9 @@ export type Capture = {
 // Events streamed from the pipeline to the review UI (one JSON object per line).
 export type PipelineEvent =
   | { type: "status"; stage: string; message: string }
+  // Fine-grained narration for the live activity feed (e.g. each tool the
+  // Understand agent calls). Distinct from `status` (which drives the spinner).
+  | { type: "activity"; message: string; kind?: string }
   | { type: "brief"; brief: ChangeBrief }
   | { type: "captures"; captures: Capture[] }
   | { type: "instrumentation"; plan: InstrumentationPlan }

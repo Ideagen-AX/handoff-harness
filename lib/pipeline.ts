@@ -9,6 +9,50 @@ import { saveRun, projectSlug } from "./library";
 
 type DiffPart = { type: "text"; text: string } | { type: "image"; image: string };
 
+// A tiny push-based async queue: understand() pushes activity events from inside
+// its (otherwise opaque) tool-loop await, and runPipeline drains them live and
+// yields them to the client. Closed when understand settles.
+class ActivityQueue {
+  private items: PipelineEvent[] = [];
+  private waiters: ((r: IteratorResult<PipelineEvent>) => void)[] = [];
+  private closed = false;
+  push(e: PipelineEvent) {
+    if (this.closed) return;
+    const w = this.waiters.shift();
+    if (w) w({ value: e, done: false });
+    else this.items.push(e);
+  }
+  close() {
+    this.closed = true;
+    let w;
+    while ((w = this.waiters.shift())) w({ value: undefined as unknown as PipelineEvent, done: true });
+  }
+  async *drain(): AsyncGenerator<PipelineEvent> {
+    while (true) {
+      if (this.items.length) { yield this.items.shift()!; continue; }
+      if (this.closed) return;
+      const r = await new Promise<IteratorResult<PipelineEvent>>((res) => this.waiters.push(res));
+      if (r.done) return;
+      yield r.value;
+    }
+  }
+}
+
+// Map an Understand tool call to a human-readable activity line for the feed.
+function toolActivity(toolName: string, input: unknown): string {
+  const arg = (input as Record<string, unknown>) ?? {};
+  switch (toolName) {
+    case "fetchPrototype": return "Fetched the prototype page";
+    case "inspectPrototype": return "Inspected the prototype's live controls";
+    case "readReference": {
+      const name = typeof arg.name === "string" ? arg.name : "";
+      return name ? `Read the ${name} reference` : "Read a reference doc";
+    }
+    case "readCodebase": return "Explored the target codebase";
+    default: return `Used ${toolName}`;
+  }
+}
+
 // Before/after prototype diff: for each state, capture a screenshot AND its
 // rendered HTML/CSS markup, then have the model compare them both visually and at
 // the code level. This is what makes a URL baseline useful for styling/layout
@@ -73,9 +117,11 @@ async function understand(input: {
   focusAreas?: string;
   designDecisions?: string;
   designReference?: string;
+  onActivity?: (message: string, kind?: string) => void;
 }): Promise<ChangeBrief> {
   const subject = input.subject?.trim();
   const designRef = input.designReference || "design-system";
+  const act = input.onActivity ?? (() => {});
   const guidance = await readChangeBriefGuidance();
 
   // The designer's rich, structured context — primary truth the agent should use
@@ -116,10 +162,12 @@ async function understand(input: {
   // For a URL baseline, diff the two prototypes up front — visually AND at the
   // code level (screenshot + rendered HTML/CSS). Styling changes don't show up in
   // fetched text. Falls back to the plain text diff if capture is unavailable.
+  if (!useCodebase && input.baselineUrl) act("Diffing the before/after prototypes (visual + code)…", "tool");
   const diffSummary =
     !useCodebase && input.baselineUrl
       ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, designerContext, subject)
       : null;
+  if (diffSummary) act("Before/after diff complete", "tool");
 
   let basisInstruction: string;
   if (useCodebase) {
@@ -142,6 +190,11 @@ async function understand(input: {
     // into invalid JSON (the cause of intermittent "no object generated").
     maxOutputTokens: 16000,
     output: Output.object({ schema: ChangeBriefSchema }),
+    // Narrate each tool the agent calls to the live activity feed. Fires after
+    // each step; a step can carry several tool calls.
+    onStepFinish: (step: { toolCalls?: Array<{ toolName: string; input?: unknown }> }) => {
+      for (const tc of step.toolCalls ?? []) act(toolActivity(tc.toolName, tc.input), "tool");
+    },
     instructions: [
       "You are a senior product designer preparing a design-handoff change brief.",
       `Process: (1) call fetchPrototype on the prototype URL (the AFTER state); (2) call readReference('product'); (3) call readReference('${designRef}') — the design source to compare against, its components/tokens/conventions; (4) call inspectPrototype on the prototype URL to get its ACTUAL clickable control labels; (5) establish the baseline per the BASELINE instruction below; (6) produce the structured change brief. Judge componentImpact against THIS design source's components.`,
@@ -597,7 +650,25 @@ export async function* runPipeline(input: {
       ? "against the baseline URL"
       : "from the note (no baseline — inferred)";
   yield { type: "status", stage: "understand", message: `Building the change brief, diffing ${basis}…` };
-  const brief = await understand({ ...input, designReference: source.reference });
+  yield { type: "activity", message: "Analyzing the prototype and building the change brief…", kind: "stage" };
+  // Run Understand while draining its tool-step narration to the feed. The queue
+  // closes when understand settles (success OR failure); we then await the brief
+  // so any error still propagates.
+  const q = new ActivityQueue();
+  let briefErr: unknown = null;
+  // Attach the catch immediately (before the long drain) so a mid-run failure
+  // never surfaces as an unhandled rejection; rethrow it after draining.
+  const briefPromise = understand({
+    ...input,
+    designReference: source.reference,
+    onActivity: (message, kind) => q.push({ type: "activity", message, kind }),
+  })
+    .catch((e) => { briefErr = e; return null; })
+    .finally(() => q.close());
+  for await (const ev of q.drain()) yield ev;
+  const brief = await briefPromise;
+  if (briefErr || !brief) throw briefErr ?? new Error("Understand produced no brief");
+  yield { type: "activity", message: `Change brief ready: “${brief.title}”`, kind: "milestone" };
   yield { type: "brief", brief };
 
   // ── Stage: CAPTURE ─────────────────────────────────────────────────────────
@@ -611,8 +682,11 @@ export async function* runPipeline(input: {
       stage: "capture",
       message: `Capturing ${manifest.length} screen${manifest.length > 1 ? "s" : ""} from the prototype…`,
     };
+    yield { type: "activity", message: `Capturing ${manifest.length} screen${manifest.length > 1 ? "s" : ""} from the prototype…`, kind: "stage" };
     captures = await captureScreens({ prototypeUrl: input.prototypeUrl, manifest, runId, defaultSelector: input.componentSelector });
     yield { type: "captures", captures };
+    const okCount = captures.filter((c) => c.ok).length;
+    yield { type: "activity", message: `Captured ${okCount}/${captures.length} screens`, kind: "milestone" };
     const failed = captures.filter((c) => !c.ok).length;
     if (failed) {
       yield {
@@ -656,6 +730,7 @@ export async function* runPipeline(input: {
     stage: "generate",
     message: `Drafting ${jobs.length + extra} artifact${jobs.length + extra === 1 ? "" : "s"}…`,
   };
+  yield { type: "activity", message: `Drafting ${jobs.length + extra} artifact${jobs.length + extra === 1 ? "" : "s"}…`, kind: "stage" };
   const productContext = await readReferenceDoc("product");
 
   // The analytics ↔ code bridge: one instrumentation plan (Gainsight data-ids),
@@ -669,6 +744,7 @@ export async function* runPipeline(input: {
       const nPts = instrumentation?.points?.length ?? 0;
       if (nPts) {
         yield { type: "status", stage: "instrument", message: `Instrumentation plan: ${nPts} data-id${nPts > 1 ? "s" : ""} for Gainsight` };
+        yield { type: "activity", message: `Instrumentation plan: ${nPts} data-id${nPts > 1 ? "s" : ""} for Gainsight`, kind: "milestone" };
         yield { type: "instrumentation", plan: instrumentation };
       }
     } catch {
