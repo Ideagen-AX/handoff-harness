@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { StoredRun, StoredRunMeta } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { createExporters } from "@/app/lib/exports";
-import { ArtifactCard, BriefCard, CaptureGallery, InstrumentationPanel } from "@/app/components/RunViews";
+import { RunTabs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
 
 type Group = { project: { id: string; name: string }; runs: StoredRunMeta[] };
@@ -85,7 +85,7 @@ export default function LibraryPage() {
       {notice && <p className="notice" onClick={() => setNotice("")}>{notice}</p>}
 
       <div className="workspace">
-        <nav className="card nav">
+        <nav className="card nav nav--projects">
           <div className="nav-head">Projects</div>
           {loading ? (
             <div className="meta" style={{ padding: 12 }}>Loading…</div>
@@ -121,7 +121,7 @@ export default function LibraryPage() {
           ) : compareWith ? (
             <CompareView a={run} b={compareWith} />
           ) : (
-            <RunView run={run} onError={setError} onNotice={setNotice} />
+            <RunView key={run.id} run={run} onError={setError} onNotice={setNotice} />
           )}
         </section>
       </div>
@@ -129,37 +129,59 @@ export default function LibraryPage() {
   );
 }
 
-// Full read-only view of one stored run.
+// Read-only view of one stored run — same tabbed layout as the generator.
 function RunView({ run, onError, onNotice }: { run: StoredRun; onError: (s: string) => void; onNotice: (s: string) => void }) {
   const exporters = createExporters({ captures: run.captures, brief: run.brief, framework: run.input?.framework || "vue", onError, onNotice });
+  const [tab, setTab] = useState<string | null>("brief");
+
+  async function downloadRunZip() {
+    try {
+      const res = await fetch("/api/bundle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: run.title,
+          meta: { prototypeUrl: run.prototypeUrl, baselineUrl: run.baselineUrl, note: run.input?.designDescription, framework: run.input?.framework, generatedAt: run.createdAt },
+          brief: run.brief, artifacts: run.artifacts, captures: run.captures,
+        }),
+      });
+      if (!res.ok) { onError(`Download failed: ${await res.text().catch(() => res.statusText)}`); return; }
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href; link.download = "handoff.zip"; link.click();
+      URL.revokeObjectURL(href);
+    } catch (e) {
+      onError(String(e));
+    }
+  }
+
   return (
-    <div>
-      <div className="card run-header">
-        <h2>{run.title}</h2>
-        <div className="meta">
-          {run.project.name} · v{run.version} · {fmtDate(run.createdAt)}
-          {run.prototypeUrl ? <> · <a href={run.prototypeUrl} target="_blank" rel="noreferrer">prototype</a></> : null}
-          {run.baselineUrl ? <> · <a href={run.baselineUrl} target="_blank" rel="noreferrer">baseline</a></> : null}
+    <div className="results">
+      <div className="results-head">
+        <div>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>{run.title}</h2>
+          <div className="meta">
+            {run.project.name} · v{run.version} · {fmtDate(run.createdAt)}
+            {run.prototypeUrl ? <> · <a href={run.prototypeUrl} target="_blank" rel="noreferrer">prototype</a></> : null}
+            {run.baselineUrl ? <> · <a href={run.baselineUrl} target="_blank" rel="noreferrer">baseline</a></> : null}
+          </div>
         </div>
-        {run.input?.designDescription && <p style={{ marginTop: 10 }}>{run.input.designDescription}</p>}
+        <button className="nav-download" style={{ width: "auto", margin: 0 }} onClick={downloadRunZip} title="Download the brief, all artifacts, screenshots and the deck as a .zip">
+          ⤓ Download all (.zip)
+        </button>
       </div>
-
-      <div className="btn-row" style={{ margin: "6px 0 12px" }}>
-        <button className="ghost" onClick={() => exporters.briefExport("pdf")}>Brief PDF</button>
-        <button className="ghost" onClick={() => exporters.briefExport("docx")}>Brief Word</button>
-        <button className="ghost" onClick={() => exporters.briefExport("md")}>Brief .md</button>
-      </div>
-
-      {run.brief && <BriefCard brief={run.brief} />}
-      {run.instrumentation && run.instrumentation.points?.length > 0 && <InstrumentationPanel plan={run.instrumentation} />}
-      {run.captures?.some((c) => c.ok) && (
-        <CaptureGallery captures={run.captures} onDownloadOne={exporters.downloadCapture} onDownloadAll={exporters.downloadCapturesZip} />
-      )}
-      {run.artifacts?.map((a) => (
-        <div key={a.audienceId} style={{ marginTop: 14 }}>
-          <ArtifactCard artifact={a} framework={run.input?.framework || "vue"} exporters={exporters} />
-        </div>
-      ))}
+      {run.input?.designDescription && <p className="meta" style={{ margin: "0 0 14px" }}>{run.input.designDescription}</p>}
+      <RunTabs
+        brief={run.brief}
+        captures={run.captures}
+        instrumentation={run.instrumentation}
+        artifacts={run.artifacts}
+        framework={run.input?.framework || "vue"}
+        exporters={exporters}
+        selected={tab}
+        onSelect={setTab}
+      />
     </div>
   );
 }

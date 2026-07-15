@@ -4,6 +4,26 @@ import { marked } from "marked";
 import type { ChangeBrief, Capture, InstrumentationPlan } from "@/lib/types";
 import { EXPORT_ORDER, EXPORT_LABEL, exportsFor, codeExt, type ArtifactLike, type Exporters } from "@/app/lib/exports";
 
+// Review packages — artifacts are grouped into these tabs by id/prefix, so the
+// ~15 drafts read as a small set of deliverables. Shared by the generator and
+// the library run view (via RunTabs).
+export const PACKAGES = [
+  { id: "design", title: "Design system", ids: ["design-system"], prefixes: ["component-"] },
+  { id: "eng", title: "Engineering", ids: ["dev", "dev-code"], prefixes: [] },
+  { id: "qa", title: "QA", ids: ["qa"], prefixes: [] },
+  { id: "docs", title: "Documentation & support", ids: ["product-docs", "support-summary", "release-notes"], prefixes: [] },
+  { id: "comms", title: "Executive comms", ids: ["one-pager", "slide"], prefixes: [] },
+  { id: "story", title: "Case study", ids: ["case-study"], prefixes: [] },
+  { id: "analytics", title: "Analytics & success", ids: ["analytics-plan"], prefixes: [] },
+  { id: "other", title: "Other", ids: [] as string[], prefixes: [] as string[] },
+];
+export function packageFor(audienceId: string): string {
+  const p = PACKAGES.find((pkg) => pkg.ids.includes(audienceId) || pkg.prefixes.some((pre) => audienceId.startsWith(pre)));
+  return p ? p.id : "other";
+}
+
+export type TabArtifact = ArtifactLike & { approved?: boolean };
+
 // ── One artifact, with its per-output export row ─────────────────────────────
 // Editable (generator) shows a textarea + Approve/Copy; read-only (library)
 // renders the Markdown. Both show the export buttons appropriate to the output.
@@ -142,7 +162,9 @@ export function CaptureGallery({
 }
 
 // ── Change brief ─────────────────────────────────────────────────────────────
-export function BriefCard({ brief }: { brief: ChangeBrief }) {
+// onExport (if given) renders the PDF/Word/.md row at the BOTTOM of the card,
+// matching the export-at-the-bottom pattern of the other outputs.
+export function BriefCard({ brief, onExport }: { brief: ChangeBrief; onExport?: (format: "pdf" | "docx" | "md") => void }) {
   const newComponents = brief.componentImpact.filter((c) => c.disposition === "net-new");
   return (
     <details className="card brief" open>
@@ -181,6 +203,136 @@ export function BriefCard({ brief }: { brief: ChangeBrief }) {
           {brief.openQuestions.length ? <ul>{brief.openQuestions.map((x, i) => <li key={i}>{x}</li>)}</ul> : <span className="empty">None flagged</span>}
         </dd>
       </dl>
+      {onExport && (
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <button className="ghost" onClick={() => onExport("pdf")}>PDF</button>
+          <button className="ghost" onClick={() => onExport("docx")}>Word</button>
+          <button className="ghost" onClick={() => onExport("md")}>.md</button>
+        </div>
+      )}
     </details>
+  );
+}
+
+// ── Tabbed run view ──────────────────────────────────────────────────────────
+// The shared outputs UI used by BOTH the generator and the library: a tab bar
+// (Change brief · Captured screens · Instrumentation · one tab per package) and
+// a panel. `editable` turns on the generator's approve/edit/copy affordances;
+// omit it for the read-only library view.
+export function RunTabs({
+  brief,
+  captures,
+  instrumentation,
+  artifacts,
+  framework,
+  exporters,
+  selected,
+  onSelect,
+  editable = false,
+  onToggleApprove,
+  onEdit,
+  onCopy,
+}: {
+  brief: ChangeBrief | null;
+  captures: Capture[];
+  instrumentation: InstrumentationPlan | null;
+  artifacts: TabArtifact[];
+  framework: string;
+  exporters: Exporters;
+  selected: string | null;
+  onSelect: (id: string) => void;
+  editable?: boolean;
+  onToggleApprove?: (id: string) => void;
+  onEdit?: (id: string, content: string) => void;
+  onCopy?: (content: string) => void;
+}) {
+  const activeSection =
+    selected === "brief" || selected === "captures" || selected === "instrumentation"
+      ? selected
+      : (() => {
+          const a = artifacts.find((x) => x.audienceId === selected);
+          return a ? packageFor(a.audienceId) : null;
+        })();
+
+  return (
+    <>
+      <div className="tabbar" role="tablist">
+        {brief && (
+          <button role="tab" aria-selected={selected === "brief"} className={`tab ${selected === "brief" ? "active" : ""}`} onClick={() => onSelect("brief")}>
+            Change brief
+          </button>
+        )}
+        {captures.length > 0 && (
+          <button role="tab" aria-selected={selected === "captures"} className={`tab ${selected === "captures" ? "active" : ""}`} onClick={() => onSelect("captures")}>
+            Captured screens
+          </button>
+        )}
+        {instrumentation && instrumentation.points.length > 0 && (
+          <button role="tab" aria-selected={selected === "instrumentation"} className={`tab ${selected === "instrumentation" ? "active" : ""}`} onClick={() => onSelect("instrumentation")}>
+            Instrumentation
+          </button>
+        )}
+        {PACKAGES.map((pkg) => {
+          const items = artifacts.filter((a) => packageFor(a.audienceId) === pkg.id);
+          if (!items.length) return null;
+          const allApproved = editable && items.every((a) => a.approved);
+          return (
+            <button
+              key={pkg.id}
+              role="tab"
+              aria-selected={activeSection === pkg.id}
+              className={`tab ${activeSection === pkg.id ? "active" : ""}`}
+              onClick={() => onSelect(items[0].audienceId)}
+              title={items.length > 1 ? `${items.length} outputs` : undefined}
+            >
+              {pkg.title}
+              {items.length > 1 && <span className="tab-count">{items.length}</span>}
+              {allApproved && <span className="tab-check">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="tabpanel">
+        {selected === "brief" && brief ? (
+          <BriefCard brief={brief} onExport={exporters.briefExport} />
+        ) : selected === "captures" ? (
+          <CaptureGallery captures={captures} onDownloadOne={exporters.downloadCapture} onDownloadAll={exporters.downloadCapturesZip} />
+        ) : selected === "instrumentation" && instrumentation ? (
+          <InstrumentationPanel plan={instrumentation} />
+        ) : (
+          (() => {
+            const a = artifacts.find((x) => x.audienceId === selected);
+            if (!a) return <div className="viewer-empty">Select a tab to view its output.</div>;
+            const pkgId = packageFor(a.audienceId);
+            const siblings = artifacts.filter((x) => packageFor(x.audienceId) === pkgId);
+            return (
+              <div>
+                {siblings.length > 1 && (
+                  <div className="subtabs">
+                    {siblings.map((s) => (
+                      <button key={s.audienceId} className={`subtab ${selected === s.audienceId ? "active" : ""}`} onClick={() => onSelect(s.audienceId)}>
+                        {s.label}
+                        {editable && s.approved && <span className="tab-check">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <ArtifactCard
+                  artifact={a}
+                  framework={framework}
+                  exporters={exporters}
+                  editable={editable}
+                  approved={a.approved}
+                  onToggleApprove={onToggleApprove ? () => onToggleApprove(a.audienceId) : undefined}
+                  onEdit={onEdit ? (content) => onEdit(a.audienceId, content) : undefined}
+                  onCopy={onCopy ? () => onCopy(a.content) : undefined}
+                />
+              </div>
+            );
+          })()
+        )}
+      </div>
+    </>
   );
 }

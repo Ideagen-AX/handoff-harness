@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ChangeBrief, PipelineEvent, Capture, SlideSpec, InstrumentationPlan } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { createExporters } from "@/app/lib/exports";
-import { ArtifactCard, BriefCard, CaptureGallery, InstrumentationPanel } from "@/app/components/RunViews";
+import { RunTabs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
 
 type UiArtifact = {
@@ -15,24 +15,6 @@ type UiArtifact = {
   approved: boolean;
   slideSpec?: SlideSpec;
 };
-
-// The seven review packages. Each artifact is routed to one by id/prefix so the
-// ~15 drafts read as a small set of grouped deliverables rather than a long list.
-const PACKAGES = [
-  { id: "design", title: "Design system", ids: ["design-system"], prefixes: ["component-"] },
-  { id: "eng", title: "Engineering", ids: ["dev", "dev-code"], prefixes: [] },
-  { id: "qa", title: "QA", ids: ["qa"], prefixes: [] },
-  { id: "docs", title: "Documentation & support", ids: ["product-docs", "support-summary", "release-notes"], prefixes: [] },
-  { id: "comms", title: "Executive comms", ids: ["one-pager", "slide"], prefixes: [] },
-  { id: "story", title: "Case study", ids: ["case-study"], prefixes: [] },
-  { id: "analytics", title: "Analytics & success", ids: ["analytics-plan"], prefixes: [] },
-  { id: "other", title: "Other", ids: [] as string[], prefixes: [] as string[] },
-];
-
-function packageFor(audienceId: string): string {
-  const p = PACKAGES.find((pkg) => pkg.ids.includes(audienceId) || pkg.prefixes.some((pre) => audienceId.startsWith(pre)));
-  return p ? p.id : "other";
-}
 
 // The toggleable outputs, grouped by package, for the pre-run selection step.
 const OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] = [
@@ -84,16 +66,6 @@ export default function Home() {
   const titleFlashedRef = useRef(false);
   const artifactCountRef = useRef(0);
   const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
-
-  // Which top-level tab is active, derived from the current selection: one of the
-  // fixed views ("brief" | "captures" | "instrumentation") or a package id.
-  const activeSection =
-    selected === "brief" || selected === "captures" || selected === "instrumentation"
-      ? selected
-      : (() => {
-          const a = artifacts.find((x) => x.audienceId === selected);
-          return a ? packageFor(a.audienceId) : null;
-        })();
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
 
@@ -426,94 +398,20 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="tabbar" role="tablist">
-            {brief && (
-              <button role="tab" aria-selected={selected === "brief"} className={`tab ${selected === "brief" ? "active" : ""}`} onClick={() => setSelected("brief")}>
-                Change brief
-              </button>
-            )}
-            {captures.length > 0 && (
-              <button role="tab" aria-selected={selected === "captures"} className={`tab ${selected === "captures" ? "active" : ""}`} onClick={() => setSelected("captures")}>
-                Captured screens
-              </button>
-            )}
-            {instrumentation && instrumentation.points.length > 0 && (
-              <button role="tab" aria-selected={selected === "instrumentation"} className={`tab ${selected === "instrumentation" ? "active" : ""}`} onClick={() => setSelected("instrumentation")}>
-                Instrumentation
-              </button>
-            )}
-            {PACKAGES.map((pkg) => {
-              const items = artifacts.filter((a) => packageFor(a.audienceId) === pkg.id);
-              if (!items.length) return null;
-              const allApproved = items.every((a) => a.approved);
-              return (
-                <button
-                  key={pkg.id}
-                  role="tab"
-                  aria-selected={activeSection === pkg.id}
-                  className={`tab ${activeSection === pkg.id ? "active" : ""}`}
-                  onClick={() => setSelected(items[0].audienceId)}
-                  title={items.length > 1 ? `${items.length} outputs` : undefined}
-                >
-                  {pkg.title}
-                  {items.length > 1 && <span className="tab-count">{items.length}</span>}
-                  {allApproved && <span className="tab-check">✓</span>}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="tabpanel">
-            {selected === "brief" && brief ? (
-              <div>
-                <div className="btn-row" style={{ marginBottom: 12 }}>
-                  <button className="ghost" onClick={() => exporters.briefExport("pdf")}>PDF</button>
-                  <button className="ghost" onClick={() => exporters.briefExport("docx")}>Word</button>
-                  <button className="ghost" onClick={() => exporters.briefExport("md")}>.md</button>
-                </div>
-                <BriefCard brief={brief} />
-              </div>
-            ) : selected === "captures" ? (
-              <CaptureGallery captures={captures} onDownloadOne={exporters.downloadCapture} onDownloadAll={exporters.downloadCapturesZip} />
-            ) : selected === "instrumentation" && instrumentation ? (
-              <InstrumentationPanel plan={instrumentation} />
-            ) : (
-              (() => {
-                const a = artifacts.find((x) => x.audienceId === selected);
-                if (!a) return <div className="viewer-empty">Select a tab to view its output.</div>;
-                const pkgId = packageFor(a.audienceId);
-                const siblings = artifacts.filter((x) => packageFor(x.audienceId) === pkgId);
-                return (
-                  <div>
-                    {siblings.length > 1 && (
-                      <div className="subtabs">
-                        {siblings.map((s) => (
-                          <button
-                            key={s.audienceId}
-                            className={`subtab ${selected === s.audienceId ? "active" : ""}`}
-                            onClick={() => setSelected(s.audienceId)}
-                          >
-                            {s.label}
-                            {s.approved && <span className="tab-check">✓</span>}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <ArtifactCard
-                      artifact={a}
-                      framework={framework}
-                      exporters={exporters}
-                      editable
-                      approved={a.approved}
-                      onToggleApprove={() => toggleApprove(a.audienceId)}
-                      onEdit={(content) => updateArtifact(a.audienceId, content)}
-                      onCopy={() => copy(a.content)}
-                    />
-                  </div>
-                );
-              })()
-            )}
-          </div>
+          <RunTabs
+            brief={brief}
+            captures={captures}
+            instrumentation={instrumentation}
+            artifacts={artifacts}
+            framework={framework}
+            exporters={exporters}
+            selected={selected}
+            onSelect={setSelected}
+            editable
+            onToggleApprove={toggleApprove}
+            onEdit={updateArtifact}
+            onCopy={copy}
+          />
         </div>
       )}
     </div>

@@ -516,3 +516,12 @@ button.ghost { background: transparent; box-shadow: none; }
 /* "Notify me when done" toggle by the Generate button */
 .notify-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); cursor: pointer; margin-left: 4px; }
 .notify-toggle input { width: auto; }
+
+/* Library: wider projects panel so long project/run names aren't clipped */
+.nav--projects { width: 360px; flex-basis: 360px; }
+.nav--projects .nav-item-label { white-space: normal; }
+
+/* Keep images inside their containers (e.g. full-res screenshots embedded in
+   artifact Markdown) instead of overflowing the page */
+img { max-width: 100%; }
+.md img { max-width: 100%; height: auto; border-radius: 6px; }
