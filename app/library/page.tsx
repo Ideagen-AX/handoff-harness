@@ -6,6 +6,7 @@ import type { StoredRun, StoredRunMeta } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { createExporters } from "@/app/lib/exports";
 import { ArtifactCard, BriefCard, CaptureGallery, InstrumentationPanel } from "@/app/components/RunViews";
+import ThemeToggle from "@/app/components/ThemeToggle";
 
 type Group = { project: { id: string; name: string }; runs: StoredRunMeta[] };
 
@@ -73,6 +74,7 @@ export default function LibraryPage() {
           <nav className="topnav">
             <Link href="/">← Generator</Link>
             <span className="topnav-active">Library</span>
+            <ThemeToggle />
           </nav>
         </div>
         <h1>Handoff library</h1>
