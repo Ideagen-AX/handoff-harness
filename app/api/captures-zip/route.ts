@@ -1,7 +1,6 @@
 import JSZip from "jszip";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { Capture } from "@/lib/types";
+import { readAsset } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,7 +25,7 @@ export async function POST(req: Request) {
     const seen = new Map<string, number>();
     for (const c of shots) {
       try {
-        const buf = await readFile(join(process.cwd(), "public", c.url!.replace(/^\//, "")));
+        const buf = await readAsset(c.url!);
         let name = slug(c.screenKey);
         const n = (seen.get(name) ?? 0) + 1;
         seen.set(name, n);

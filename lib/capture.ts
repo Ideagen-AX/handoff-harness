@@ -1,6 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { ChangeBrief, Capture } from "./types";
+import { IS_SERVERLESS, storeCapture } from "./storage";
 
 // Candidate system-Chrome locations (macOS first, then common Linux). We use the
 // installed browser rather than downloading Chromium — lighter, and this stage is
@@ -51,7 +50,7 @@ async function clickTarget(ctx: import("puppeteer-core").Frame, target: string):
   }, target);
 }
 
-// Exposed so other local-first features (PDF export) can reuse the same browser.
+// Exposed so other browser features (PDF export) can reuse the same launcher.
 export async function findChrome(): Promise<string | null> {
   return firstExisting(CHROME_PATHS);
 }
@@ -69,9 +68,34 @@ async function firstExisting(paths: string[]): Promise<string | null> {
   return null;
 }
 
-// Screenshots live under public/captures/<runId>/ so Next serves them at
-// /captures/<runId>/… in local dev. Ignored by git; ephemeral by design.
-const PUBLIC_CAPTURES = join(process.cwd(), "public", "captures");
+/**
+ * Launch a headless browser that works both locally and on serverless (Vercel).
+ * On serverless we use the bundled @sparticuz/chromium build; locally we drive
+ * the installed system Chrome/Edge. Returns null when no browser is available,
+ * so every caller can degrade gracefully rather than throw.
+ */
+export async function launchBrowser(): Promise<import("puppeteer-core").Browser | null> {
+  const { launch } = await import("puppeteer-core");
+  if (IS_SERVERLESS) {
+    try {
+      const chromium = (await import("@sparticuz/chromium")).default;
+      return await launch({
+        args: [...chromium.args, "--hide-scrollbars"],
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      });
+    } catch {
+      return null; // chromium binary unavailable
+    }
+  }
+  const executablePath = await firstExisting(CHROME_PATHS);
+  if (!executablePath) return null;
+  try {
+    return await launch({ executablePath, headless: true, args: ["--no-sandbox", "--hide-scrollbars"] });
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Capture a prototype's state for a before/after diff: a viewport screenshot
@@ -82,25 +106,20 @@ const PUBLIC_CAPTURES = join(process.cwd(), "public", "captures");
  * unavailable.
  */
 export async function capturePrototypeState(url: string): Promise<{ image: string | null; html: string | null }> {
-  if (!process.env.VERCEL) {
-    const executablePath = await firstExisting(CHROME_PATHS);
-    if (executablePath) {
-      let browser: import("puppeteer-core").Browser | null = null;
-      try {
-        const { launch } = await import("puppeteer-core");
-        browser = await launch({ executablePath, headless: true, args: ["--no-sandbox", "--hide-scrollbars"] });
-        const page = await browser.newPage();
-        await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-        await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
-        await new Promise((r) => setTimeout(r, 600));
-        const buf = await page.screenshot({ type: "png" });
-        const html = await page.content();
-        return { image: `data:image/png;base64,${Buffer.from(buf).toString("base64")}`, html };
-      } catch {
-        /* fall through to raw fetch */
-      } finally {
-        await browser?.close().catch(() => {});
-      }
+  const browser = await launchBrowser();
+  if (browser) {
+    try {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+      await new Promise((r) => setTimeout(r, 600));
+      const buf = await page.screenshot({ type: "png" });
+      const html = await page.content();
+      return { image: `data:image/png;base64,${Buffer.from(buf).toString("base64")}`, html };
+    } catch {
+      /* fall through to raw fetch */
+    } finally {
+      await browser.close().catch(() => {});
     }
   }
   try {
@@ -119,14 +138,9 @@ export async function capturePrototypeState(url: string): Promise<{ image: strin
  * tokens that contain an uppercase letter. Degrades gracefully off-browser.
  */
 export async function inspectClickables(url: string): Promise<{ labels: string[]; note?: string }> {
-  if (process.env.VERCEL) return { labels: [], note: "DOM inspection skipped on Vercel." };
-  const executablePath = await firstExisting(CHROME_PATHS);
-  if (!executablePath) return { labels: [], note: "No system browser for DOM inspection." };
-
-  let browser: import("puppeteer-core").Browser | null = null;
+  const browser = await launchBrowser();
+  if (!browser) return { labels: [], note: "No browser available for DOM inspection." };
   try {
-    const { launch } = await import("puppeteer-core");
-    browser = await launch({ executablePath, headless: true, args: ["--no-sandbox"] });
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 900 });
     await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
@@ -238,26 +252,13 @@ export async function captureScreens(opts: {
     }));
 
   if (!manifest.length) return [];
-  if (process.env.VERCEL) {
-    return placeholder("Screenshot capture is skipped on Vercel; run locally to capture real screens.");
+
+  const browser = await launchBrowser();
+  if (!browser) {
+    return placeholder("No browser available for capture; attach screenshots manually.");
   }
 
-  const executablePath = await firstExisting(CHROME_PATHS);
-  if (!executablePath) {
-    return placeholder("No system Chrome/Edge found for capture; attach screenshots manually.");
-  }
-
-  let browser: import("puppeteer-core").Browser | null = null;
   try {
-    const { launch } = await import("puppeteer-core");
-    browser = await launch({
-      executablePath,
-      headless: true,
-      args: ["--no-sandbox", "--hide-scrollbars"],
-    });
-    const outDir = join(PUBLIC_CAPTURES, opts.runId);
-    await mkdir(outDir, { recursive: true });
-
     const results: Capture[] = [];
     for (const m of manifest) {
       const base: Capture = {
@@ -329,8 +330,8 @@ export async function captureScreens(opts: {
         }
         if (actions.some((a) => a.do === "click")) await new Promise((r) => setTimeout(r, 900));
 
-        const file = join(outDir, `${m.screenKey}.png`);
         let shot = false;
+        let url: string | undefined;
         if (target) {
           // Smart aperture: capture the component PLUS any menu/popover/flyout that
           // is currently open (a click may have opened one that renders outside the
@@ -384,20 +385,18 @@ export async function captureScreens(opts: {
             const w = Math.min(clip.width, dims.w - x);
             const h = Math.min(clip.height, dims.h - y);
             if (w > 0 && h > 0) {
-              await page.screenshot({
-                path: file as `${string}.png`,
-                clip: { x, y, width: w, height: h },
-                captureBeyondViewport: false,
-              });
+              const buf = await page.screenshot({ clip: { x, y, width: w, height: h }, captureBeyondViewport: false, type: "png" });
+              url = await storeCapture(opts.runId, m.screenKey, Buffer.from(buf));
               shot = true;
             }
           }
         }
         if (!shot) {
-          await page.screenshot({ path: file as `${string}.png`, fullPage: !selector });
+          const buf = await page.screenshot({ fullPage: !selector, type: "png" });
+          url = await storeCapture(opts.runId, m.screenKey, Buffer.from(buf));
         }
         await page.close();
-        results.push({ ...base, ok: true, url: `/captures/${opts.runId}/${m.screenKey}.png` });
+        results.push({ ...base, ok: true, url });
       } catch (err) {
         results.push({ ...base, note: `Capture failed: ${String(err)}` });
       }

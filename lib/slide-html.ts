@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
 import type { SlideSpec, Capture } from "./types";
+import { readAsset } from "./storage";
 
 // Renders the Blanks-Blank-1 slide as a self-contained HTML page at the exact
 // slide canvas (1280×720 px = 13.333in × 7.5in). Used for the slide PDF export
@@ -25,13 +26,18 @@ function esc(s: string): string {
 export async function renderSlideHtml(slideSpec: SlideSpec, captures: Capture[]): Promise<string> {
   const bg = await dataUri(BG_IMAGE);
 
-  // Resolve up to 3 images to inline data URIs, in order.
+  // Resolve up to 3 images to inline data URIs (readAsset handles both local
+  // served paths and Blob https URLs), in order.
   const imgs: { src: string; label: string }[] = [];
   for (const img of (slideSpec.images ?? []).slice(0, 3)) {
     const cap = captures.find((c) => c.ok && c.url && c.screenKey === img.screenKey);
     if (!cap?.url) continue;
-    const src = await dataUri(join(process.cwd(), "public", cap.url.replace(/^\//, "")));
-    if (src) imgs.push({ src, label: (img.label ?? "").trim() });
+    try {
+      const buf = await readAsset(cap.url);
+      imgs.push({ src: `data:image/png;base64,${buf.toString("base64")}`, label: (img.label ?? "").trim() });
+    } catch {
+      /* skip */
+    }
   }
 
   // Right column geometry (px @ 96dpi) — matches deck.ts.

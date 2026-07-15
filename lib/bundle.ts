@@ -1,8 +1,7 @@
 import JSZip from "jszip";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { ChangeBrief, Capture, SlideSpec } from "./types";
 import { buildDeck } from "./deck";
+import { readAsset } from "./storage";
 
 type BundleArtifact = { audienceId: string; label: string; content: string; slideSpec?: SlideSpec };
 type BundleMeta = {
@@ -136,8 +135,7 @@ export async function buildBundle(input: {
     const dir = zip.folder("screenshots")!;
     for (const c of shots) {
       try {
-        const buf = await readFile(join(process.cwd(), "public", c.url!.replace(/^\//, "")));
-        dir.file(`${slug(c.screenKey)}.png`, buf);
+        dir.file(`${slug(c.screenKey)}.png`, await readAsset(c.url!));
       } catch {
         /* skip missing */
       }

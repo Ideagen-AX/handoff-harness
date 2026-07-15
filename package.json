@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^131.0.1",
+    "@vercel/blob": "^2.6.1",
     "ai": "^6.0.0",
     "html-to-docx": "^1.8.0",
     "jszip": "^3.10.1",

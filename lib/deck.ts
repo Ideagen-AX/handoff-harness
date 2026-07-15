@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { access } from "node:fs/promises";
 import PptxGenJS from "pptxgenjs";
 import type { SlideSpec, Capture } from "./types";
+import { readAsset } from "./storage";
 
 // One slide format only: the Ideagen "Blanks - Blank 1" layout, rebuilt from
 // scratch so we don't carry the 65 MB master deck. The brand furniture (navy
@@ -73,20 +74,24 @@ export async function buildDeck(slideSpec: SlideSpec, captures: Capture[]): Prom
   }
 
   // ── Showcase images (right column, stacked, contain-fit, optional label) ─
-  const usable = (slideSpec.images ?? [])
-    .map((img) => {
-      const cap = captures.find((c) => c.ok && c.url && c.screenKey === img.screenKey);
-      const path = cap?.url ? join(process.cwd(), "public", cap.url.replace(/^\//, "")) : null;
-      return path ? { path, label: img.label?.trim() ?? "" } : null;
-    })
-    .filter((x): x is { path: string; label: string } => !!x)
-    .slice(0, 3);
+  // Resolve each capture to base64 via readAsset so it works whether the image
+  // lives on local disk or in Vercel Blob (https URL).
+  const usable: { data: string; label: string }[] = [];
+  for (const img of (slideSpec.images ?? []).slice(0, 3)) {
+    const cap = captures.find((c) => c.ok && c.url && c.screenKey === img.screenKey);
+    if (!cap?.url) continue;
+    try {
+      const buf = await readAsset(cap.url);
+      usable.push({ data: `image/png;base64,${buf.toString("base64")}`, label: img.label?.trim() ?? "" });
+    } catch {
+      /* skip an image we can't fetch */
+    }
+  }
 
   const RX = 5.95, RW = 6.7, RY = 1.55, RH = 5.45; // right-column box
   const n = usable.length;
   for (let i = 0; i < n; i++) {
-    const { path, label } = usable[i];
-    if (!(await exists(path))) continue;
+    const { data, label } = usable[i];
     const rowH = RH / n;
     const rowTop = RY + i * rowH;
     const labelH = label ? 0.32 : 0;
@@ -98,7 +103,7 @@ export async function buildDeck(slideSpec: SlideSpec, captures: Capture[]): Prom
       });
     }
     slide.addImage({
-      path,
+      data,
       x: RX, y: rowTop + labelH,
       sizing: { type: "contain", w: RW, h: rowH - labelH - 0.18 },
     });

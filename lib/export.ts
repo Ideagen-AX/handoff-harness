@@ -1,6 +1,6 @@
 import { marked } from "marked";
 import HTMLtoDOCX from "html-to-docx";
-import { findChrome } from "./capture";
+import { launchBrowser } from "./capture";
 
 // Wrap rendered Markdown in a clean, print-ready HTML document. Neutral and
 // professional with a subtle Ideagen-magenta accent on headings.
@@ -33,12 +33,10 @@ function escapeHtml(s: string): string {
 // Markdown → PDF using the system Chrome (local-first, like capture). Throws a
 // clear error off-browser so the API can report it rather than hanging.
 export async function toPdf(markdown: string, title: string): Promise<Buffer> {
-  const executablePath = await findChrome();
-  if (!executablePath) {
-    throw new Error("PDF export needs a local Chrome/Edge; none found (run locally).");
+  const browser = await launchBrowser();
+  if (!browser) {
+    throw new Error("PDF export needs a browser; none available (run locally, or enable serverless Chromium).");
   }
-  const { launch } = await import("puppeteer-core");
-  const browser = await launch({ executablePath, headless: true, args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage();
     await page.setContent(renderHtml(markdown, title), { waitUntil: "networkidle0" });
@@ -56,12 +54,10 @@ export async function toPdf(markdown: string, title: string): Promise<Buffer> {
 // Full HTML → a single slide-sized PDF page (13.333in × 7.5in, no margins), for
 // exporting the actual styled slide rather than its Markdown. Local-first like toPdf.
 export async function slideHtmlToPdf(html: string): Promise<Buffer> {
-  const executablePath = await findChrome();
-  if (!executablePath) {
-    throw new Error("Slide PDF export needs a local Chrome/Edge; none found (run locally).");
+  const browser = await launchBrowser();
+  if (!browser) {
+    throw new Error("Slide PDF export needs a browser; none available (run locally, or enable serverless Chromium).");
   }
-  const { launch } = await import("puppeteer-core");
-  const browser = await launch({ executablePath, headless: true, args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });

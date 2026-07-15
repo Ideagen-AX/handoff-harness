@@ -1,17 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // The specs/ markdown files are read at runtime by the harness.
-  // Ensure they're traced into the serverless function bundle on Vercel.
+  // The specs/ markdown + brand assets are read at runtime; trace them into the
+  // serverless function bundles. Browser routes also need the serverless Chromium
+  // binary (@sparticuz/chromium) traced in so capture/PDF work on Vercel.
   outputFileTracingIncludes: {
-    "/api/run": ["./specs/**/*"],
+    "/api/run": ["./specs/**/*", "./node_modules/@sparticuz/chromium/**"],
+    "/api/export": ["./node_modules/@sparticuz/chromium/**"],
+    "/api/slide-pdf": ["./specs/templates/**/*", "./node_modules/@sparticuz/chromium/**"],
     "/api/deck": ["./specs/templates/**/*"],
     "/api/bundle": ["./specs/templates/**/*"],
-    "/api/slide-pdf": ["./specs/templates/**/*"],
     "/api/email": ["./specs/templates/**/*"],
   },
-  // puppeteer-core is used only for local screenshot capture; keep it out of the
-  // bundle so builds (and Vercel, where capture is skipped) don't choke on it.
-  serverExternalPackages: ["puppeteer-core"],
+  // Keep the browser packages out of the webpack bundle — they're loaded at
+  // runtime (puppeteer-core drives the browser; @sparticuz/chromium provides the
+  // serverless Chromium binary).
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
 };
 
 module.exports = nextConfig;
