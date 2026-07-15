@@ -33,8 +33,12 @@ export const DESIGN_SOURCES: DesignSource[] = [
   // Future: { id: "helix", ... } (React/MUI), or other portfolio products.
 ];
 
-export const DEFAULT_DESIGN_SOURCE = "miramar";
+export const DEFAULT_DESIGN_SOURCE = "ehsqe-ds";
 
 export function getDesignSource(id?: string): DesignSource {
-  return DESIGN_SOURCES.find((s) => s.id === id) ?? DESIGN_SOURCES[0];
+  return (
+    DESIGN_SOURCES.find((s) => s.id === id) ??
+    DESIGN_SOURCES.find((s) => s.id === DEFAULT_DESIGN_SOURCE) ??
+    DESIGN_SOURCES[0]
+  );
 }
