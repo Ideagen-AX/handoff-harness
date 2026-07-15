@@ -428,18 +428,18 @@ export default function Home() {
 
           <div className="tabbar" role="tablist">
             {brief && (
-              <button role="tab" aria-selected={selected === "brief"} className={`tab ${selected === "brief" ? "active" : ""}`} onClick={() => setSelected("brief")}>
-                Change brief
+              <button role="tab" aria-selected={selected === "brief"} className={`tab ${selected === "brief" ? "active" : ""}`} onClick={() => setSelected("brief")} title="Change brief">
+                <span className="tab-label">Change brief</span>
               </button>
             )}
             {captures.length > 0 && (
-              <button role="tab" aria-selected={selected === "captures"} className={`tab ${selected === "captures" ? "active" : ""}`} onClick={() => setSelected("captures")}>
-                Captured screens
+              <button role="tab" aria-selected={selected === "captures"} className={`tab ${selected === "captures" ? "active" : ""}`} onClick={() => setSelected("captures")} title="Captured screens">
+                <span className="tab-label">Captured screens</span>
               </button>
             )}
             {instrumentation && instrumentation.points.length > 0 && (
-              <button role="tab" aria-selected={selected === "instrumentation"} className={`tab ${selected === "instrumentation" ? "active" : ""}`} onClick={() => setSelected("instrumentation")}>
-                Instrumentation
+              <button role="tab" aria-selected={selected === "instrumentation"} className={`tab ${selected === "instrumentation" ? "active" : ""}`} onClick={() => setSelected("instrumentation")} title="Instrumentation">
+                <span className="tab-label">Instrumentation</span>
               </button>
             )}
             {PACKAGES.map((pkg) => {
@@ -453,9 +453,9 @@ export default function Home() {
                   aria-selected={activeSection === pkg.id}
                   className={`tab ${activeSection === pkg.id ? "active" : ""}`}
                   onClick={() => setSelected(items[0].audienceId)}
-                  title={items.length > 1 ? `${items.length} outputs` : undefined}
+                  title={pkg.title}
                 >
-                  {pkg.title}
+                  <span className="tab-label">{pkg.title}</span>
                   {items.length > 1 && <span className="tab-count">{items.length}</span>}
                   {allApproved && <span className="tab-check">✓</span>}
                 </button>
