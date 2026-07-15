@@ -56,8 +56,25 @@ export const DEMO_CASES: DemoCase[] = [
     designSource: "miramar",
     framework: "vue",
   },
-  // Adam's calendar case was not found in the merged branch — add it here once its
-  // before/after prototype URLs are available.
+  {
+    id: "calendar",
+    label: "Search results calendar — Praxis redesign",
+    projectName: "Praxis Calendar",
+    url: "https://ehsq-e-calendar-prototype.vercel.app",
+    baselineUrl: "https://calendar-search-recreation.vercel.app",
+    subject: "Search results calendar view",
+    componentSelector: ".results-card",
+    designDescription:
+      "The CAPA Search results, redesigned to present matching records as a monthly calendar — a month grid (.cal-month) with records placed on their due/scheduled dates — as an alternative to the list/table output, in the Praxis design language. Covers the results card, the month grid, and per-day record chips.",
+    projectContext:
+      "Part of the EHSQ-E reskin toward Praxis. Search results across modules (Incidents, Audits, CAPA, MOC) gain a calendar view alongside the existing list/table, so date-bound work can be seen in time. This prototype shows the CAPA Search page.",
+    focusAreas:
+      "Fidelity of the calendar view to Praxis; the month grid and how records/chips render on their dates; empty vs dense days; responsive behaviour; and accessibility (keyboard navigation of the grid, aria labels).",
+    designDecisions:
+      "Presented date-bound search results on a month grid rather than only a list, so scheduling and clustering are visible at a glance, without changing the underlying search/filter model. (Edit to add Adam's specific decisions and rationale.)",
+    designSource: "miramar",
+    framework: "vue",
+  },
 ];
 
 export const DEFAULT_DEMO_CASE = "toolbar";
