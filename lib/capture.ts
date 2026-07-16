@@ -387,8 +387,11 @@ export async function captureScreens(opts: {
           height: vp?.height && vp.height > 0 ? vp.height : 900,
           deviceScaleFactor: 2,
         });
-        await page.goto(opts.prototypeUrl, { waitUntil: "networkidle2", timeout: 30000 });
-        await new Promise((r) => setTimeout(r, 600));
+        // `load` (all resources incl. iframes) rather than `networkidle2`, which
+        // SPAs/serverless often never satisfy — a timeout there used to throw and
+        // knock capture onto its clipped parent-page fallback.
+        await page.goto(opts.prototypeUrl, { waitUntil: "load", timeout: 20000 }).catch(() => {});
+        await new Promise((r) => setTimeout(r, 700));
 
         // Find the frame that holds the component (may be an embedded iframe), so
         // clicks land on the real controls and the aperture is measured where the
@@ -414,14 +417,30 @@ export async function captureScreens(opts: {
         if (target && target.frame !== page.mainFrame()) {
           const frameUrl = target.frame.url();
           if (/^https?:/i.test(frameUrl)) {
-            try {
-              await page.goto(frameUrl, { waitUntil: "networkidle2", timeout: 30000 });
-              await new Promise((r) => setTimeout(r, 600));
-              const reResolved = await resolveTarget(page, selector, hint);
-              if (reResolved) target = reResolved; // now the main frame, offset 0
-            } catch {
-              /* keep the original in-frame target */
+            // Use `load` (not networkidle2, which can hang the full timeout and
+            // throw); swallow any error and re-resolve regardless — after the nav
+            // the component is its own page's main frame (offset 0), which is what
+            // avoids the clipped parent-page capture.
+            await page.goto(frameUrl, { waitUntil: "load", timeout: 15000 }).catch(() => {});
+            await new Promise((r) => setTimeout(r, 700));
+            const reResolved = await resolveTarget(page, selector, hint);
+            if (reResolved) target = reResolved; // now the main frame, offset 0
+          }
+        }
+        // Safety net: if we're STILL capturing a child frame (navigation didn't
+        // take), scroll that frame into view so a below-fold component — e.g. a
+        // stacked dark pane at the bottom of the page — isn't clipped by the
+        // viewport. resolveTarget recomputes the offset from the scrolled position.
+        if (target && target.frame !== page.mainFrame()) {
+          try {
+            const fe = await target.frame.frameElement();
+            if (fe) {
+              await fe.evaluate((el) => (el as HTMLElement).scrollIntoView({ block: "center" }));
+              await new Promise((r) => setTimeout(r, 250));
+              target = (await resolveTarget(page, selector, hint)) ?? target;
             }
+          } catch {
+            /* keep the current target */
           }
         }
         const ctx = target?.frame ?? page.mainFrame();
