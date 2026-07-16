@@ -181,6 +181,11 @@ header.masthead p { color: var(--muted); margin: 0; max-width: 62ch; }
 
 label.field { display: block; margin-bottom: 14px; }
 label.field .lab { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+/* Required-field indicator: large red asterisk, or a teal check-in-circle once filled. */
+label.field .lab-req { display: flex; align-items: center; gap: 8px; }
+.req { margin-left: auto; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; line-height: 1; user-select: none; }
+.req-todo { color: #ff2d2d; font-size: 20px; font-weight: 700; transform: translateY(0.12em); }
+.req-done { width: 18px; height: 18px; border-radius: 50%; background: #00d1b2; color: #fff; font-size: 12px; font-weight: 800; box-shadow: 0 0 0 3px rgba(0, 209, 178, 0.18); }
 
 input[type="url"], input[type="text"], textarea, select {
   width: 100%;
@@ -231,29 +236,30 @@ button.ghost { background: transparent; box-shadow: none; }
 }
 .status .elapsed { opacity: 0.75; font-variant-numeric: tabular-nums; }
 
-/* Live activity feed — fixed in the right margin during (and after) a run. */
+/* Live activity feed — inline at the bottom of the setup card, just above the
+   Generate button. Bottom-anchored: the newest line sits level with the button
+   and the stream extends upward as items arrive (older lines scroll off the top). */
 .activity-feed {
-  position: fixed; top: 84px; left: 16px; width: 320px;
-  max-height: calc(100vh - 108px);
-  display: flex; flex-direction: column;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow-overlay);
-  z-index: 40; overflow: hidden;
+  margin: 6px 0 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); overflow: hidden;
 }
-.activity-feed.collapsed { width: auto; }
 .activity-feed-head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 10px 14px; font-weight: 600; font-size: 13px; color: var(--ink);
+  padding: 8px 12px; font-weight: 600; font-size: 12.5px; color: var(--ink);
   border-bottom: 1px solid var(--border);
 }
 .activity-feed.collapsed .activity-feed-head { border-bottom: none; }
 .af-title { display: inline-flex; align-items: center; gap: 8px; }
 .af-toggle {
   background: none; border: none; cursor: pointer; color: var(--muted);
-  font-size: 14px; line-height: 1; padding: 3px 7px; border-radius: 6px;
+  font-size: 13px; line-height: 1; padding: 3px 7px; border-radius: 6px;
 }
 .af-toggle:hover { background: var(--hover); color: var(--ink); }
-.activity-feed-body { overflow-y: auto; padding: 8px 12px 12px; }
+/* Fixed height keeps the Generate button level; flex column + margin-top:auto on
+   the lines pins content to the bottom so new lines fill upward. */
+.activity-feed-body { height: 200px; overflow-y: auto; display: flex; flex-direction: column; padding: 6px 12px 10px; }
+.af-lines { margin-top: auto; }
 .activity-item {
   display: flex; gap: 8px; padding: 3px 0; font-size: 12.5px;
   line-height: 1.45; color: var(--muted);
@@ -269,15 +275,6 @@ button.ghost { background: transparent; box-shadow: none; }
 .activity-item.artifact .msg { color: var(--accent-strong); font-weight: 500; }
 .activity-item.done .msg { color: var(--accent-strong); font-weight: 600; }
 .activity-item.error .msg { color: var(--danger); font-weight: 600; }
-
-/* On wide screens, shift the centered content right so nothing hides behind the feed. */
-@media (min-width: 1300px) {
-  body.feed-open .wrap { margin-left: 352px; }
-}
-/* On phones, the fixed panel would crowd the content — hide it (timer/status still show). */
-@media (max-width: 720px) {
-  .activity-feed { display: none; }
-}
 .spinner {
   width: 14px; height: 14px; border-radius: 50%;
   border: 2px solid var(--border); border-top-color: var(--accent);

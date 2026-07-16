@@ -36,6 +36,16 @@ const FEED_ICON: Record<string, string> = {
   tool: "•", stage: "▸", milestone: "◆", artifact: "✓", done: "✅", error: "⚠", info: "·",
 };
 
+// Required-field indicator: a large red asterisk until a value is present, then a
+// teal check-in-a-circle. Value-driven, so demo-case auto-fill flips it too.
+function ReqMark({ filled }: { filled: boolean }) {
+  return filled ? (
+    <span className="req req-done" role="img" aria-label="provided" title="Provided">✓</span>
+  ) : (
+    <span className="req req-todo" role="img" aria-label="required" title="Required">*</span>
+  );
+}
+
 export default function Home() {
   const [projectName, setProjectName] = useState("Praxis Toolbar");
   const [url, setUrl] = useState("https://forge-demo-toolbar-after.vercel.app/");
@@ -127,19 +137,11 @@ export default function Home() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // Keep the feed scrolled to the newest line as it streams.
+  // Keep the feed scrolled to the newest line (at the bottom) as it streams.
   useEffect(() => {
     const el = feedBodyRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [feed.length]);
-
-  // While the feed panel is visible and expanded, reflow the main content left
-  // (on wide screens) so nothing hides behind it.
-  useEffect(() => {
-    const on = (running || feed.length > 0) && feedOpen;
-    document.body.classList.toggle("feed-open", on);
-    return () => document.body.classList.remove("feed-open");
-  }, [running, feed.length, feedOpen]);
 
   // Called on the Generate click (a user gesture) so we can ask for notification
   // permission and unlock audio for a later chime — both require a gesture.
@@ -339,28 +341,6 @@ export default function Home() {
 
   return (
     <div className="wrap">
-      {(running || feed.length > 0) && (
-        <aside className={`activity-feed ${feedOpen ? "" : "collapsed"}`} aria-label="Run activity">
-          <div className="activity-feed-head">
-            <span className="af-title">{running && <span className="spinner" />} Activity</span>
-            <button className="af-toggle" onClick={() => setFeedOpen((o) => !o)} title={feedOpen ? "Collapse" : "Expand"}>
-              {feedOpen ? "←" : "→"}
-            </button>
-          </div>
-          {feedOpen && (
-            <div className="activity-feed-body" ref={feedBodyRef}>
-              {feed.length === 0 && <div className="activity-item"><span className="msg">Starting…</span></div>}
-              {feed.map((f, i) => (
-                <div key={i} className={`activity-item ${f.kind}`}>
-                  <span className="t">{formatDuration(f.ms) || "0s"}</span>
-                  <span className="ic">{FEED_ICON[f.kind] ?? "·"}</span>
-                  <span className="msg">{f.message}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </aside>
-      )}
       <header className="masthead">
         <div className="topbar">
           <div className="kicker">Design Handoff Harness <span className="ver">v{APP_VERSION}</span></div>
@@ -394,36 +374,36 @@ export default function Home() {
           </select>
         </label>
         <label className="field">
-          <span className="lab">Design project — groups this run in the library</span>
+          <span className="lab lab-req">Design project — groups this run in the library<ReqMark filled={!!projectName.trim()} /></span>
           <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Praxis Toolbar" disabled={running} />
         </label>
         <label className="field">
-          <span className="lab">Prototype URL</span>
+          <span className="lab lab-req">Prototype URL<ReqMark filled={!!url.trim()} /></span>
           <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-prototype.vercel.app/" disabled={running} />
         </label>
 
         <div className="describe">
           <div className="describe-head">Describe the design — the richer this is, the less the agent has to guess</div>
           <label className="field">
-            <span className="lab">What the new design is</span>
+            <span className="lab lab-req">What the new design is<ReqMark filled={!!designDescription.trim()} /></span>
             <textarea value={designDescription} onChange={(e) => setDesignDescription(e.target.value)} rows={3} disabled={running} placeholder="What changed and what it now does — the essence of the new design." />
           </label>
           <label className="field">
-            <span className="lab">Surrounding context</span>
+            <span className="lab lab-req">Surrounding context<ReqMark filled={!!projectContext.trim()} /></span>
             <textarea value={projectContext} onChange={(e) => setProjectContext(e.target.value)} rows={2} disabled={running} placeholder="The bigger initiative, where this lives, who it's for." />
           </label>
           <label className="field">
-            <span className="lab">Focus areas — what matters most</span>
+            <span className="lab lab-req">Focus areas — what matters most<ReqMark filled={!!focusAreas.trim()} /></span>
             <textarea value={focusAreas} onChange={(e) => setFocusAreas(e.target.value)} rows={2} disabled={running} placeholder="What the handoffs should emphasise (accessibility, responsiveness, a specific interaction…)." />
           </label>
           <label className="field">
-            <span className="lab">Key design decisions &amp; rationale</span>
+            <span className="lab lab-req">Key design decisions &amp; rationale<ReqMark filled={!!designDecisions.trim()} /></span>
             <textarea value={designDecisions} onChange={(e) => setDesignDecisions(e.target.value)} rows={3} disabled={running} placeholder="The choices you made and WHY — trade-offs, what you deliberately kept the same, alternatives you set aside." />
           </label>
         </div>
 
         <label className="field">
-          <span className="lab">Component / subject — keeps analysis on the component, not the demo page</span>
+          <span className="lab lab-req">Component / subject — keeps analysis on the component, not the demo page<ReqMark filled={!!subject.trim()} /></span>
           <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Search page toolbar" disabled={running} />
         </label>
         <label className="field">
@@ -485,6 +465,30 @@ export default function Home() {
           </label>
         </details>
 
+        {(running || feed.length > 0) && (
+          <div className={`activity-feed ${feedOpen ? "" : "collapsed"}`} aria-label="Run activity">
+            <div className="activity-feed-head">
+              <span className="af-title">{running && <span className="spinner" />} Activity</span>
+              <button className="af-toggle" onClick={() => setFeedOpen((o) => !o)} title={feedOpen ? "Hide" : "Show"}>
+                {feedOpen ? "▾" : "▸"}
+              </button>
+            </div>
+            {feedOpen && (
+              <div className="activity-feed-body" ref={feedBodyRef}>
+                {/* Bottom-anchored: newest line sits by the Generate button; older lines stack upward. */}
+                <div className="af-lines">
+                  {feed.map((f, i) => (
+                    <div key={i} className={`activity-item ${f.kind}`}>
+                      <span className="t">{formatDuration(f.ms) || "0s"}</span>
+                      <span className="ic">{FEED_ICON[f.kind] ?? "·"}</span>
+                      <span className="msg">{f.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <div className="btn-row">
           <button className="primary" onClick={run} disabled={running || !url || enabledCount === 0}>
             {running ? "Running…" : "Generate handoff"}
