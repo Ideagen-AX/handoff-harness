@@ -12,7 +12,7 @@
 
 - **How to run it (happy path):**
   1. `npm install`, add a Vercel AI Gateway key to `.env.local`, `npm run dev`, open `http://localhost:3000`.
-  2. The form is pre-filled with a real demo case (the Praxis Search-toolbar restyle). Pick a demo case from the dropdown, or paste your own prototype URL + baseline + note.
+  2. The form is pre-filled with a real demo case (the Nexus Search-toolbar restyle). Pick a demo case from the dropdown, or paste your own prototype URL + baseline + note.
   3. Click **Generate handoff**. Watch the change brief, captured screens, and the grouped artifact drafts stream in.
   4. Review each artifact, edit inline, approve, and export (Markdown, `.docx`, `.pptx`, `.pdf`, `.eml`).
 

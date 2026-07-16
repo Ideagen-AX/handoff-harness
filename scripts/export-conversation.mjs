@@ -26,13 +26,13 @@ function truncate(s, n) {
 }
 
 // Redact the internal project codename from the exported log — only the public
-// design-language name (Praxis) should appear in committed/shareable material.
+// design-language name (Nexus) should appear in committed/shareable material.
 // The codename is kept base64-encoded so the literal string never sits in
 // source, and built into a whitespace-tolerant, case-insensitive matcher.
 const CODENAME = Buffer.from("R3Jvb20gTGFrZQ==", "base64").toString("utf8");
 const CODENAME_RE = new RegExp(CODENAME.replace(/\s+/g, "\\s*"), "gi");
 function redact(s) {
-  return String(s ?? "").replace(CODENAME_RE, "Praxis");
+  return String(s ?? "").replace(CODENAME_RE, "Nexus");
 }
 
 // Turn one message's content (string or parts array) into readable Markdown.

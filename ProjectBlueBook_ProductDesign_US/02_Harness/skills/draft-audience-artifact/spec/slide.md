@@ -43,7 +43,7 @@ inventing a screenKey that wasn't captured; more than 3 images.
 **Worked example** — this is exactly the shape to produce (see `specs/examples/slide/`):
 
 > - title: `Toolbar Styling Updates`
-> - subtitle: `The search page toolbar has been updated to reflect the new Praxis design language`
+> - subtitle: `The search page toolbar has been updated to reflect the new Nexus design language`
 > - callouts:
 >   - `Buttons are rounder, styled with a light gradient for a dimensional effect.`
 >   - `Icons have been refined.`
@@ -55,6 +55,6 @@ inventing a screenKey that wasn't captured; more than 3 images.
 > - images:
 >   - `{ screenKey: "toolbar-light-default", label: "Light mode" }`
 >   - `{ screenKey: "toolbar-dark-default", label: "Dark mode" }`
-> - notes: `The search toolbar was restyled to the Praxis design language — rounder,
+> - notes: `The search toolbar was restyled to the Nexus design language — rounder,
 >   gradient-filled controls and a first-class dark mode — with no change to its controls
 >   or spacing. Shown here in light and dark.`

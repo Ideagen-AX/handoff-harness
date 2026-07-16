@@ -1,13 +1,13 @@
 /* =====================================================================
-   PRAXIS CREATE NEW — the shared "create a new record" component.
+   NEXUS CREATE NEW — the shared "create a new record" component.
 
    A nav-anchored frosted flyout (opens right of the nav-rail Create button)
-   with three views: Shortcuts, All, Templates. Praxis material throughout:
+   with three views: Shortcuts, All, Templates. Nexus material throughout:
    frosted glass + lit-edge elevation, light header, rounded Find pill, a
    top segmented view-switch, and lit-edge tiles whose icons are tinted by
    the record type's solution.
 
-   Consumed by both the workspace and the record page. Also lightly Praxis-
+   Consumed by both the workspace and the record page. Also lightly Nexus-
    ifies the shared shell classes (.cn-overlay / .cn-modal / .cn-head …) that
    the Save-workspace dialog reuses.
    ===================================================================== */
@@ -82,7 +82,7 @@
 .cn-flyout--wide .cn-group{ break-inside:avoid; margin-top:0; margin-bottom:16px; }
 .cn-flyout--wide .cn-grid{ grid-template-columns:1fr; }  /* items stack within each narrower group column */
 
-/* ---- Save-workspace dialog panel — centered Praxis card ---- */
+/* ---- Save-workspace dialog panel — centered Nexus card ---- */
 .cn-modal{
   width:768px; max-width:100%; max-height:min(86vh, 820px);
   display:flex; flex-direction:column; overflow:hidden;

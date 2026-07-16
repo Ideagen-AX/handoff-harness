@@ -394,7 +394,7 @@ export default function Home() {
         </label>
         <label className="field">
           <span className="lab lab-req">Design project — groups this run in the library<ReqMark filled={!!projectName.trim()} /></span>
-          <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Praxis Toolbar" disabled={running} />
+          <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Nexus Toolbar" disabled={running} />
         </label>
         <label className="field">
           <span className="lab lab-req">Prototype URL<ReqMark filled={!!url.trim()} /></span>

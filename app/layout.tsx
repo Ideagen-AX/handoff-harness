@@ -8,13 +8,13 @@ export const metadata: Metadata = {
 };
 
 // Apply the saved theme before first paint so there's no light→dark flash.
-// Defaults to light to match the Praxis prototype.
+// Defaults to light to match the Nexus prototype.
 const themeInit = `(function(){try{var t=localStorage.getItem('handoff-theme');document.body.dataset.theme=(t==='dark'?'dark':'light');}catch(e){document.body.dataset.theme='light';}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body data-variant="praxis" data-theme="light">
+      <body data-variant="nexus" data-theme="light">
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         {children}
       </body>

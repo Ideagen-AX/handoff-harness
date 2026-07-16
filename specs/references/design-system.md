@@ -32,7 +32,7 @@
 
 **Records:** Current Task · Process Tree · Required Fields Guide · Workflow. *(These record-guide cards have no Helix equivalent.)*
 
-**Dashboards:** Miramar (legacy) + Praxis — nav menu, toolbar, primitives, compositions, agentic creation, layouts, customization controls.
+**Dashboards:** Miramar (legacy) + Nexus — nav menu, toolbar, primitives, compositions, agentic creation, layouts, customization controls.
 
 ### ⚑ Especially relevant to search/results work
 - **Toolbar** — action bar below the Page Header. Variants Default / Record / Monaco / Admin. **Documents display modes: List / Table / Card / Calendar / Hierarchy / Tree.** So a multi-mode view switcher is largely an *existing* capability — prefer "extend Toolbar" over "net-new" unless a specific mode has no rendering component.

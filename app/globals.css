@@ -5,12 +5,12 @@
 @font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-Bold.woff2") format("woff2"), url("/fonts/Gilroy-Bold.woff") format("woff"); font-weight: 700; font-style: normal; font-display: swap; }
 
 /* =====================================================================
-   Praxis design language — light default + dark override.
-   Mirrors praxis-core.css from the Praxis prototype: slate layered
+   Nexus design language — light default + dark override.
+   Mirrors nexus-core.css from the Nexus prototype: slate layered
    elevation with lit edges, 8/12/16 geometry, teal primary gradient,
    magenta selection, dot-grid page texture, Gilroy type.
    ===================================================================== */
-body[data-variant="praxis"] {
+body[data-variant="nexus"] {
   /* surfaces + ink (LIGHT) */
   --bg: #f4f6f8;
   --page: #f0f2f4;
@@ -47,7 +47,7 @@ body[data-variant="praxis"] {
   --warn-border: rgba(180, 83, 9, 0.4);
   --danger: #c0392b;
 
-  /* geometry + materials — Praxis lit-edge elevation */
+  /* geometry + materials — Nexus lit-edge elevation */
   --radius: 12px;
   --radius-sm: 8px;
   --shadow-card: 0 0 0 0.5px rgba(16, 36, 58, 0.06), 0 1px 1.5px rgba(16, 36, 58, 0.045), 0 10px 28px -14px rgba(16, 36, 58, 0.1), inset 0 0.5px 0 rgba(255, 255, 255, 0.7);
@@ -74,8 +74,8 @@ body[data-variant="praxis"] {
   background-attachment: fixed, fixed;
 }
 
-/* ---- Praxis DARK — Mazlan dark surfaces + materials ---- */
-body[data-variant="praxis"][data-theme="dark"] {
+/* ---- Nexus DARK — Mazlan dark surfaces + materials ---- */
+body[data-variant="nexus"][data-theme="dark"] {
   --bg: #11161f;
   --page: #11161f;
   --surface: #1c2330;

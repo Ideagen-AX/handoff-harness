@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-// Light/dark toggle for the Praxis theme. The theme is applied to <body> via a
+// Light/dark toggle for the Nexus theme. The theme is applied to <body> via a
 // data-theme attribute; an inline script in layout.tsx sets the initial value
 // from localStorage before paint (no flash). This component keeps them in sync.
 export default function ThemeToggle() {

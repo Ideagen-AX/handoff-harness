@@ -5,7 +5,7 @@
 - **Hub:** US
 - **Members:**
   - **Brian Studwell** — Design / harness build (context base, agent loop, tools, specs, pipeline, exports)
-  - **Adam Main** — Front-end (Praxis restyle, theming, tabbed run view)
+  - **Adam Main** — Front-end (Nexus restyle, theming, tabbed run view)
   - **Rob Stefanussen** — Embedded engineer
 - **Smith:** Gavin Marchbank
 

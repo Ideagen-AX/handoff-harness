@@ -35,11 +35,11 @@ Type-check only: `npm run typecheck`.)
 
 ## 3. First run (sample input is built in)
 
-The form is **pre-filled with a real demo case** — the *Praxis Search-toolbar restyle* —
+The form is **pre-filled with a real demo case** — the *Nexus Search-toolbar restyle* —
 so you can run it with zero typing:
 
-1. Leave the demo case as **"Search toolbar — Praxis restyle"** (or pick
-   *"Search filter drawer — Praxis redesign"* from the dropdown).
+1. Leave the demo case as **"Search toolbar — Nexus restyle"** (or pick
+   *"Search filter drawer — Nexus redesign"* from the dropdown).
 2. Leave every output enabled.
 3. Click **Generate handoff**.
 

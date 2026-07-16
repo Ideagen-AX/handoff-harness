@@ -17,7 +17,7 @@ warm and the run lands in a few minutes on camera. Have the live app at
 
 ### 0:00–0:30 — The process and the pain
 
-- **[SCREEN]** Cold open on a finished prototype (the Praxis Search-toolbar "after"),
+- **[SCREEN]** Cold open on a finished prototype (the Nexus Search-toolbar "after"),
   then a fan of blank docs: release notes, QA cases, product docs, support summary, DS
   update, dev handoff, analytics plan, exec slide, case study.
 - **[SAY]** "Every time we ship a UX change at Ideagen, one designer re-writes that same
@@ -47,10 +47,10 @@ warm and the run lands in a few minutes on camera. Have the live app at
 
 ### 1:30–4:00 — The agent, end to end, on real input
 
-- **[SCREEN]** The generator form, pre-filled with the **Praxis Search-toolbar** demo
+- **[SCREEN]** The generator form, pre-filled with the **Nexus Search-toolbar** demo
   case. Point at the before/after URLs, the structured note, and the design source
   (**Miramar — production Vue/Vuetify**).
-- **[SAY]** "Real input: the Search toolbar, restyled to our Praxis design language.
+- **[SAY]** "Real input: the Search toolbar, restyled to our Nexus design language.
   Before URL, after URL, a short structured note, and the design system to match. I click
   **Generate handoff**."
 - **[SCREEN]** Click Generate. Narrate as each stage streams:

@@ -146,14 +146,14 @@ body[data-theme="dark"] .appbar__right .iconbtn-ghost:hover{background:rgba(255,
 .ehsq-navrail__btn--create{background-color:var(--ehsq-color-teal-60);color:var(--ehsq-color-white);}
 .ehsq-navrail__btn--create:hover{background-color:var(--ehsq-color-teal-70);}
 
-/* ---- shared Praxis overlay material (nav-rail popovers) ---- */
+/* ---- shared Nexus overlay material (nav-rail popovers) ---- */
 .px-pop{position:absolute;z-index:200;background:var(--ehsq-color-surface-default);
   border:1px solid var(--ehsq-color-border-default);border-radius:12px;padding:6px;
   box-shadow:var(--ehsq-elevation-4);}
 .px-pop[hidden]{display:none;}
-body[data-variant="praxis"] .px-pop{border:0;
+body[data-variant="nexus"] .px-pop{border:0;
   box-shadow:0 0 0 .5px rgba(16,36,58,.06),0 18px 38px -16px rgba(16,36,58,.22),inset 0 .5px 0 rgba(255,255,255,.6);}
-body[data-variant="praxis"][data-theme="dark"] .px-pop{background:rgba(26,32,45,.9);
+body[data-variant="nexus"][data-theme="dark"] .px-pop{background:rgba(26,32,45,.9);
   -webkit-backdrop-filter:saturate(1.3) blur(16px);backdrop-filter:saturate(1.3) blur(16px);
   box-shadow:0 0 0 .5px rgba(255,255,255,.08),0 24px 50px -20px rgba(0,0,0,.7);}
 /* generic overlay row */
@@ -163,33 +163,33 @@ body[data-variant="praxis"][data-theme="dark"] .px-pop{background:rgba(26,32,45,
   border-radius:8px;cursor:pointer;text-align:left;font-family:inherit;font-size:.875rem;font-weight:500;
   color:var(--ehsq-color-text-primary);text-decoration:none;}
 .px-menu__item:hover{background:var(--ehsq-color-neutral-05);text-decoration:none;}
-body[data-variant="praxis"] .px-menu__item:hover{background:var(--px-hover);}
+body[data-variant="nexus"] .px-menu__item:hover{background:var(--px-hover);}
 .px-menu__item .icon{width:20px;height:20px;color:var(--ehsq-color-text-secondary);flex-shrink:0;}
 .px-menu__item:focus-visible{outline:2px solid var(--ehsq-color-teal-50);outline-offset:-2px;}
 .px-menu__sep{height:1px;background:var(--ehsq-color-border-default);margin:6px 4px;}
 
 /* ---- Dashboards / workspaces popout ---- */
 .ws-pop{top:0;left:calc(100% + 8px);width:300px;max-height:70vh;overflow-y:auto;}
-/* Dashboards popover — frosted Praxis panel + open animation, matching the
+/* Dashboards popover — frosted Nexus panel + open animation, matching the
    Create New flyout and Search Module Selector. */
-body[data-variant="praxis"] .ws-pop{
+body[data-variant="nexus"] .ws-pop{
   background:color-mix(in srgb, var(--px-surface) 60%, transparent);
   -webkit-backdrop-filter:saturate(1.35) blur(16px);backdrop-filter:saturate(1.35) blur(16px);
   box-shadow:var(--px-overlay), inset 0 .5px 0 var(--px-edge);
   border-radius:14px;padding:10px;transform-origin:top left;
   transition:opacity .16s ease, transform .2s var(--ehsq-ease-default, cubic-bezier(.32,.72,0,1)), display .2s allow-discrete;
 }
-body[data-variant="praxis"] .ws-pop[hidden]{opacity:0;transform:translateY(-6px) scale(.99);}
-@starting-style{ body[data-variant="praxis"] .ws-pop:not([hidden]){opacity:0;transform:translateY(-6px) scale(.99);} }
+body[data-variant="nexus"] .ws-pop[hidden]{opacity:0;transform:translateY(-6px) scale(.99);}
+@starting-style{ body[data-variant="nexus"] .ws-pop:not([hidden]){opacity:0;transform:translateY(-6px) scale(.99);} }
 /* Title reads like the other menus' titles (Select Module(s) / Create New). */
-body[data-variant="praxis"] .ws-pop .px-menu__head{
+body[data-variant="nexus"] .ws-pop .px-menu__head{
   font-size:16px;font-weight:700;letter-spacing:0;text-transform:none;
   color:var(--ehsq-color-text-primary);padding:6px 8px 12px;
 }
 .ws-item{display:flex;align-items:center;gap:12px;width:100%;padding:8px 10px;border:0;background:transparent;
   border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ehsq-color-text-primary);text-decoration:none;}
 .ws-item:hover{background:var(--ehsq-color-neutral-05);text-decoration:none;}
-body[data-variant="praxis"] .ws-item:hover{background:var(--px-hover);}
+body[data-variant="nexus"] .ws-item:hover{background:var(--px-hover);}
 .ws-item:focus-visible{outline:2px solid var(--ehsq-color-teal-50);outline-offset:-2px;}
 .ws-item__icon{width:34px;height:34px;flex-shrink:0;border-radius:9px;display:flex;align-items:center;justify-content:center;
   background:var(--ehsq-color-neutral-10);color:var(--ehsq-color-text-secondary);}
@@ -198,7 +198,7 @@ body[data-variant="praxis"] .ws-item:hover{background:var(--px-hover);}
 .ws-item--new .ws-item__icon{background:transparent;color:var(--ehsq-color-interactive-default);}
 /* On the frosted flyout the muted-grey chips blended in — lift them to a solid
    light surface with a lit edge so they read (home keeps its teal accent). */
-body[data-variant="praxis"] .ws-pop .ws-item:not(.ws-item--home):not(.ws-item--new) .ws-item__icon{
+body[data-variant="nexus"] .ws-pop .ws-item:not(.ws-item--home):not(.ws-item--new) .ws-item__icon{
   background:var(--px-surface);box-shadow:var(--px-tool-shadow);color:var(--ehsq-color-text-secondary);}
 .ws-item__text{display:flex;flex-direction:column;min-width:0;flex:1;}
 .ws-item__name{font-size:.875rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -206,7 +206,7 @@ body[data-variant="praxis"] .ws-pop .ws-item:not(.ws-item--home):not(.ws-item--n
 
 .content{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;}
 
-/* Page header — shared styling in praxis-pageheader.css; this page sets its rhythm. */
+/* Page header — shared styling in nexus-pageheader.css; this page sets its rhythm. */
 .pageheader{--ph-pad-x:20px;}
 
 /* Toolbar */
@@ -301,7 +301,7 @@ body[data-theme="dark"] .seg__opt--active{background:var(--ehsq-color-teal-60);}
 .age-chip{width:38px;height:38px;border-radius:50%;background:var(--ehsq-color-teal-60);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;}
 
 /* ---- LIST VIEW ---- */
-.list-row{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:var(--ehsq-radius-lg);background:var(--px-surface);box-shadow:var(--praxis-card);margin-bottom:12px;position:relative;}
+.list-row{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:var(--ehsq-radius-lg);background:var(--px-surface);box-shadow:var(--nexus-card);margin-bottom:12px;position:relative;}
 .list-row__body{flex:1;min-width:0;}
 .list-row__meta{font-size:.75rem;color:var(--ehsq-color-text-secondary);font-weight:600;margin-bottom:2px;}
 .list-row__title{font-size:1.0625rem;font-weight:700;color:var(--ehsq-color-text-link);margin:0 0 4px;line-height:1.3;}
@@ -312,7 +312,7 @@ body[data-theme="dark"] .seg__opt--active{background:var(--ehsq-color-teal-60);}
 .list-row__more:hover{background:var(--px-hover);color:var(--ehsq-color-text-primary);}
 
 /* ---- TABLE VIEW ---- */
-.tablewrap{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--praxis-card);overflow:hidden;}
+.tablewrap{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--nexus-card);overflow:hidden;}
 table.grid{width:100%;border-collapse:collapse;font-size:.8438rem;}
 table.grid th{text-align:left;font-weight:700;color:var(--ehsq-color-text-primary);padding:14px 12px;border-bottom:1px solid var(--ehsq-color-border-default);white-space:nowrap;background:var(--px-surface-2);position:sticky;top:0;}
 table.grid td{padding:12px;border-bottom:1px solid var(--ehsq-color-border-default);color:var(--ehsq-color-text-primary);vertical-align:middle;}
@@ -325,7 +325,7 @@ table.grid td.num,table.grid th.num{font-variant-numeric:tabular-nums;}
 
 /* ---- CARD VIEW ---- */
 .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
-.rcard{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--praxis-card);padding:16px;position:relative;min-height:150px;display:flex;flex-direction:column;}
+.rcard{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--nexus-card);padding:16px;position:relative;min-height:150px;display:flex;flex-direction:column;}
 .rcard__head{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;}
 .rcard__status-ico{margin-top:2px;flex-shrink:0;}
 .rcard__title{font-size:.9375rem;font-weight:700;color:var(--ehsq-color-text-link);line-height:1.3;}
@@ -337,7 +337,7 @@ table.grid td.num,table.grid th.num{font-variant-numeric:tabular-nums;}
 /* ---- CALENDAR VIEW: styles provided by the ported CALENDAR MODULE block below ---- */
 
 /* ---- HIERARCHY VIEW ---- */
-.tree{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--praxis-card);overflow:hidden;}
+.tree{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--nexus-card);overflow:hidden;}
 .tree__row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--ehsq-color-border-default);font-size:.9375rem;}
 .tree__row:last-child{border-bottom:0;}
 .tree__row--group{font-weight:700;cursor:pointer;}
@@ -352,7 +352,7 @@ table.grid td.num,table.grid th.num{font-variant-numeric:tabular-nums;}
 .tree__leaf a:hover{color:var(--ehsq-color-text-link);}
 
 /* ---- CHART VIEW ---- */
-.chartwrap{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--praxis-card);padding:20px 24px 28px;}
+.chartwrap{background:var(--px-surface);border-radius:var(--ehsq-radius-lg);box-shadow:var(--nexus-card);padding:20px 24px 28px;}
 .chartwrap__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .chartwrap__title{font-weight:700;font-size:1.125rem;}
 .chartwrap__sub{font-size:.8125rem;color:var(--ehsq-color-text-secondary);}
@@ -399,8 +399,8 @@ body[data-theme="dark"] .pager__btn--active{background:var(--ehsq-color-teal-60)
 
 /* ============================================================ CALENDAR MODULE
    Ported from the EHSQ-E Calendar prototype. A token-alias bridge maps the
-   prototype's --s/-r/-t/-color/-shadow vars onto the Praxis token layer so the
-   original CSS resolves to Praxis surfaces (and adapts to dark automatically). */
+   prototype's --s/-r/-t/-color/-shadow vars onto the Nexus token layer so the
+   original CSS resolves to Nexus surfaces (and adapts to dark automatically). */
 body{
   --s-4:.25rem; --s-8:.5rem; --s-12:.75rem; --s-16:1rem; --s-20:1.25rem; --s-24:1.5rem; --s-32:2rem;
   --r-sm:.5rem; --r-md:.75rem; --r-lg:1rem; --r-full:9999px;
@@ -488,7 +488,7 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
 .cal-field { font-size: var(--t-sm); color: var(--color-text); margin: 3px 0; }
 .cal-field b { font-weight: 600; color: var(--color-text); }
 .cal-empty { padding: var(--s-32); text-align: center; color: var(--color-text-secondary); }
-.cal-month { border: 1px solid var(--color-border); border-radius: var(--r-md); overflow: hidden; background: var(--color-surface); box-shadow: var(--praxis-card); }
+.cal-month { border: 1px solid var(--color-border); border-radius: var(--r-md); overflow: hidden; background: var(--color-surface); box-shadow: var(--nexus-card); }
 .cal-month__dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--color-surface-subtle); }
 .cal-month__dow span { text-align: center; padding: var(--s-8) 0; font-size: var(--t-xs); font-weight: 700; letter-spacing: .04em; color: var(--color-text-secondary); }
 .cal-month__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
@@ -509,7 +509,7 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
 .cal-ev:hover .cal-ev__kebab { opacity: 1; }
 .cal-ev__kebab svg { width: 16px; height: 16px; }
 .cal-more { align-self: flex-start; border: 0; background: var(--ehsq-color-teal-10); color: var(--ehsq-color-teal-70); font: inherit; font-size: var(--t-xs); font-weight: 600; padding: 2px var(--s-8); border-radius: var(--r-full); cursor: pointer; }
-.cal-week { border: 1px solid var(--color-border); border-radius: var(--r-md); overflow: hidden; background: var(--color-surface); box-shadow: var(--praxis-card); }
+.cal-week { border: 1px solid var(--color-border); border-radius: var(--r-md); overflow: hidden; background: var(--color-surface); box-shadow: var(--nexus-card); }
 .cal-week__head { display: grid; grid-template-columns: 64px repeat(7, 1fr); border-bottom: 1px solid var(--color-border); }
 .cal-week__corner { border-right: 1px solid var(--color-border); }
 .cal-week__dayhead { text-align: center; padding: var(--s-8) var(--s-4); border-left: 1px solid var(--color-border); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -546,7 +546,7 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
 .cal-tl__event:hover .cal-tl__event-kebab { opacity: 1; }
 .cal-tl__event-kebab svg { width: 16px; height: 16px; }
 .cal-day { display: grid; grid-template-columns: 268px 1fr; gap: var(--s-16); align-items: start; }
-.cal-day__side { border: 1px solid var(--color-border); border-radius: var(--r-md); background: var(--color-surface); padding: var(--s-16); box-shadow: var(--praxis-card); }
+.cal-day__side { border: 1px solid var(--color-border); border-radius: var(--r-md); background: var(--color-surface); padding: var(--s-16); box-shadow: var(--nexus-card); }
 .cal-day__big { display: flex; align-items: center; justify-content: space-between; }
 .cal-day__bignum { font-size: 40px; font-weight: 700; line-height: 1; color: var(--color-text); }
 .cal-day__bigname { font-size: var(--t-xl); font-weight: 600; margin-bottom: var(--s-16); }
@@ -561,7 +561,7 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
 .cal-mini__cell--sel { outline: 2px solid var(--color-action); }
 .cal-mini__dots { position: absolute; left: 0; right: 0; bottom: 3px; display: flex; gap: 3px; justify-content: center; }
 .cal-mini__dot { width: 5px; height: 5px; border-radius: var(--r-full); }
-.cal-day__main { display: grid; grid-template-columns: 64px 1fr; column-gap: var(--s-12); max-height: 660px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--r-md); background: var(--color-surface); padding: var(--s-12); box-shadow: var(--praxis-card); }
+.cal-day__main { display: grid; grid-template-columns: 64px 1fr; column-gap: var(--s-12); max-height: 660px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--r-md); background: var(--color-surface); padding: var(--s-12); box-shadow: var(--nexus-card); }
 .cal-day__ag { background: var(--color-surface-subtle); border-radius: var(--r-md); }
 .cal-day__hour { height: 48px; text-align: right; padding-right: var(--s-8); }
 .cal-day__hour-label { font-size: 11px; color: var(--color-text-secondary); }
@@ -777,7 +777,7 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
     width:min(440px,calc(100vw - 32px));z-index:96;display:flex;flex-direction:column;overflow:hidden;
     background:#F4F6F8;border-radius:16px;box-shadow:var(--px-overlay);
     transform:translateX(calc(100% + 24px));transition:transform .3s var(--ehsq-ease-default);}
-  body[data-variant="praxis"][data-theme="dark"] .mz-drawer{background:#0e1324;}
+  body[data-variant="nexus"][data-theme="dark"] .mz-drawer{background:#0e1324;}
   .mz-drawer[hidden]{display:none;}
   .mz-drawer.is-open{transform:none;}
   .mz-drawer__head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px;flex-shrink:0;position:relative;z-index:2;}
@@ -791,7 +791,7 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
     background-image:radial-gradient(rgba(46,111,176,.5) 1.3px, transparent 1.6px);background-size:18px 18px;
     -webkit-mask-image:radial-gradient(ellipse 62% 72% at 50% 34%, #000 0%, #000 32%, transparent 78%);
     mask-image:radial-gradient(ellipse 62% 72% at 50% 34%, #000 0%, #000 32%, transparent 78%);}
-  body[data-variant="praxis"][data-theme="dark"] .mz-dotgrid{background-image:radial-gradient(rgba(120,215,222,.30) 1.3px, transparent 1.6px);}
+  body[data-variant="nexus"][data-theme="dark"] .mz-dotgrid{background-image:radial-gradient(rgba(120,215,222,.30) 1.3px, transparent 1.6px);}
   .mz-greeting{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:28px 8px 8px;}
   .mz-greeting__logo{width:34px;height:34px;}
   .mz-greeting p{margin:0;font-size:1.25rem;font-weight:500;color:var(--ehsq-color-text-primary);line-height:1.4;}
@@ -801,16 +801,16 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
     font-family:inherit;font-size:.875rem;font-weight:600;color:var(--ehsq-color-text-primary);cursor:pointer;transition:background .15s;}
   .mz-sugg .icon{width:18px;height:18px;color:var(--ehsq-color-interactive-default);flex-shrink:0;}
   .mz-sugg:hover{background:var(--px-hover);}
-  body[data-variant="praxis"][data-theme="dark"] .mz-sugg:hover{background:rgba(255,255,255,.06);}
+  body[data-variant="nexus"][data-theme="dark"] .mz-sugg:hover{background:rgba(255,255,255,.06);}
   .mz-drawer__footer{flex-shrink:0;padding:8px 16px 12px;}
   /* Elevated content card: example prompts + composer sit on a shadowed card */
   .mz-card{background:#fff;border-radius:16px;padding:8px;display:flex;flex-direction:column;gap:2px;
     box-shadow:0 0 0 .5px rgba(16,36,58,.06),0 8px 24px -12px rgba(16,36,58,.22);}
-  body[data-variant="praxis"][data-theme="dark"] .mz-card{background:#212d3a;box-shadow:0 0 0 .5px rgba(255,255,255,.06),0 10px 28px -14px rgba(0,0,0,.6);}
+  body[data-variant="nexus"][data-theme="dark"] .mz-card{background:#212d3a;box-shadow:0 0 0 .5px rgba(255,255,255,.06),0 10px 28px -14px rgba(0,0,0,.6);}
   /* Composer — input + action row (+, scope pill, waveform, mic); borderless inside the card */
   .mz-composer{display:flex;flex-direction:column;gap:6px;padding:8px 6px 4px;margin-top:2px;
     border-top:1px solid var(--ehsq-color-border-default);}
-  body[data-variant="praxis"][data-theme="dark"] .mz-composer{border-top-color:rgba(255,255,255,.08);}
+  body[data-variant="nexus"][data-theme="dark"] .mz-composer{border-top-color:rgba(255,255,255,.08);}
   .mz-composer textarea{border:0;outline:0;resize:none;font:inherit;font-size:.9375rem;font-weight:500;
     line-height:1.5;background:transparent;color:var(--ehsq-color-text-primary);min-height:24px;max-height:120px;width:100%;padding:2px 6px;}
   .mz-composer textarea::placeholder{color:var(--ehsq-color-text-secondary);}
@@ -854,7 +854,7 @@ body[data-theme="dark"]{ --ehsq-color-teal-10:rgba(41,210,215,.12); }
    Namespaced: source .btn/.chip/.icon-btn renamed to .fdw-btn/.fdw-chip/.fdw-icon-btn
    to avoid colliding with the target's own globals.
    Source design tokens (--s-*, --t-*, --r-*, --d-*, --ease-*, --color-*, --shadow-*)
-   are ported/scoped to these selectors (NOT harmonized to Praxis tokens — that is
+   are ported/scoped to these selectors (NOT harmonized to Nexus tokens — that is
    the explicit next "harmonization" step). data-filter-mode is intentionally UNSET
    so the base right-side drawer wins at all widths (never the ≥1280 modal). */
 .filter-drawer, .drawer-scrim, .select-menu {

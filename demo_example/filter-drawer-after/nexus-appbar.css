@@ -1,5 +1,5 @@
 /* =====================================================================
-   PRAXIS APP HEADER — the single, global app-header component.
+   NEXUS APP HEADER — the single, global app-header component.
 
    One definition of the top app bar, consumed by both the record page and
    the workspace so the header is literally the same component everywhere.
@@ -12,8 +12,8 @@
    with a .page top margin). Loaded LAST on each page so it is authoritative.
    ===================================================================== */
 
-/* Bar fill + spacing (Praxis). Position/height stay in each page's shell. */
-body[data-variant="praxis"] .appbar{
+/* Bar fill + spacing (Nexus). Position/height stay in each page's shell. */
+body[data-variant="nexus"] .appbar{
   background:var(--px-page); color:var(--ehsq-color-text-primary);
   gap:var(--ehsq-space-16); padding:0 var(--ehsq-space-16);
 }
@@ -24,10 +24,10 @@ body[data-variant="praxis"] .appbar{
 .appbar__logo-img{height:26px;width:auto;display:block;}
 .appbar__logo-img--onlight{display:none;}
 .appbar__logo-img--ondark{display:block;}
-body[data-variant="praxis"] .appbar__logo-img--onlight{display:block;}
-body[data-variant="praxis"] .appbar__logo-img--ondark{display:none;}
-body[data-variant="praxis"][data-theme="dark"] .appbar__logo-img--onlight{display:none;}
-body[data-variant="praxis"][data-theme="dark"] .appbar__logo-img--ondark{display:block;}
+body[data-variant="nexus"] .appbar__logo-img--onlight{display:block;}
+body[data-variant="nexus"] .appbar__logo-img--ondark{display:none;}
+body[data-variant="nexus"][data-theme="dark"] .appbar__logo-img--onlight{display:none;}
+body[data-variant="nexus"][data-theme="dark"] .appbar__logo-img--ondark{display:block;}
 
 /* Search — Miramar base: white boxed field with module divider + teal button */
 .appbar__search{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:840px;margin:0;
@@ -40,14 +40,14 @@ body[data-variant="praxis"][data-theme="dark"] .appbar__logo-img--ondark{display
 .appbar__search-btn{width:40px;height:100%;border:0;background:var(--ehsq-color-interactive-default);color:#fff;
   display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .appbar__search-btn:hover{background:var(--ehsq-color-interactive-hover);}
-/* Praxis: fully-rounded floating pill; module + magnifier are borderless */
-body[data-variant="praxis"] .appbar__search{height:44px;border-radius:var(--ehsq-radius-full);overflow:visible;
+/* Nexus: fully-rounded floating pill; module + magnifier are borderless */
+body[data-variant="nexus"] .appbar__search{height:44px;border-radius:var(--ehsq-radius-full);overflow:visible;
   background:var(--ehsq-color-surface-default);padding:0 6px 0 4px;box-shadow:0 0 0 1px rgba(16,36,58,.08),0 1px 2px rgba(16,36,58,.05);}
-body[data-variant="praxis"][data-theme="dark"] .appbar__search{box-shadow:0 0 0 1px rgba(255,255,255,.10);}
-body[data-variant="praxis"] .appbar__module{justify-content:flex-start;gap:6px;width:auto;height:56%;padding:0 16px 0 14px;
+body[data-variant="nexus"][data-theme="dark"] .appbar__search{box-shadow:0 0 0 1px rgba(255,255,255,.10);}
+body[data-variant="nexus"] .appbar__module{justify-content:flex-start;gap:6px;width:auto;height:56%;padding:0 16px 0 14px;
   background:transparent;border-right:1px solid var(--ehsq-color-border-default);}
-body[data-variant="praxis"] .appbar__search-btn{background:transparent;color:var(--ehsq-color-text-secondary);border-radius:var(--ehsq-radius-full);}
-body[data-variant="praxis"] .appbar__search-btn:hover{background:transparent;color:var(--ehsq-color-text-primary);}
+body[data-variant="nexus"] .appbar__search-btn{background:transparent;color:var(--ehsq-color-text-secondary);border-radius:var(--ehsq-radius-full);}
+body[data-variant="nexus"] .appbar__search-btn:hover{background:transparent;color:var(--ehsq-color-text-primary);}
 
 /* Right-side cluster */
 .appbar__right{display:flex;align-items:center;gap:var(--ehsq-space-8);margin-left:auto;}
@@ -62,35 +62,35 @@ body[data-variant="praxis"] .appbar__search-btn:hover{background:transparent;col
 /* Light neutral pill — same lit-edge surface convention as the nav-rail tools
    and the search pill. The four-dot mark keeps its teal→pink signature (its
    dark-slate dot reads on the light surface, so no white-dot override needed). */
-body[data-variant="praxis"] .appbar__mazlan{
+body[data-variant="nexus"] .appbar__mazlan{
   background:var(--px-surface); color:var(--ehsq-color-text-secondary); border:0;
   box-shadow:0 0 0 .5px rgba(16,36,58,.06),0 1px 2px rgba(16,36,58,.05);
 }
-body[data-variant="praxis"] .appbar__mazlan:hover{
+body[data-variant="nexus"] .appbar__mazlan:hover{
   filter:none; color:var(--ehsq-color-text-primary);
   box-shadow:0 0 0 .5px rgba(16,36,58,.09),0 2px 6px -1px rgba(16,36,58,.14);
 }
-body[data-variant="praxis"][data-theme="dark"] .appbar__mazlan{
+body[data-variant="nexus"][data-theme="dark"] .appbar__mazlan{
   background:rgba(255,255,255,.06); color:var(--ehsq-color-text-secondary); border:0;
   box-shadow:0 0 0 .5px rgba(255,255,255,.10);
 }
-body[data-variant="praxis"][data-theme="dark"] .appbar__mazlan:hover{
+body[data-variant="nexus"][data-theme="dark"] .appbar__mazlan:hover{
   background:rgba(255,255,255,.10); color:#fff;
 }
 
 /* Avatar */
 .appbar__avatar{width:34px;height:34px;border-radius:50%;background:var(--ehsq-color-teal-60) center/cover no-repeat;color:#fff;
   border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8125rem;overflow:hidden;}
-body[data-variant="praxis"] .appbar__avatar{border-color:rgba(16,36,58,.12);}
-body[data-variant="praxis"][data-theme="dark"] .appbar__avatar{border-color:rgba(255,255,255,.22);}
+body[data-variant="nexus"] .appbar__avatar{border-color:rgba(16,36,58,.12);}
+body[data-variant="nexus"][data-theme="dark"] .appbar__avatar{border-color:rgba(255,255,255,.22);}
 
 /* Icon buttons */
 .appbar__iconbtn{width:40px;height:40px;border:0;background:transparent;color:rgba(255,255,255,.85);border-radius:var(--ehsq-radius-md);
   display:flex;align-items:center;justify-content:center;transition:background var(--ehsq-motion-fast),color var(--ehsq-motion-fast);}
 .appbar__iconbtn:hover{background:rgba(255,255,255,.12);color:#fff;}
-body[data-variant="praxis"] .appbar__iconbtn{color:var(--ehsq-color-text-secondary);}
-body[data-variant="praxis"] .appbar__iconbtn:hover{background:rgba(16,36,58,.06);color:var(--ehsq-color-text-primary);}
-body[data-variant="praxis"][data-theme="dark"] .appbar__iconbtn:hover{background:rgba(255,255,255,.10);}
+body[data-variant="nexus"] .appbar__iconbtn{color:var(--ehsq-color-text-secondary);}
+body[data-variant="nexus"] .appbar__iconbtn:hover{background:rgba(16,36,58,.06);color:var(--ehsq-color-text-primary);}
+body[data-variant="nexus"][data-theme="dark"] .appbar__iconbtn:hover{background:rgba(255,255,255,.10);}
 
 /* =====================================================================
    RESPONSIVE — app-wide breakpoints (used consistently across the app):
@@ -110,7 +110,7 @@ body[data-variant="praxis"][data-theme="dark"] .appbar__iconbtn:hover{background
     position:static; transform:none; left:auto; top:auto;
     width:auto; flex:1 1 auto; min-width:0; margin:0;
   }
-  body[data-variant="praxis"] .appbar__search{ width:auto; }
+  body[data-variant="nexus"] .appbar__search{ width:auto; }
   /* Mazlan pill is too wide for a phone bar — drop it (still reachable via
      the nav rail / profile menu) so the search + avatar keep room. */
   .appbar__mazlan{ display:none; }
@@ -128,7 +128,7 @@ body[data-variant="praxis"][data-theme="dark"] .appbar__iconbtn:hover{background
   .appswitch__trigger span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
 @media (max-width:480px){
-  body[data-variant="praxis"] .appbar{ gap:8px; padding:0 8px; }
+  body[data-variant="nexus"] .appbar{ gap:8px; padding:0 8px; }
   .appbar__logo-img{ height:22px; }
   .appbar__avatar{ width:30px; height:30px; }
 }
