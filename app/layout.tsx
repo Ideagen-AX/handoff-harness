@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { RunProvider } from "./RunProvider";
 
 export const metadata: Metadata = {
   title: "Handoff Harness",
@@ -16,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body data-variant="nexus" data-theme="light">
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
-        {children}
+        <RunProvider>{children}</RunProvider>
       </body>
     </html>
   );
