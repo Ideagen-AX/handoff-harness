@@ -132,6 +132,9 @@ body {
 }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 96px; }
+/* The library opts into full page width (left-aligned) so its 3-pane layout's
+   viewer isn't cramped; the generator keeps the centered .wrap. */
+.wrap--full { max-width: none; margin: 0; padding: 40px 32px 96px; }
 
 header.masthead { margin-bottom: 28px; }
 header.masthead .kicker {
@@ -402,6 +405,17 @@ button.ghost { background: transparent; box-shadow: none; }
 /* Tabbed results: horizontal tab bar + full-width panel */
 .results { margin-top: 22px; }
 .results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+/* Two-pane run outputs: left nav panel + single right-hand viewer (shared by the
+   generator and the library run view; reuses the .nav / .nav-item / .viewer rules). */
+.run-outputs { display: flex; gap: 18px; align-items: flex-start; flex: 1 1 auto; min-width: 0; }
+/* Source links (prototype / baseline) rendered as buttons rather than inline text links. */
+.link-btns { display: flex; gap: 8px; margin-top: 8px; }
+.link-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px;
+  border: 1px solid var(--border); border-radius: 999px; background: transparent;
+  color: var(--ink); font-size: 12.5px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.link-btn:hover { background: var(--hover); border-color: var(--accent); color: var(--accent-strong); }
 .tabbar {
   display: flex;
   flex-wrap: wrap;
@@ -466,6 +480,10 @@ button.ghost { background: transparent; box-shadow: none; }
 /* Two-pane workspace (legacy, unused in the tabbed variant) */
 .workspace { display: flex; gap: 18px; align-items: flex-start; margin-top: 22px; }
 .nav { width: 250px; flex: 0 0 250px; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow: auto; padding: 14px; }
+/* The per-run outputs nav sizes to its content and stays fully visible — the
+   sticky inner-scroll cap made longer output lists look truncated. (The projects
+   nav keeps its own sticky/scroll behavior.) */
+.run-outputs > nav.nav { position: static; max-height: none; overflow: visible; }
 .nav-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 700; margin-bottom: 10px; }
 .nav-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .nav-group-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 4px 10px; }

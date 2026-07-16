@@ -6,7 +6,7 @@ import type { StoredRun, StoredRunMeta } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
-import { RunTabs } from "@/app/components/RunViews";
+import { RunOutputs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
 
 type Group = { project: { id: string; name: string }; runs: StoredRunMeta[] };
@@ -68,7 +68,7 @@ export default function LibraryPage() {
   const totalRuns = groups.reduce((n, g) => n + g.runs.length, 0);
 
   return (
-    <div className="wrap">
+    <div className="wrap wrap--full">
       <header className="masthead">
         <div className="topbar">
           <div className="kicker">Design Handoff Harness <span className="ver">v{APP_VERSION}</span></div>
@@ -165,16 +165,24 @@ function RunView({ run, onError, onNotice }: { run: StoredRun; onError: (s: stri
           <div className="meta">
             {run.project.name} · v{run.version} · {fmtDate(run.createdAt)}
             {run.durationMs != null ? ` · ⏱ ${formatDuration(run.durationMs)}` : ""}
-            {run.prototypeUrl ? <> · <a href={run.prototypeUrl} target="_blank" rel="noreferrer">prototype</a></> : null}
-            {run.baselineUrl ? <> · <a href={run.baselineUrl} target="_blank" rel="noreferrer">baseline</a></> : null}
           </div>
+          {(run.prototypeUrl || run.baselineUrl) && (
+            <div className="link-btns">
+              {run.prototypeUrl && (
+                <a className="link-btn" href={run.prototypeUrl} target="_blank" rel="noreferrer">Prototype ↗</a>
+              )}
+              {run.baselineUrl && (
+                <a className="link-btn" href={run.baselineUrl} target="_blank" rel="noreferrer">Baseline ↗</a>
+              )}
+            </div>
+          )}
         </div>
         <button className="nav-download" style={{ width: "auto", margin: 0 }} onClick={downloadRunZip} title="Download the brief, all artifacts, screenshots and the deck as a .zip">
           ⤓ Download all (.zip)
         </button>
       </div>
       {run.input?.designDescription && <p className="meta" style={{ margin: "0 0 14px" }}>{run.input.designDescription}</p>}
-      <RunTabs
+      <RunOutputs
         brief={run.brief}
         captures={run.captures}
         instrumentation={run.instrumentation}

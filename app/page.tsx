@@ -6,10 +6,10 @@ import type { ChangeBrief, PipelineEvent, Capture, SlideSpec, InstrumentationPla
 import { APP_VERSION } from "@/lib/version";
 import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
-import { RunTabs } from "@/app/components/RunViews";
+import { RunOutputs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { DESIGN_SOURCES, DEFAULT_DESIGN_SOURCE } from "@/lib/designSources";
-import { DEMO_CASES, DEFAULT_DEMO_CASE } from "@/lib/demoCases";
+import { DEMO_CASES } from "@/lib/demoCases";
 
 type UiArtifact = {
   audienceId: string;
@@ -47,28 +47,20 @@ function ReqMark({ filled }: { filled: boolean }) {
 }
 
 export default function Home() {
-  const [projectName, setProjectName] = useState("Praxis Toolbar");
-  const [url, setUrl] = useState("https://forge-demo-toolbar-after.vercel.app/");
-  const [designDescription, setDesignDescription] = useState(
-    "The Search page toolbar, restyled to the Praxis design language: rounder, gradient-filled controls, refined icons, and a first-class dark mode. The control set and spacing are unchanged.",
-  );
-  const [projectContext, setProjectContext] = useState(
-    "Part of the wider EHSQ-E reskin toward the Praxis design language. This toolbar appears on Search pages across multiple modules (Incidents, Audits, CAPA, MOC).",
-  );
-  const [focusAreas, setFocusAreas] = useState(
-    "Fidelity of the visual restyle to Praxis; the new dark-mode variant; accessibility (aria labels, visible focus); and the responsive collapse into Tools/Options menus.",
-  );
-  const [designDecisions, setDesignDecisions] = useState(
-    "Kept the control set and spacing unchanged to avoid retraining users. Added a first-class dark variant. The selected display mode now uses a gradient + shadow to read as active.",
-  );
-  const [baselineUrl, setBaselineUrl] = useState("https://forge-demo-toolbar-before.vercel.app/");
+  const [projectName, setProjectName] = useState("");
+  const [url, setUrl] = useState("");
+  const [designDescription, setDesignDescription] = useState("");
+  const [projectContext, setProjectContext] = useState("");
+  const [focusAreas, setFocusAreas] = useState("");
+  const [designDecisions, setDesignDecisions] = useState("");
+  const [baselineUrl, setBaselineUrl] = useState("");
   const [codebasePath, setCodebasePath] = useState("");
   const [codebaseScope, setCodebaseScope] = useState("");
-  const [demoCase, setDemoCase] = useState(DEFAULT_DEMO_CASE);
+  const [demoCase, setDemoCase] = useState("custom");
   const [framework, setFramework] = useState("vue");
   const [designSource, setDesignSource] = useState(DEFAULT_DESIGN_SOURCE);
-  const [subject, setSubject] = useState("Search page toolbar");
-  const [componentSelector, setComponentSelector] = useState(".toolbar");
+  const [subject, setSubject] = useState("");
+  const [componentSelector, setComponentSelector] = useState("");
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -105,12 +97,17 @@ export default function Home() {
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
 
-  // Populate every setup field from a pre-built demo case (optional). "custom"
-  // (no matching case) leaves the fields untouched for manual entry.
+  // Populate every setup field from a pre-built demo case (optional). "None"
+  // (custom — no matching case) clears the demo-populated fields back to an
+  // empty form for manual entry.
   function applyDemoCase(id: string) {
     setDemoCase(id);
     const c = DEMO_CASES.find((x) => x.id === id);
-    if (!c) return;
+    if (!c) {
+      setProjectName(""); setUrl(""); setBaselineUrl(""); setSubject(""); setComponentSelector("");
+      setDesignDescription(""); setProjectContext(""); setFocusAreas(""); setDesignDecisions("");
+      return;
+    }
     setProjectName(c.projectName);
     setUrl(c.url);
     setBaselineUrl(c.baselineUrl);
@@ -367,10 +364,10 @@ export default function Home() {
         <label className="field demo-case">
           <span className="lab">Demo case — optional; populates the fields below so you can watch a run</span>
           <select value={demoCase} onChange={(e) => applyDemoCase(e.target.value)} disabled={running}>
+            <option value="custom">None</option>
             {DEMO_CASES.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
-            <option value="custom">— Custom (fill in yourself) —</option>
           </select>
         </label>
         <label className="field">
@@ -540,7 +537,7 @@ export default function Home() {
             </button>
           </div>
 
-          <RunTabs
+          <RunOutputs
             brief={brief}
             captures={captures}
             instrumentation={instrumentation}
