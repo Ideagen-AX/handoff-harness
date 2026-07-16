@@ -10,14 +10,14 @@ export const EXPORTS: Record<string, string[]> = {
   "product-docs": ["md", "pdf", "docx", "email"],
   "support-summary": ["md", "pdf", "docx", "email"],
   "release-notes": ["md", "pdf", "docx", "email"],
-  slide: ["pptx", "pdf", "email"],
+  slide: ["pptx", "pdf", "html", "email"],
   "one-pager": ["md", "pdf", "docx", "email"],
   "case-study": ["md", "pdf", "docx", "email"],
   "analytics-plan": ["md", "pdf", "docx", "email"],
 };
-export const EXPORT_ORDER = ["pptx", "js", "pdf", "docx", "md", "email", "jira"];
+export const EXPORT_ORDER = ["pptx", "js", "pdf", "html", "docx", "md", "email", "jira"];
 export const EXPORT_LABEL: Record<string, string> = {
-  pptx: ".pptx", md: ".md", pdf: "PDF", docx: "Word", email: "Email", jira: "Jira",
+  pptx: ".pptx", md: ".md", pdf: "PDF", html: "HTML", docx: "Word", email: "Email", jira: "Jira",
 };
 
 // Net-new component specs (component-*) are a design-system deliverable.
@@ -87,6 +87,10 @@ export function createExporters(ctx: {
       if (!a.slideSpec) return;
       try { await saveBlob(await post("/api/slide-pdf", { slideSpec: a.slideSpec, captures: ctx.captures }), "slide.pdf"); } catch (e) { ctx.onError(String(e)); }
     },
+    async downloadSlideHtml(a: ArtifactLike) {
+      if (!a.slideSpec) return;
+      try { await saveBlob(await post("/api/slide-html", { slideSpec: a.slideSpec, captures: ctx.captures }), "slide.html"); } catch (e) { ctx.onError(String(e)); }
+    },
     async downloadExport(a: ArtifactLike, format: "pdf" | "docx") {
       try { await saveBlob(await post("/api/export", { format, title: a.label, content: a.content }), `${slugify(a.audienceId)}.${format}`); } catch (e) { ctx.onError(String(e)); }
     },
@@ -124,6 +128,7 @@ export function createExporters(ctx: {
     // Dispatch a single export capability for an artifact.
     run(cap: string, a: ArtifactLike) {
       if (cap === "pptx") return this.downloadDeck(a);
+      if (cap === "html") return this.downloadSlideHtml(a);
       if (cap === "js") return this.downloadCode(a);
       if (cap === "md") return this.downloadMd(a);
       if (cap === "pdf") return a.audienceId === "slide" ? this.downloadSlidePdf(a) : this.downloadExport(a, "pdf");
