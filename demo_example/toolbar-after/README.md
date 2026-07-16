@@ -1,7 +1,7 @@
 # Search Page Toolbar — "After"
 
 Isolated snapshot of the **search page toolbar** as it exists in the **groom
-lake** project (Praxis design language). This is the **after** state for the
+lake** project (Nexus design language). This is the **after** state for the
 handoff-agent test case; the **before** is the equivalent toolbar from the
 **Responsive Search** project.
 
@@ -12,19 +12,19 @@ handoff-agent test case; the **before** is the equivalent toolbar from the
   first-class part of the redesign and shouldn't be hidden behind a URL flag.
 - **`toolbar.html`** — the isolated toolbar component itself. Standalone it
   renders centered; embedded (`?embed=1&theme=light|dark`) it top-aligns inside
-  an iframe. `#theme=` / `?theme=` selects the Praxis surface.
+  an iframe. `#theme=` / `?theme=` selects the Nexus surface.
 
 ## Interactive states
 
 - **Hover / active** on all controls (Back, Save, Export, Notifications, Run,
-  Sort, view-switch) via the source's lit-edge Praxis pill styling.
+  Sort, view-switch) via the source's lit-edge Nexus pill styling.
 - **View switcher** — a segmented control (List, Table, Cards, Calendar,
   Hierarchy, Chart); **List** is active by default. Selecting one moves the
   active state.
 - **Responsive collapse** (viewport < 1140px) — adopts the "before" toolbar's
-  pattern (with Praxis styling): the tool buttons collapse into a **Tools** menu
+  pattern (with Nexus styling): the tool buttons collapse into a **Tools** menu
   and Sort + the view switch collapse into an **Options** menu, instead of
-  wrapping. The menus reuse the Praxis `.px-pop`/`.px-menu` popover vocabulary
+  wrapping. The menus reuse the Nexus `.px-pop`/`.px-menu` popover vocabulary
   and stay in sync with the desktop controls.
 - **Both themes** are shown on the page; each toolbar is independently
   interactive.
@@ -49,7 +49,7 @@ contrast. The collapse menus follow the same standard (`aria-haspopup`,
 
 ## Fidelity
 
-`praxis-core.css` and `fonts/` (Gilroy) are copied **verbatim** from the groom
+`nexus-core.css` and `fonts/` (Gilroy) are copied **verbatim** from the groom
 lake prototype. `page.css` is that page's embedded stylesheet (tokens, Gilroy
 `@font-face`, `.toolbar` / `.tbtn` / `.sortbtn` / `.viewswitch`), extracted
 unchanged. The toolbar markup follows the source; deltas from the original

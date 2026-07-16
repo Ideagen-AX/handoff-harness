@@ -7,7 +7,7 @@ title, a one-line subtitle, a bulleted list of concrete callouts down the left, 
 
 **title:** Toolbar Styling Updates
 
-**subtitle:** The search page toolbar has been updated to reflect the new Praxis design language
+**subtitle:** The search page toolbar has been updated to reflect the new Nexus design language
 
 **callouts (left column):**
 - Buttons are rounder, styled with a light gradient for a dimensional effect.
@@ -22,7 +22,7 @@ title, a one-line subtitle, a bulleted list of concrete callouts down the left, 
 - `toolbar-light-default` — label "Light mode"
 - `toolbar-dark-default` — label "Dark mode"
 
-**notes:** The search toolbar was restyled to the Praxis design language — rounder,
+**notes:** The search toolbar was restyled to the Nexus design language — rounder,
 gradient-filled controls and a first-class dark mode — with no change to its controls or
 spacing. Shown here in both light and dark.
 

@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Filter Drawer — Praxis (After)</title>
+  <title>Filter Drawer — Nexus (After)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet" />
-  <!-- CSS extracted verbatim from the Praxis search page so the drawer renders identically. -->
-  <link rel="stylesheet" href="praxis-core.css" />
-  <link rel="stylesheet" href="praxis-create-new.css" />
-  <link rel="stylesheet" href="praxis-module-selector.css" />
+  <!-- CSS extracted verbatim from the Nexus search page so the drawer renders identically. -->
+  <link rel="stylesheet" href="nexus-core.css" />
+  <link rel="stylesheet" href="nexus-create-new.css" />
+  <link rel="stylesheet" href="nexus-module-selector.css" />
   <link rel="stylesheet" href="inline.css" />
-  <link rel="stylesheet" href="praxis-appbar.css" />
-  <link rel="stylesheet" href="praxis-navrail.css" />
-  <link rel="stylesheet" href="praxis-pageheader.css" />
+  <link rel="stylesheet" href="nexus-appbar.css" />
+  <link rel="stylesheet" href="nexus-navrail.css" />
+  <link rel="stylesheet" href="nexus-pageheader.css" />
   <style>
   /* Isolation frame only — a blank page holding the filter drawer + its trigger.
      Not part of the component. */
@@ -27,7 +27,7 @@
   *, *::before, *::after { box-sizing: border-box; }
 </style>
 </head>
-<body data-variant="praxis" data-theme="light" data-page="search">
+<body data-variant="nexus" data-theme="light" data-page="search">
 
   <!-- icon sprite (only the filter glyph the trigger references) -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-filter" viewBox="0 0 24 24"><path d="M10 18h4v-2h-4zM3 6v2h18V6zm3 7h12v-2H6z"/></symbol></defs></svg>
@@ -35,7 +35,7 @@
   <!-- Trigger (verbatim from source) -->
   <button class="pill-btn" id="openFilterDrawer" data-action="open-filter-drawer"><svg class="icon icon--18"><use href="#i-filter"></use></svg> Add Filters</button>
 
-  <!-- Isolated component: filter drawer (rendered snapshot from Praxis) -->
+  <!-- Isolated component: filter drawer (rendered snapshot from Nexus) -->
   <div class="drawer-scrim" data-drawer-scrim="" hidden></div>
   <aside class="filter-drawer" data-filter-drawer="" aria-label="Filters" role="dialog" aria-modal="true" hidden>
   <header class="filter-drawer__head">
