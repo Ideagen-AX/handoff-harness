@@ -68,7 +68,7 @@ export default function LibraryPage() {
   const totalRuns = groups.reduce((n, g) => n + g.runs.length, 0);
 
   return (
-    <div className="wrap">
+    <div className="wrap wrap--full">
       <header className="masthead">
         <div className="topbar">
           <div className="kicker">Design Handoff Harness <span className="ver">v{APP_VERSION}</span></div>
