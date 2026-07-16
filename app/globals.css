@@ -402,6 +402,9 @@ button.ghost { background: transparent; box-shadow: none; }
 /* Tabbed results: horizontal tab bar + full-width panel */
 .results { margin-top: 22px; }
 .results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+/* Two-pane run outputs: left nav panel + single right-hand viewer (shared by the
+   generator and the library run view; reuses the .nav / .nav-item / .viewer rules). */
+.run-outputs { display: flex; gap: 18px; align-items: flex-start; flex: 1 1 auto; min-width: 0; }
 .tabbar {
   display: flex;
   flex-wrap: wrap;

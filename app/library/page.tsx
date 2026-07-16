@@ -6,7 +6,7 @@ import type { StoredRun, StoredRunMeta } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
-import { RunTabs } from "@/app/components/RunViews";
+import { RunOutputs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
 
 type Group = { project: { id: string; name: string }; runs: StoredRunMeta[] };
@@ -174,7 +174,7 @@ function RunView({ run, onError, onNotice }: { run: StoredRun; onError: (s: stri
         </button>
       </div>
       {run.input?.designDescription && <p className="meta" style={{ margin: "0 0 14px" }}>{run.input.designDescription}</p>}
-      <RunTabs
+      <RunOutputs
         brief={run.brief}
         captures={run.captures}
         instrumentation={run.instrumentation}

@@ -6,7 +6,7 @@ import type { ChangeBrief, PipelineEvent, Capture, SlideSpec, InstrumentationPla
 import { APP_VERSION } from "@/lib/version";
 import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
-import { RunTabs } from "@/app/components/RunViews";
+import { RunOutputs } from "@/app/components/RunViews";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { DESIGN_SOURCES, DEFAULT_DESIGN_SOURCE } from "@/lib/designSources";
 import { DEMO_CASES, DEFAULT_DEMO_CASE } from "@/lib/demoCases";
@@ -540,7 +540,7 @@ export default function Home() {
             </button>
           </div>
 
-          <RunTabs
+          <RunOutputs
             brief={brief}
             captures={captures}
             instrumentation={instrumentation}

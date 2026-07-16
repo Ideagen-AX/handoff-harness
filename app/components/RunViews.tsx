@@ -214,12 +214,13 @@ export function BriefCard({ brief, onExport }: { brief: ChangeBrief; onExport?: 
   );
 }
 
-// ── Tabbed run view ──────────────────────────────────────────────────────────
-// The shared outputs UI used by BOTH the generator and the library: a tab bar
-// (Change brief · Captured screens · Instrumentation · one tab per package) and
-// a panel. `editable` turns on the generator's approve/edit/copy affordances;
-// omit it for the read-only library view.
-export function RunTabs({
+// ── Nav-panel run view ───────────────────────────────────────────────────────
+// The shared outputs UI used by BOTH the generator and the library: a left
+// navigation panel (Change brief · Captured screens · Instrumentation · then
+// each artifact grouped under its package) beside a single right-hand viewer
+// showing the selected output. `editable` turns on the generator's
+// approve/edit/copy affordances; omit it for the read-only library view.
+export function RunOutputs({
   brief,
   captures,
   instrumentation,
@@ -246,54 +247,47 @@ export function RunTabs({
   onEdit?: (id: string, content: string) => void;
   onCopy?: (content: string) => void;
 }) {
-  const activeSection =
-    selected === "brief" || selected === "captures" || selected === "instrumentation"
-      ? selected
-      : (() => {
-          const a = artifacts.find((x) => x.audienceId === selected);
-          return a ? packageFor(a.audienceId) : null;
-        })();
-
   return (
-    <>
-      <div className="tabbar" role="tablist">
+    <div className="run-outputs">
+      <nav className="card nav" aria-label="Run outputs">
+        <div className="nav-head">Outputs</div>
         {brief && (
-          <button role="tab" aria-selected={selected === "brief"} className={`tab ${selected === "brief" ? "active" : ""}`} onClick={() => onSelect("brief")}>
-            Change brief
+          <button className={`nav-item ${selected === "brief" ? "active" : ""}`} onClick={() => onSelect("brief")}>
+            <span className="nav-item-label">Change brief</span>
           </button>
         )}
         {captures.length > 0 && (
-          <button role="tab" aria-selected={selected === "captures"} className={`tab ${selected === "captures" ? "active" : ""}`} onClick={() => onSelect("captures")}>
-            Captured screens
+          <button className={`nav-item ${selected === "captures" ? "active" : ""}`} onClick={() => onSelect("captures")}>
+            <span className="nav-item-label">Captured screens</span>
           </button>
         )}
         {instrumentation && instrumentation.points.length > 0 && (
-          <button role="tab" aria-selected={selected === "instrumentation"} className={`tab ${selected === "instrumentation" ? "active" : ""}`} onClick={() => onSelect("instrumentation")}>
-            Instrumentation
+          <button className={`nav-item ${selected === "instrumentation" ? "active" : ""}`} onClick={() => onSelect("instrumentation")}>
+            <span className="nav-item-label">Instrumentation</span>
           </button>
         )}
         {PACKAGES.map((pkg) => {
           const items = artifacts.filter((a) => packageFor(a.audienceId) === pkg.id);
           if (!items.length) return null;
-          const allApproved = editable && items.every((a) => a.approved);
           return (
-            <button
-              key={pkg.id}
-              role="tab"
-              aria-selected={activeSection === pkg.id}
-              className={`tab ${activeSection === pkg.id ? "active" : ""}`}
-              onClick={() => onSelect(items[0].audienceId)}
-              title={items.length > 1 ? `${items.length} outputs` : undefined}
-            >
-              {pkg.title}
-              {items.length > 1 && <span className="tab-count">{items.length}</span>}
-              {allApproved && <span className="tab-check">✓</span>}
-            </button>
+            <div key={pkg.id} className="nav-group">
+              <div className="nav-group-title">{pkg.title}</div>
+              {items.map((a) => (
+                <button
+                  key={a.audienceId}
+                  className={`nav-item ${selected === a.audienceId ? "active" : ""}`}
+                  onClick={() => onSelect(a.audienceId)}
+                >
+                  <span className="nav-item-label">{a.label}</span>
+                  {editable && a.approved && <span className="nav-check">✓</span>}
+                </button>
+              ))}
+            </div>
           );
         })}
-      </div>
+      </nav>
 
-      <div className="tabpanel">
+      <section className="viewer">
         {selected === "brief" && brief ? (
           <BriefCard brief={brief} onExport={exporters.briefExport} />
         ) : selected === "captures" ? (
@@ -303,36 +297,22 @@ export function RunTabs({
         ) : (
           (() => {
             const a = artifacts.find((x) => x.audienceId === selected);
-            if (!a) return <div className="viewer-empty">Select a tab to view its output.</div>;
-            const pkgId = packageFor(a.audienceId);
-            const siblings = artifacts.filter((x) => packageFor(x.audienceId) === pkgId);
+            if (!a) return <div className="viewer-empty">Select an output on the left to view it.</div>;
             return (
-              <div>
-                {siblings.length > 1 && (
-                  <div className="subtabs">
-                    {siblings.map((s) => (
-                      <button key={s.audienceId} className={`subtab ${selected === s.audienceId ? "active" : ""}`} onClick={() => onSelect(s.audienceId)}>
-                        {s.label}
-                        {editable && s.approved && <span className="tab-check">✓</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <ArtifactCard
-                  artifact={a}
-                  framework={framework}
-                  exporters={exporters}
-                  editable={editable}
-                  approved={a.approved}
-                  onToggleApprove={onToggleApprove ? () => onToggleApprove(a.audienceId) : undefined}
-                  onEdit={onEdit ? (content) => onEdit(a.audienceId, content) : undefined}
-                  onCopy={onCopy ? () => onCopy(a.content) : undefined}
-                />
-              </div>
+              <ArtifactCard
+                artifact={a}
+                framework={framework}
+                exporters={exporters}
+                editable={editable}
+                approved={a.approved}
+                onToggleApprove={onToggleApprove ? () => onToggleApprove(a.audienceId) : undefined}
+                onEdit={onEdit ? (content) => onEdit(a.audienceId, content) : undefined}
+                onCopy={onCopy ? () => onCopy(a.content) : undefined}
+              />
             );
           })()
         )}
-      </div>
-    </>
+      </section>
+    </div>
   );
 }
