@@ -7,6 +7,7 @@ import { APP_VERSION } from "@/lib/version";
 import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
 import { RunOutputs } from "@/app/components/RunViews";
+import CubesLoader from "@/app/components/CubesLoader";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { DESIGN_SOURCES, DEFAULT_DESIGN_SOURCE } from "@/lib/designSources";
 import { DEMO_CASES } from "@/lib/demoCases";
@@ -42,7 +43,15 @@ function ReqMark({ filled }: { filled: boolean }) {
   return filled ? (
     <span className="req req-done" role="img" aria-label="provided" title="Provided">✓</span>
   ) : (
-    <span className="req req-todo" role="img" aria-label="required" title="Required">*</span>
+    <span className="req req-todo" role="img" aria-label="required" title="Required">
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+        <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <line x1="6" y1="1.5" x2="6" y2="10.5" />
+          <line x1="2.1" y1="3.75" x2="9.9" y2="8.25" />
+          <line x1="2.1" y1="8.25" x2="9.9" y2="3.75" />
+        </g>
+      </svg>
+    </span>
   );
 }
 
@@ -73,6 +82,7 @@ export default function Home() {
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [feed, setFeed] = useState<{ ms: number; message: string; kind: string }[]>([]);
   const [feedOpen, setFeedOpen] = useState(true);
+  const [setupOpen, setSetupOpen] = useState(true);
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() => Object.fromEntries(ALL_OUTPUT_IDS.map((id) => [id, true])));
   const [selected, setSelected] = useState<string | null>(null);
   const [notifyWhenDone, setNotifyWhenDone] = useState(true);
@@ -89,11 +99,15 @@ export default function Home() {
   const startRef = useRef(0);
   const terminalRef = useRef(false);
   const feedBodyRef = useRef<HTMLDivElement | null>(null);
+  const loaderRef = useRef<HTMLDivElement | null>(null);
 
   // Append one line to the live activity feed, stamped with run-elapsed time.
   const pushFeed = (message: string, kind = "info") =>
     setFeed((prev) => [...prev, { ms: Date.now() - startRef.current, message, kind }]);
   const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
+  // Spin the loader for the whole run; the nav+viewer fills in below it as
+  // content streams, and the loader clears when the run completes.
+  const showLoader = running;
 
   const exporters = createExporters({ captures, brief, framework, onError: setError, onNotice: setNotice });
 
@@ -133,6 +147,11 @@ export default function Home() {
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
+
+  // On Generate, scroll the loader into view (the setup form can push it below the fold).
+  useEffect(() => {
+    if (showLoader) loaderRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [showLoader]);
 
   // Keep the feed scrolled to the newest line (at the bottom) as it streams.
   useEffect(() => {
@@ -218,6 +237,7 @@ export default function Home() {
     setElapsedMs(0);
     setFeed([]);
     setFeedOpen(true);
+    setSetupOpen(false); // collapse the form fields; the feed + controls stay visible
     artifactCountRef.current = 0;
     terminalRef.current = false;
     startRef.current = Date.now();
@@ -355,12 +375,14 @@ export default function Home() {
         </p>
       </header>
 
-      <details className="card setup" open>
-        <summary className="setup-summary">
-          <span className="setup-title">Handoff setup</span>
-          <span className="setup-meta">{enabledCount} of {ALL_OUTPUT_IDS.length} outputs selected</span>
-        </summary>
-        <div className="setup-body">
+      <div className="card setup">
+        <details className="setup-fold" open={setupOpen} onToggle={(e) => setSetupOpen(e.currentTarget.open)}>
+          <summary className="setup-summary">
+            <span className="setup-title">Handoff setup</span>
+            <span className="setup-meta">{enabledCount} of {ALL_OUTPUT_IDS.length} outputs selected</span>
+            <span className="setup-toggle">{setupOpen ? "Hide Setup" : "Show Setup"}</span>
+          </summary>
+          <div className="setup-body">
         <label className="field demo-case">
           <span className="lab">Demo case — optional; populates the fields below so you can watch a run</span>
           <select value={demoCase} onChange={(e) => applyDemoCase(e.target.value)} disabled={running}>
@@ -461,7 +483,10 @@ export default function Home() {
             <input type="text" value={codebaseScope} onChange={(e) => setCodebaseScope(e.target.value)} placeholder="e.g. src/components/Search" disabled={running} />
           </label>
         </details>
+          </div>
+        </details>
 
+        <div className="setup-tail">
         {(running || feed.length > 0) && (
           <div className={`activity-feed ${feedOpen ? "" : "collapsed"}`} aria-label="Run activity">
             <div className="activity-feed-head">
@@ -519,12 +544,19 @@ export default function Home() {
         {notice && <p className="notice" onClick={() => setNotice("")} title="Dismiss">{notice}</p>}
         {savedRun && (
           <p className="notice">
-            ✓ Saved to library ·{" "}
-            <Link href={`/library?project=${savedRun.project}&run=${savedRun.id}`}>view this run →</Link>
+            ✓ Saved to library{" "}
+            <Link className="link-btn" href={`/library?project=${savedRun.project}&run=${savedRun.id}`}>View this run →</Link>
           </p>
         )}
         </div>
-      </details>
+      </div>
+
+      {showLoader && (
+        <div className="loader-stage" aria-label="Generating handoff" ref={loaderRef}>
+          <CubesLoader />
+          {status && <p className="loader-caption"><span className="spinner" /> {status}</p>}
+        </div>
+      )}
 
       {(brief || artifacts.length > 0) && (
         <div className="results">

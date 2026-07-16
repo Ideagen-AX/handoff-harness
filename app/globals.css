@@ -158,7 +158,7 @@ header.masthead p { color: var(--muted); margin: 0; max-width: 62ch; }
 
 /* Collapsible "Handoff setup" top container */
 .setup { padding: 0; overflow: hidden; }
-.setup > summary {
+.setup-fold > summary {
   cursor: pointer;
   list-style: none;
   display: flex;
@@ -169,25 +169,37 @@ header.masthead p { color: var(--muted); margin: 0; max-width: 62ch; }
   font-size: 16px;
   color: var(--ink);
 }
-.setup > summary::-webkit-details-marker { display: none; }
-.setup > summary::before {
+.setup-fold > summary::-webkit-details-marker { display: none; }
+.setup-fold > summary::before {
   content: "▸";
   color: var(--muted);
   font-size: 12px;
   transition: transform 0.15s var(--ease);
 }
-.setup[open] > summary::before { transform: rotate(90deg); }
-.setup[open] > summary { border-bottom: 1px solid var(--border); }
+.setup-fold[open] > summary::before { transform: rotate(90deg); }
+.setup-fold[open] > summary { border-bottom: 1px solid var(--border); }
 .setup-title { flex: 1; }
 .setup-meta { font-weight: 600; font-size: 12.5px; color: var(--muted); }
 .setup-body { padding: 20px; }
+/* Always-visible tail of the setup card (activity feed + Generate row + status);
+   stays put when the form fields above collapse on Generate. */
+.setup-tail { padding: 16px 20px; border-top: 1px solid var(--border); }
+/* Explicit, always-visible expand/collapse affordance in the setup header. */
+.setup-toggle {
+  margin-left: 12px; flex: none; padding: 4px 14px; border-radius: 999px;
+  border: 1px solid var(--accent); background: var(--accent-tint);
+  color: var(--accent-strong); font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.setup-fold > summary:hover { background: var(--hover); }
+.setup-fold > summary:hover .setup-toggle { background: var(--accent); color: #fff; }
 
 label.field { display: block; margin-bottom: 14px; }
 label.field .lab { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
 /* Required-field indicator: large red asterisk, or a teal check-in-circle once filled. */
 label.field .lab-req { display: flex; align-items: center; gap: 8px; justify-content: flex-start; }
 .req { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; line-height: 1; user-select: none; }
-.req-todo { color: #ff2d2d; font-size: 20px; font-weight: 700; transform: translateY(0.12em); }
+.req-todo { width: 12px; height: 12px; color: #ff2d2d; }
+.req-todo svg { display: block; width: 12px; height: 12px; }
 .req-done { width: 18px; height: 18px; border-radius: 50%; background: #00d1b2; color: #fff; font-size: 12px; font-weight: 800; box-shadow: 0 0 0 3px rgba(0, 209, 178, 0.18); }
 
 input[type="url"], input[type="text"], textarea, select {
@@ -404,6 +416,10 @@ button.ghost { background: transparent; box-shadow: none; }
 
 /* Tabbed results: horizontal tab bar + full-width panel */
 .results { margin-top: 22px; }
+/* Morphing-cubes loader shown below the setup card until the run streams content. */
+.loader-stage { min-height: 220px; margin-top: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.cubes-loader { width: 100%; height: 200px; }
+.loader-caption { margin: 0; color: var(--muted); font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
 .results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 /* Two-pane run outputs: left nav panel + single right-hand viewer (shared by the
    generator and the library run view; reuses the .nav / .nav-item / .viewer rules). */
