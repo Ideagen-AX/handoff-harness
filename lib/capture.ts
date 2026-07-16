@@ -210,7 +210,9 @@ export async function exploreState(
       height: vp?.height && vp.height > 0 ? vp.height : 900,
       deviceScaleFactor: 1,
     });
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    // Cap the wait: some SPAs never reach network idle and would burn the full
+    // timeout on every exploration. 15s is plenty for these demos to render.
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 15000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 600));
 
     // Operate inside the frame that holds the component (demo pages embed it in
@@ -221,7 +223,7 @@ export async function exploreState(
       const frameUrl = target.frame.url();
       if (/^https?:/i.test(frameUrl)) {
         try {
-          await page.goto(frameUrl, { waitUntil: "networkidle2", timeout: 30000 });
+          await page.goto(frameUrl, { waitUntil: "networkidle2", timeout: 15000 }).catch(() => {});
           await new Promise((r) => setTimeout(r, 500));
           target = await resolveTarget(page, selector, "");
         } catch {
@@ -262,10 +264,10 @@ export async function exploreState(
         const t = clean(e.textContent || "") || clean(e.getAttribute("aria-label") || "") || clean(e.getAttribute("placeholder") || "");
         if (t && t.length <= 40) labels.add(t);
       });
-      return { markup: clean(el.outerHTML).slice(0, 12000), labels: Array.from(labels) };
+      return { markup: clean(el.outerHTML).slice(0, 6000), labels: Array.from(labels) };
     }, selector);
 
-    const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000);
+    const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1200);
     return { ok: true, markup, text, labels };
   } catch (err) {
     return { ok: false, note: `Exploration failed: ${String(err)}` };

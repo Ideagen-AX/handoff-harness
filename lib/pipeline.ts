@@ -2,7 +2,7 @@ import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type 
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan, type StoredRun } from "./types";
 import { stat } from "node:fs/promises";
-import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype, explorePrototype } from "./tools";
+import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype, makeExploreTool } from "./tools";
 import { captureScreens, capturePrototypeState } from "./capture";
 import { APP_VERSION } from "./version";
 import { saveRun, projectSlug } from "./library";
@@ -161,7 +161,7 @@ async function understand(input: {
     }
   }
 
-  const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype, explorePrototype };
+  const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype, explorePrototype: makeExploreTool(3) };
   if (useCodebase) tools.readCodebase = makeCodebaseTool(codeRoot!);
 
   // For a URL baseline, diff the two prototypes up front — visually AND at the
@@ -190,9 +190,10 @@ async function understand(input: {
   const agent = new ToolLoopAgent({
     model: MODEL_UNDERSTAND,
     tools,
-    // Extra headroom over the base tool set so the agent can open a few hidden
-    // states (drawer, modal, each tab) via explorePrototype before emitting.
-    stopWhen: stepCountIs(useCodebase ? 36 : 26),
+    // Modest headroom over the base tool set for a couple of explorations. Kept
+    // tight — a large step budget let the loop balloon (13-min runs). The explore
+    // tool is also hard-capped per run (see makeExploreTool).
+    stopWhen: stepCountIs(useCodebase ? 30 : 20),
     // The change brief is a large object; give it room so it isn't truncated
     // into invalid JSON (the cause of intermittent "no object generated").
     maxOutputTokens: 16000,
@@ -213,7 +214,7 @@ async function understand(input: {
       basisInstruction,
       "For componentImpact, check the design-system reference before deciding: prefer 'used-as-is' or 'extended' when the library already offers a fitting component. Reserve 'net-new' for genuine gaps.",
       "NEVER describe UI you could have opened as unexaminable. If a component is hidden behind a trigger (drawer, modal, flyout, inactive tab/toggle), you MUST use explorePrototype to open it and analyse its real contents — do not write that you could 'only see the trigger'. The screenshot stage will open these states too, so your analysis must match what will be shown.",
-      "Call fetchPrototype, each readReference, and inspectPrototype AT MOST ONCE. explorePrototype MAY be called several times — once per distinct hidden state worth opening (the drawer, each tab, a toggled mode) — but don't re-open the same state. Once you've opened the states that matter and have your context, STOP calling tools and emit the structured change brief; do not loop.",
+      "Call fetchPrototype, each readReference, and inspectPrototype AT MOST ONCE. explorePrototype is SLOW (a real browser navigation) and hard-capped — call it at most 2–3 times, ONLY for a hidden state you genuinely cannot analyse from the already-fetched markup (e.g. the drawer's contents). Don't re-open the same state, and don't explore states you can already describe. As soon as you have enough context, STOP calling tools and emit the structured change brief; do not loop.",
       "Populate the downstream-feeding fields deliberately: decisionLog (the reasoning trail — decisions, rationale, alternatives, honest tradeoffs), intendedOutcomes + successMetrics (what success looks like and how it could be measured in Gainsight), useCases (persona + scenario + concrete example), and visualManifest (the views worth capturing, each with a caption and annotation callouts, ordered by narrative importance).",
       "For each visualManifest entry, also fill `actions` — the steps to drive the prototype INTO that state before its screenshot. To reach a mode/tab/panel/menu, add a click whose `target` is the control's EXACT visible label from inspectPrototype (e.g. 'Options', 'Table', 'Cards'). For a responsive/size-dependent state, add a setViewport with a realistic width (e.g. 480 mobile, 834 tablet, 1440 desktop). Leave `actions` empty only for the default view. Distinct states MUST have distinct actions, or their screenshots come out identical.",
       "IMPORTANT for collapsed/overflow menus: some controls only exist at a particular width — e.g. discrete buttons that collapse into an overflow / 'more' / 'Tools' / 'Options' menu on narrower screens (or are inline on wide screens). If a menu/trigger only appears at a certain width, the click action MUST be preceded by a setViewport to a width where that trigger is actually visible (put the setViewport action first, then the click). Clicking a control that is hidden at the current width opens nothing — the shot will look like the default. So for a 'menu open' state on a component that collapses, set the narrower viewport AND click the trigger.",

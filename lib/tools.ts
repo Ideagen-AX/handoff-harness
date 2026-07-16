@@ -131,28 +131,38 @@ export const inspectPrototype = tool({
 // trigger (a drawer, modal, flyout menu, or inactive tab/toggle) and read the
 // resulting markup. This is what lets the brief describe the drawer's actual
 // contents instead of only the trigger button.
-export const explorePrototype = tool({
-  description:
-    "Interactively DRIVE the live prototype into a state and read the RESULTING markup. Use this to open UI that is HIDDEN behind a trigger — a drawer, modal, flyout menu, or an inactive tab/toggle — so you can analyse its ACTUAL contents, not just the initial screen. Give the ordered actions to reach the state (click a control by its visible label, set a viewport width, or wait). Returns the revealed region's markup, its now-visible control labels, and readable text. Call it once per distinct hidden state that matters (e.g. open the drawer; switch to each tab). If the subject is behind a trigger, you MUST open it here before describing what changed.",
-  inputSchema: z.object({
-    url: z.string().describe("The full URL of the hosted prototype"),
-    actions: z
-      .array(
-        z.object({
-          do: z.enum(["click", "setViewport", "wait"]),
-          target: z.string().optional().describe("For 'click': the control's EXACT visible label/text (e.g. 'Filters') or a CSS selector"),
-          width: z.number().optional().describe("For 'setViewport': viewport width in px (e.g. 480, 1440)"),
-          height: z.number().optional().describe("For 'setViewport': viewport height in px"),
-          ms: z.number().optional().describe("For 'wait': milliseconds to wait"),
-        }),
-      )
-      .describe("Ordered steps to reach the state, e.g. [{do:'click', target:'Filters'}] to open the filter drawer"),
-    selector: z.string().optional().describe("Optional CSS selector scoping the read to the component/region"),
-  }),
-  execute: async ({ url, actions, selector }) => {
-    return exploreState(url, { actions, selector });
-  },
-});
+// Built per run (not a shared singleton) so the call cap is per-run. Each
+// exploration is an expensive browser navigation, so we hard-cap how many the
+// agent can make — this is the main guard against multi-minute Understand loops.
+export function makeExploreTool(maxCalls = 3) {
+  let calls = 0;
+  return tool({
+    description:
+      "Interactively DRIVE the live prototype into a state and read the RESULTING markup. Use this to open UI that is HIDDEN behind a trigger — a drawer, modal, flyout menu, or an inactive tab/toggle — so you can analyse its ACTUAL contents. Each call is a real browser navigation and is SLOW, so use it sparingly: prefer the already-fetched markup, and only open a state you genuinely cannot analyse otherwise. Give the ordered actions to reach the state (click a control by its visible label, set a viewport width, or wait). Returns the revealed region's markup, its control labels, and readable text.",
+    inputSchema: z.object({
+      url: z.string().describe("The full URL of the hosted prototype"),
+      actions: z
+        .array(
+          z.object({
+            do: z.enum(["click", "setViewport", "wait"]),
+            target: z.string().optional().describe("For 'click': the control's EXACT visible label/text (e.g. 'Filters') or a CSS selector"),
+            width: z.number().optional().describe("For 'setViewport': viewport width in px (e.g. 480, 1440)"),
+            height: z.number().optional().describe("For 'setViewport': viewport height in px"),
+            ms: z.number().optional().describe("For 'wait': milliseconds to wait"),
+          }),
+        )
+        .describe("Ordered steps to reach the state, e.g. [{do:'click', target:'Filters'}] to open the filter drawer"),
+      selector: z.string().optional().describe("Optional CSS selector scoping the read to the component/region"),
+    }),
+    execute: async ({ url, actions, selector }) => {
+      if (calls >= maxCalls) {
+        return { ok: false, note: `Exploration limit reached (${maxCalls} states). Analyse from what you already have and emit the change brief now — do not call more tools.` };
+      }
+      calls++;
+      return exploreState(url, { actions, selector });
+    },
+  });
+}
 
 // TOOL 2 — read a reference document (e.g. the design-system reference).
 export const readReference = tool({
