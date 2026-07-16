@@ -165,9 +165,17 @@ function RunView({ run, onError, onNotice }: { run: StoredRun; onError: (s: stri
           <div className="meta">
             {run.project.name} · v{run.version} · {fmtDate(run.createdAt)}
             {run.durationMs != null ? ` · ⏱ ${formatDuration(run.durationMs)}` : ""}
-            {run.prototypeUrl ? <> · <a href={run.prototypeUrl} target="_blank" rel="noreferrer">prototype</a></> : null}
-            {run.baselineUrl ? <> · <a href={run.baselineUrl} target="_blank" rel="noreferrer">baseline</a></> : null}
           </div>
+          {(run.prototypeUrl || run.baselineUrl) && (
+            <div className="link-btns">
+              {run.prototypeUrl && (
+                <a className="link-btn" href={run.prototypeUrl} target="_blank" rel="noreferrer">Prototype ↗</a>
+              )}
+              {run.baselineUrl && (
+                <a className="link-btn" href={run.baselineUrl} target="_blank" rel="noreferrer">Baseline ↗</a>
+              )}
+            </div>
+          )}
         </div>
         <button className="nav-download" style={{ width: "auto", margin: 0 }} onClick={downloadRunZip} title="Download the brief, all artifacts, screenshots and the deck as a .zip">
           ⤓ Download all (.zip)

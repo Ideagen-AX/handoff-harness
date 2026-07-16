@@ -131,7 +131,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 96px; }
+/* Full-width, left-aligned: no centering cap, so the run viewer gets all the
+   horizontal room the fixed-width nav columns don't use. */
+.wrap { margin: 0; padding: 40px 32px 96px; }
 
 header.masthead { margin-bottom: 28px; }
 header.masthead .kicker {
@@ -154,7 +156,8 @@ header.masthead p { color: var(--muted); margin: 0; max-width: 62ch; }
 }
 
 /* Collapsible "Handoff setup" top container */
-.setup { padding: 0; overflow: hidden; }
+/* The setup form reads better constrained; only the outputs area goes full-width. */
+.setup { padding: 0; overflow: hidden; max-width: 980px; }
 .setup > summary {
   cursor: pointer;
   list-style: none;
@@ -405,6 +408,14 @@ button.ghost { background: transparent; box-shadow: none; }
 /* Two-pane run outputs: left nav panel + single right-hand viewer (shared by the
    generator and the library run view; reuses the .nav / .nav-item / .viewer rules). */
 .run-outputs { display: flex; gap: 18px; align-items: flex-start; flex: 1 1 auto; min-width: 0; }
+/* Source links (prototype / baseline) rendered as buttons rather than inline text links. */
+.link-btns { display: flex; gap: 8px; margin-top: 8px; }
+.link-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px;
+  border: 1px solid var(--border); border-radius: 999px; background: transparent;
+  color: var(--ink); font-size: 12.5px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.link-btn:hover { background: var(--hover); border-color: var(--accent); color: var(--accent-strong); }
 .tabbar {
   display: flex;
   flex-wrap: wrap;
