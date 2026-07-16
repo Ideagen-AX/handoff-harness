@@ -182,8 +182,8 @@ header.masthead p { color: var(--muted); margin: 0; max-width: 62ch; }
 label.field { display: block; margin-bottom: 14px; }
 label.field .lab { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
 /* Required-field indicator: large red asterisk, or a teal check-in-circle once filled. */
-label.field .lab-req { display: flex; align-items: center; gap: 8px; }
-.req { margin-left: auto; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; line-height: 1; user-select: none; }
+label.field .lab-req { display: flex; align-items: center; gap: 8px; justify-content: flex-start; }
+.req { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; line-height: 1; user-select: none; }
 .req-todo { color: #ff2d2d; font-size: 20px; font-weight: 700; transform: translateY(0.12em); }
 .req-done { width: 18px; height: 18px; border-radius: 50%; background: #00d1b2; color: #fff; font-size: 12px; font-weight: 800; box-shadow: 0 0 0 3px rgba(0, 209, 178, 0.18); }
 
