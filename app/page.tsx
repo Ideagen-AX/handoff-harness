@@ -35,6 +35,7 @@ export default function Home() {
     baselineUrl, setBaselineUrl, codebasePath, setCodebasePath, codebaseScope, setCodebaseScope,
     demoCase, applyDemoCase, framework, setFramework, designSource, setDesignSource,
     subject, setSubject, componentSelector, setComponentSelector,
+    crawl, setCrawl, screensText, setScreensText, maxScreens, setMaxScreens,
     running, status, error, notice, setNotice, brief, captures, instrumentation, artifacts,
     savedRun, elapsedMs, feed, feedOpen, setFeedOpen, setupOpen, setSetupOpen,
     enabled, setEnabled, selected, setSelected, notifyWhenDone, setNotifyWhenDone,
@@ -168,6 +169,40 @@ export default function Home() {
           <label className="field" style={{ marginBottom: 0 }}>
             <span className="lab">Codebase scope — a subpath to diff against, so it doesn&rsquo;t scan the whole app (recommended for large repos)</span>
             <input type="text" value={codebaseScope} onChange={(e) => setCodebaseScope(e.target.value)} placeholder="e.g. src/components/Search" disabled={running} />
+          </label>
+        </details>
+        <details className="baseline">
+          <summary>Large prototype — multiple pages / full app (optional)</summary>
+          <p className="meta" style={{ margin: "8px 0 12px" }}>
+            For a multi-screen prototype, the harness maps its screens, then — with a
+            &ldquo;before&rdquo; URL above — processes <strong>only the screens that changed</strong>,
+            analysing them in parallel and merging into one brief. Leave all of this blank for a
+            single-screen run.
+          </p>
+          <label className="out-check" style={{ marginBottom: 10 }}>
+            <input type="checkbox" checked={crawl} disabled={running} onChange={(e) => setCrawl(e.target.checked)} />
+            <span>Crawl linked screens — follow same-origin links from the prototype URL</span>
+          </label>
+          <label className="field">
+            <span className="lab">Explicit screen URLs — one per line (overrides crawl)</span>
+            <textarea
+              value={screensText}
+              onChange={(e) => setScreensText(e.target.value)}
+              rows={3}
+              disabled={running}
+              placeholder={"https://app.example.com/incidents\nhttps://app.example.com/audits/new"}
+            />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span className="lab">Max screens — cap on how many screens are discovered / scoped (default 12)</span>
+            <input
+              type="number"
+              min={1}
+              value={maxScreens}
+              onChange={(e) => setMaxScreens(e.target.value)}
+              placeholder="12"
+              disabled={running}
+            />
           </label>
         </details>
           </div>
