@@ -15,7 +15,11 @@ const themeInit = `(function(){try{var t=localStorage.getItem('handoff-theme');d
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body data-variant="nexus" data-theme="light">
+      {/* suppressHydrationWarning: the pre-paint themeInit script and some browser
+          extensions (e.g. ColorZilla's cz-shortcut-listen) mutate <body>'s own
+          attributes before React hydrates. This suppresses ONLY the body element's
+          attribute diff, not its subtree — real mismatches in children still warn. */}
+      <body data-variant="nexus" data-theme="light" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <RunProvider>{children}</RunProvider>
       </body>
