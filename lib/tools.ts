@@ -4,25 +4,17 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { resolve, relative, join, basename } from "node:path";
 import { readReferenceDoc } from "./specs";
 import { inspectClickables, exploreState } from "./capture";
+import type { BrowserPool } from "./browserPool";
+import { structuralSummary, summaryToPrompt } from "./extract";
 
-// Crude but dependency-free HTML → readable text. Good enough to feed a model.
-function htmlToText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// TOOL 1 — fetch the hosted prototype and return its readable text.
+// TOOL 1 — fetch the hosted prototype and return a compact STRUCTURAL summary.
+// For a large/multi-page prototype, dumping 12k chars of tag-stripped text is both
+// lossy (structure gone) and noisy (boilerplate copy eats the budget). A landmark/
+// heading/control/component summary is far higher signal per token. We still keep a
+// short readable excerpt inside the summary as a last-resort context.
 export const fetchPrototype = tool({
   description:
-    "Fetch a hosted prototype (or any web page) and return its readable text content. Call this first to understand what the change looks like.",
+    "Fetch a hosted prototype (or any web page) and return a compact structural summary of it — its title, landmarks, headings, interactive controls, and repeated component blocks. Call this first to understand what the change looks like.",
   inputSchema: z.object({
     url: z.string().describe("The full URL of the hosted prototype"),
   }),
@@ -34,14 +26,15 @@ export const fetchPrototype = tool({
       if (!res.ok) {
         return { url, ok: false, text: `Fetch failed with HTTP ${res.status}.` };
       }
-      const text = htmlToText(await res.text()).slice(0, 12000);
-      if (text.length < 200) {
-        // Likely a client-rendered SPA whose content isn't in the initial HTML.
+      const summary = structuralSummary(await res.text());
+      const text = summaryToPrompt(summary);
+      // A client-rendered SPA serves almost no structure in its initial HTML.
+      if (!summary.headings.length && !summary.controls.length && summary.textSample.length < 200) {
         return {
           url,
           ok: true,
           text,
-          note: "Very little readable text was found — this page may render its content with JavaScript. Rely on the designer's note and flag gaps in openQuestions.",
+          note: "Very little structure was found in the initial HTML — this page likely renders with JavaScript. Rely on inspectPrototype / explorePrototype and the designer's note, and flag gaps in openQuestions.",
         };
       }
       return { url, ok: true, text };
@@ -114,18 +107,22 @@ export function makeCodebaseTool(root: string) {
 }
 
 // TOOL 4 — inspect the live prototype's actual clickable control labels, so the
-// change brief's visualManifest actions target real controls (not guesses).
-export const inspectPrototype = tool({
-  description:
-    "Inspect the live prototype and return its actual clickable control labels (buttons, tabs, toggles). Call this before authoring visualManifest actions, then use these EXACT labels as click targets so screenshots reach the right state. Returns a note if inspection isn't available (e.g. deployed environment).",
-  inputSchema: z.object({
-    url: z.string().describe("The full URL of the hosted prototype"),
-  }),
-  execute: async ({ url }) => {
-    const { labels, note } = await inspectClickables(url);
-    return { url, labels, count: labels.length, note };
-  },
-});
+// change brief's visualManifest actions target real controls (not guesses). Built
+// per run with the shared browser pool so the whole Understand loop drives ONE
+// browser (avoids multiple concurrent Chromium instances on serverless).
+export function makeInspectTool(pool?: BrowserPool) {
+  return tool({
+    description:
+      "Inspect the live prototype and return its actual clickable control labels (buttons, tabs, toggles). Call this before authoring visualManifest actions, then use these EXACT labels as click targets so screenshots reach the right state. Returns a note if inspection isn't available (e.g. deployed environment).",
+    inputSchema: z.object({
+      url: z.string().describe("The full URL of the hosted prototype"),
+    }),
+    execute: async ({ url }) => {
+      const { labels, note } = await inspectClickables(url, pool);
+      return { url, labels, count: labels.length, note };
+    },
+  });
+}
 
 // TOOL 5 — interactively drive the prototype to reveal UI hidden behind a
 // trigger (a drawer, modal, flyout menu, or inactive tab/toggle) and read the
@@ -134,7 +131,7 @@ export const inspectPrototype = tool({
 // Built per run (not a shared singleton) so the call cap is per-run. Each
 // exploration is an expensive browser navigation, so we hard-cap how many the
 // agent can make — this is the main guard against multi-minute Understand loops.
-export function makeExploreTool(maxCalls = 3) {
+export function makeExploreTool(maxCalls = 3, pool?: BrowserPool) {
   let calls = 0;
   return tool({
     description:
@@ -159,7 +156,7 @@ export function makeExploreTool(maxCalls = 3) {
         return { ok: false, note: `Exploration limit reached (${maxCalls} states). Analyse from what you already have and emit the change brief now — do not call more tools.` };
       }
       calls++;
-      return exploreState(url, { actions, selector });
+      return exploreState(url, { actions, selector }, pool);
     },
   });
 }

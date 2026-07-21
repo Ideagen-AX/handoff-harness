@@ -279,6 +279,9 @@ function useProvideRun() {
     switch (ev.type) {
       case "status": setStatus(ev.message); break;
       case "activity": pushFeed(ev.message, ev.kind ?? "info"); break;
+      case "screenmap":
+        pushFeed(`Screen map (${ev.method}): ${ev.scoped}/${ev.discovered} screens in scope`, "milestone");
+        break;
       case "brief": setBrief(ev.brief); setSelected((s) => s ?? "brief"); break;
       case "captures": setCaptures(ev.captures); break;
       case "instrumentation": setInstrumentation(ev.plan); break;
