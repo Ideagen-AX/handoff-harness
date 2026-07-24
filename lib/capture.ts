@@ -1,18 +1,33 @@
 import type { ChangeBrief, Capture } from "./types";
-import { IS_SERVERLESS, storeCapture } from "./storage";
+import { storeCapture } from "./storage";
+import { BrowserPool, launchBrowser, lastLaunchError, mapWithConcurrency, CAPTURE_CONCURRENCY } from "./browserPool";
 
-// Candidate system-Chrome locations (macOS first, then common Linux). We use the
-// installed browser rather than downloading Chromium — lighter, and this stage is
-// local-first anyway.
-const CHROME_PATHS = [
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium",
-  "/usr/bin/chromium-browser",
-];
+// Launch primitives now live in browserPool.ts; re-export the ones other modules
+// (export.ts, slide-pdf) still import from here so their imports keep working.
+export { findChrome, launchBrowser, lastLaunchError } from "./browserPool";
 
 type Action = { do: "click" | "setViewport" | "wait"; target?: string; width?: number; height?: number; ms?: number };
+
+// Run `fn` with a page: on a shared pool when one is supplied (a run reuses one
+// warm browser), else on a throwaway browser for standalone/backward-compatible
+// calls. Returns `fallback` when no browser is available at all.
+async function runOnPage<T>(
+  pool: BrowserPool | undefined,
+  fn: (page: import("puppeteer-core").Page) => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  if (pool) return pool.withPage(fn);
+  const browser = await launchBrowser();
+  if (!browser) return fallback;
+  try {
+    const page = await browser.newPage();
+    return await fn(page);
+  } catch {
+    return fallback;
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
 
 // Click by CSS selector, falling back to matching a control's visible text /
 // aria-label — so the agent can name "Cards" without knowing a selector. Runs
@@ -50,68 +65,6 @@ async function clickTarget(ctx: import("puppeteer-core").Frame, target: string):
   }, target);
 }
 
-// Exposed so other browser features (PDF export) can reuse the same launcher.
-export async function findChrome(): Promise<string | null> {
-  return firstExisting(CHROME_PATHS);
-}
-
-async function firstExisting(paths: string[]): Promise<string | null> {
-  const { stat } = await import("node:fs/promises");
-  for (const p of paths) {
-    try {
-      await stat(p);
-      return p;
-    } catch {
-      /* keep looking */
-    }
-  }
-  return null;
-}
-
-/**
- * Launch a headless browser that works both locally and on serverless (Vercel).
- * On serverless we use the bundled @sparticuz/chromium build; locally we drive
- * the installed system Chrome/Edge. Returns null when no browser is available,
- * so every caller can degrade gracefully rather than throw.
- */
-// Records why the last serverless launch failed, so callers can surface it in
-// their degradation note (aids diagnosing the Vercel Chromium path).
-export let lastLaunchError: string | null = null;
-
-export async function launchBrowser(): Promise<import("puppeteer-core").Browser | null> {
-  const { launch } = await import("puppeteer-core");
-  if (IS_SERVERLESS) {
-    try {
-      // @sparticuz/chromium only unpacks its bundled shared libraries (libnss3,
-      // etc.) when it detects an AWS-Lambda runtime via AWS_EXECUTION_ENV /
-      // AWS_LAMBDA_JS_RUNTIME. Vercel doesn't set those, so the libs are never
-      // extracted and Chromium fails with "libnss3.so: cannot open shared object
-      // file". Vercel's runtime is Amazon Linux 2023 — advertise a Node 20/AL2023
-      // runtime so the package extracts al2023.tar.br to /tmp/al2023/lib (already
-      // on LD_LIBRARY_PATH).
-      process.env.AWS_LAMBDA_JS_RUNTIME = "nodejs20.x";
-      const chromium = (await import("@sparticuz/chromium")).default;
-      const executablePath = await chromium.executablePath();
-      return await launch({
-        args: [...chromium.args, "--hide-scrollbars"],
-        executablePath,
-        headless: true,
-      });
-    } catch (e) {
-      lastLaunchError = String((e as Error)?.message || e).slice(0, 300);
-      console.error("[launchBrowser] serverless chromium failed:", lastLaunchError);
-      return null; // chromium binary unavailable
-    }
-  }
-  const executablePath = await firstExisting(CHROME_PATHS);
-  if (!executablePath) return null;
-  try {
-    return await launch({ executablePath, headless: true, args: ["--no-sandbox", "--hide-scrollbars"] });
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Capture a prototype's state for a before/after diff: a viewport screenshot
  * (vision input) AND its rendered HTML/CSS markup (code-level input). One page
@@ -120,23 +73,25 @@ export async function launchBrowser(): Promise<import("puppeteer-core").Browser 
  * available (limited for SPAs, but better than nothing). Fields are null when
  * unavailable.
  */
-export async function capturePrototypeState(url: string): Promise<{ image: string | null; html: string | null }> {
-  const browser = await launchBrowser();
-  if (browser) {
-    try {
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
-      await new Promise((r) => setTimeout(r, 600));
-      const buf = await page.screenshot({ type: "png" });
-      const html = await page.content();
-      return { image: `data:image/png;base64,${Buffer.from(buf).toString("base64")}`, html };
-    } catch {
-      /* fall through to raw fetch */
-    } finally {
-      await browser.close().catch(() => {});
-    }
-  }
+export async function capturePrototypeState(url: string, pool?: BrowserPool): Promise<{ image: string | null; html: string | null }> {
+  type Shot = { image: string | null; html: string | null } | null;
+  const viaBrowser = await runOnPage<Shot>(
+    pool,
+    async (page) => {
+      try {
+        await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+        await new Promise((r) => setTimeout(r, 600));
+        const buf = await page.screenshot({ type: "png" });
+        const html = await page.content();
+        return { image: `data:image/png;base64,${Buffer.from(buf).toString("base64")}`, html };
+      } catch {
+        return null; // fall through to raw fetch
+      }
+    },
+    null,
+  );
+  if (viaBrowser) return viaBrowser;
   try {
     const res = await fetch(url, { headers: { "user-agent": "handoff-harness/0.1" } });
     if (res.ok) return { image: null, html: await res.text() };
@@ -152,38 +107,39 @@ export async function capturePrototypeState(url: string): Promise<{ image: strin
  * "Modal") instead of guessing. Cleans Material-icon ligatures by keeping only
  * tokens that contain an uppercase letter. Degrades gracefully off-browser.
  */
-export async function inspectClickables(url: string): Promise<{ labels: string[]; note?: string }> {
-  const browser = await launchBrowser();
-  if (!browser) return { labels: [], note: "No browser available for DOM inspection." };
-  try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 900 });
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
-    await new Promise((r) => setTimeout(r, 700));
-    const labels: string[] = await page.evaluate(() => {
-      const clean = (s: string) =>
-        (s || "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .split(" ")
-          .filter((tok) => /[A-Z]/.test(tok)) // drop lowercase icon ligatures (cards_stack, instant_mix…)
-          .join(" ")
-          .trim();
-      const out = new Set<string>();
-      document
-        .querySelectorAll<HTMLElement>("button,[role=button],[role=tab],a,[class*=toggle],[class*=tab]")
-        .forEach((e) => {
-          const t = clean(e.textContent || "") || clean(e.getAttribute("aria-label") || "");
-          if (t && t.length <= 30) out.add(t);
+export async function inspectClickables(url: string, pool?: BrowserPool): Promise<{ labels: string[]; note?: string }> {
+  return runOnPage(
+    pool,
+    async (page) => {
+      try {
+        await page.setViewport({ width: 1440, height: 900 });
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+        await new Promise((r) => setTimeout(r, 700));
+        const labels: string[] = await page.evaluate(() => {
+          const clean = (s: string) =>
+            (s || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .split(" ")
+              .filter((tok) => /[A-Z]/.test(tok)) // drop lowercase icon ligatures (cards_stack, instant_mix…)
+              .join(" ")
+              .trim();
+          const out = new Set<string>();
+          document
+            .querySelectorAll<HTMLElement>("button,[role=button],[role=tab],a,[class*=toggle],[class*=tab]")
+            .forEach((e) => {
+              const t = clean(e.textContent || "") || clean(e.getAttribute("aria-label") || "");
+              if (t && t.length <= 30) out.add(t);
+            });
+          return Array.from(out);
         });
-      return Array.from(out);
-    });
-    return { labels };
-  } catch (err) {
-    return { labels: [], note: `DOM inspection failed: ${String(err)}` };
-  } finally {
-    await browser?.close().catch(() => {});
-  }
+        return { labels };
+      } catch (err) {
+        return { labels: [], note: `DOM inspection failed: ${String(err)}` };
+      }
+    },
+    { labels: [], note: lastLaunchError ? `No browser available: ${lastLaunchError}` : "No browser available for DOM inspection." },
+  );
 }
 
 /**
@@ -196,13 +152,10 @@ export async function inspectClickables(url: string): Promise<{ labels: string[]
 export async function exploreState(
   url: string,
   opts: { actions?: Action[]; selector?: string },
+  pool?: BrowserPool,
 ): Promise<{ ok: boolean; markup?: string; text?: string; labels?: string[]; note?: string }> {
-  const browser = await launchBrowser();
-  if (!browser) {
-    return { ok: false, note: lastLaunchError ? `No browser available: ${lastLaunchError}` : "No browser available for exploration." };
-  }
-  try {
-    const page = await browser.newPage();
+  return runOnPage(pool, async (page) => {
+   try {
     const actions = (opts.actions ?? []) as Action[];
     const vp = actions.find((a) => a.do === "setViewport" && (a.width ?? 0) > 0);
     await page.setViewport({
@@ -269,11 +222,10 @@ export async function exploreState(
 
     const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1200);
     return { ok: true, markup, text, labels };
-  } catch (err) {
+   } catch (err) {
     return { ok: false, note: `Exploration failed: ${String(err)}` };
-  } finally {
-    await browser?.close().catch(() => {});
-  }
+   }
+  }, { ok: false, note: lastLaunchError ? `No browser available: ${lastLaunchError}` : "No browser available for exploration." });
 }
 
 /**
@@ -345,39 +297,53 @@ export async function captureScreens(opts: {
   manifest: ChangeBrief["visualManifest"];
   runId: string;
   defaultSelector?: string; // scope shots to the component when an entry has no selector
+  pool?: BrowserPool; // reuse a shared warm browser; when absent, open one for this call
+  concurrency?: number; // max screens shot at once (default CAPTURE_CONCURRENCY)
+  maxScreens?: number; // hard cap on screens actually shot; the rest are skipped, never silently (#3)
+  screenUrls?: Record<string, string>; // per-screenKey URL for multi-page prototypes; falls back to prototypeUrl
+  onCapture?: (capture: Capture) => void; // fired as each screen settles — feeds progressive UI + checkpoint (#4)
 }): Promise<Capture[]> {
   const manifest = opts.manifest ?? [];
-  const placeholder = (reason: string): Capture[] =>
-    manifest.map((m) => ({
-      screenKey: m.screenKey,
-      caption: m.caption,
-      annotations: m.annotations ?? [],
-      ok: false,
-      note: reason,
-    }));
+  const mk = (m: ChangeBrief["visualManifest"][number], extra: Partial<Capture>): Capture => ({
+    screenKey: m.screenKey,
+    caption: m.caption,
+    annotations: m.annotations ?? [],
+    ok: false,
+    ...extra,
+  });
 
   if (!manifest.length) return [];
 
-  const browser = await launchBrowser();
-  if (!browser) {
-    return placeholder(
-      lastLaunchError
-        ? `No browser available for capture: ${lastLaunchError}`
-        : "No browser available for capture; attach screenshots manually.",
-    );
+  // #3 — total-screen cap. A large prototype can nominate dozens of states, and
+  // capture is the pipeline's heaviest stage. Cap how many we actually shoot, but
+  // NEVER silently: dropped screens come back as explicit ok:false placeholders so
+  // "captured N/M" reflects reality and downstream falls back to captions.
+  const cap = opts.maxScreens && opts.maxScreens > 0 ? opts.maxScreens : manifest.length;
+  const active = manifest.slice(0, cap);
+  const dropped = manifest.slice(cap);
+  if (dropped.length) {
+    console.error(`[capture] screen cap ${cap} reached — skipping ${dropped.length}: ${dropped.map((d) => d.screenKey).join(", ")}`);
   }
 
-  try {
-    const results: Capture[] = [];
-    for (const m of manifest) {
-      const base: Capture = {
-        screenKey: m.screenKey,
-        caption: m.caption,
-        annotations: m.annotations ?? [],
-        ok: false,
-      };
+  // Reuse the caller's shared pool (one warm browser for the whole run) when given;
+  // otherwise open one just for this call and close it at the end.
+  const pool = opts.pool ?? (await BrowserPool.open(opts.concurrency ?? CAPTURE_CONCURRENCY));
+  const ownsPool = !opts.pool;
+  if (!pool) {
+    const reason = lastLaunchError
+      ? `No browser available for capture: ${lastLaunchError}`
+      : "No browser available for capture; attach screenshots manually.";
+    return manifest.map((m) => mk(m, { note: reason }));
+  }
+
+  // Capture one manifest entry on its own page from the shared pool. All the
+  // per-screen logic (frame resolution, action driving, smart aperture) is
+  // unchanged — it just runs on a pooled page instead of a per-call browser.
+  const captureOne = async (m: ChangeBrief["visualManifest"][number]): Promise<Capture> => {
+    const base = mk(m, {});
+    const screenUrl = opts.screenUrls?.[m.screenKey] || opts.prototypeUrl;
+    const result = await pool.withPage(async (page) => {
       try {
-        const page = await browser.newPage();
         // Apply any viewport action up front so the page renders at that size from
         // load (correct for responsive/size-dependent states like a mobile drawer).
         const actions = (m.actions ?? []) as Action[];
@@ -390,7 +356,7 @@ export async function captureScreens(opts: {
         // `load` (all resources incl. iframes) rather than `networkidle2`, which
         // SPAs/serverless often never satisfy — a timeout there used to throw and
         // knock capture onto its clipped parent-page fallback.
-        await page.goto(opts.prototypeUrl, { waitUntil: "load", timeout: 20000 }).catch(() => {});
+        await page.goto(screenUrl, { waitUntil: "load", timeout: 20000 }).catch(() => {});
         await new Promise((r) => setTimeout(r, 700));
 
         // Find the frame that holds the component (may be an embedded iframe), so
@@ -523,16 +489,26 @@ export async function captureScreens(opts: {
           const buf = await page.screenshot({ fullPage: !selector, type: "png" });
           url = await storeCapture(opts.runId, m.screenKey, Buffer.from(buf));
         }
-        await page.close();
-        results.push({ ...base, ok: true, url });
+        return { ...base, ok: true, url };
       } catch (err) {
-        results.push({ ...base, note: `Capture failed: ${String(err)}` });
+        return { ...base, note: `Capture failed: ${String(err)}` };
       }
-    }
-    return results;
-  } catch (err) {
-    return placeholder(`Browser launch failed: ${String(err)}`);
+    });
+    opts.onCapture?.(result);
+    return result;
+  };
+
+  try {
+    // Shoot the active screens concurrently against the shared browser, bounded by
+    // the pool's page semaphore — one launch, N pages, instead of N cold launches.
+    const shot = await mapWithConcurrency(active, opts.concurrency ?? CAPTURE_CONCURRENCY, (m) => captureOne(m));
+    const skipped = dropped.map((m) => {
+      const c = mk(m, { note: `Skipped: screen cap of ${cap} reached — attach manually or raise maxScreens.` });
+      opts.onCapture?.(c);
+      return c;
+    });
+    return [...shot, ...skipped];
   } finally {
-    await browser?.close().catch(() => {});
+    if (ownsPool) await pool.close();
   }
 }

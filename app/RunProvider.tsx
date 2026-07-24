@@ -53,6 +53,10 @@ function useProvideRun() {
   const [designSource, setDesignSource] = useState(DEFAULT_DESIGN_SOURCE);
   const [subject, setSubject] = useState("");
   const [componentSelector, setComponentSelector] = useState("");
+  // Large-prototype controls (opt-in; empty/false = legacy single-screen path).
+  const [crawl, setCrawl] = useState(false);
+  const [screensText, setScreensText] = useState(""); // explicit screen URLs, one per line
+  const [maxScreens, setMaxScreens] = useState(""); // cap on discovered/scoped screens
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -231,6 +235,11 @@ function useProvideRun() {
     primeNotifications();
     const ac = new AbortController();
     abortRef.current = ac;
+    // Parse the explicit screen list (one URL per line or comma-separated).
+    const screensList = screensText
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter((s) => /^https?:\/\//i.test(s));
     try {
       const res = await fetch("/api/run", {
         method: "POST",
@@ -240,6 +249,10 @@ function useProvideRun() {
           enabledOutputs: ALL_OUTPUT_IDS.filter((id) => enabled[id]),
           subject, componentSelector,
           projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
+          // Large-prototype path (omitted when unused → single-screen behaviour).
+          screens: screensList.length ? screensList : undefined,
+          crawl: crawl || undefined,
+          maxScreens: maxScreens.trim() && Number(maxScreens) > 0 ? Number(maxScreens) : undefined,
         }),
         signal: ac.signal,
       });
@@ -284,6 +297,9 @@ function useProvideRun() {
     switch (ev.type) {
       case "status": setStatus(ev.message); break;
       case "activity": pushFeed(ev.message, ev.kind ?? "info"); break;
+      case "screenmap":
+        pushFeed(`Screen map (${ev.method}): ${ev.scoped}/${ev.discovered} screens in scope`, "milestone");
+        break;
       case "brief": setBrief(ev.brief); setSelected((s) => s ?? "brief"); break;
       case "captures": setCaptures(ev.captures); break;
       case "instrumentation": setInstrumentation(ev.plan); break;
@@ -347,6 +363,7 @@ function useProvideRun() {
     baselineUrl, setBaselineUrl, baselineImage, setBaselineImage, codebasePath, setCodebasePath, codebaseScope, setCodebaseScope,
     demoCase, applyDemoCase, framework, setFramework, designSource, setDesignSource,
     subject, setSubject, componentSelector, setComponentSelector,
+    crawl, setCrawl, screensText, setScreensText, maxScreens, setMaxScreens,
     running, status, error, notice, setNotice, brief, captures, instrumentation, artifacts,
     savedRun, elapsedMs, feed, feedOpen, setFeedOpen, setupOpen, setSetupOpen,
     enabled, setEnabled, selected, setSelected, notifyWhenDone, setNotifyWhenDone,

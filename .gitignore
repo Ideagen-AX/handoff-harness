@@ -8,6 +8,9 @@ public/library
 *.tsbuildinfo
 next-env.d.ts
 
+# Content-hash cache + job checkpoints for the large-prototype pipeline
+.harness-cache
+
 # The slide exporter uses one lightweight format: specs/templates/blank1-bg.png
 # (a pre-composited Blanks-Blank-1 background, committed). Any stray .pptx masters
 # left over from the old approach stay local — they're no longer used or needed.

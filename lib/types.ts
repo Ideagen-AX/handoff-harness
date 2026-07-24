@@ -270,6 +270,17 @@ export type PipelineEvent =
   // Fine-grained narration for the live activity feed (e.g. each tool the
   // Understand agent calls). Distinct from `status` (which drives the spinner).
   | { type: "activity"; message: string; kind?: string }
+  // The discovered/scoped screen map for a large multi-screen prototype. Emitted
+  // before the brief so the UI can show how the app was decomposed and which
+  // screens were pruned as unchanged (delta-scoping).
+  | {
+      type: "screenmap";
+      method: string;
+      discovered: number;
+      scoped: number;
+      screens: { key: string; label: string; url: string }[];
+      note: string;
+    }
   | { type: "brief"; brief: ChangeBrief }
   | { type: "captures"; captures: Capture[] }
   | { type: "instrumentation"; plan: InstrumentationPlan }

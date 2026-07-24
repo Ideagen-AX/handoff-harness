@@ -2,8 +2,13 @@ import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type 
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
 import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan, type StoredRun } from "./types";
 import { stat } from "node:fs/promises";
-import { fetchPrototype, readReference, makeCodebaseTool, inspectPrototype, makeExploreTool } from "./tools";
+import { fetchPrototype, readReference, makeCodebaseTool, makeInspectTool, makeExploreTool } from "./tools";
 import { captureScreens, capturePrototypeState } from "./capture";
+import { BrowserPool } from "./browserPool";
+import { discoverScreens, scopeToChanged, type ScreenMap } from "./screenMap";
+import { scaledUnderstand } from "./scaledUnderstand";
+import { compactBriefForGenerators } from "./compactBrief";
+import { newCheckpoint, saveJob, type JobCheckpoint } from "./jobStore";
 import { APP_VERSION } from "./version";
 import { saveRun, projectSlug } from "./library";
 
@@ -63,8 +68,8 @@ function toolActivity(toolName: string, input: unknown): string {
 // the code level. This is what makes a URL baseline useful for styling/layout
 // changes — a text fetch misses them. Returns null when neither state could be
 // captured (falls back to the plain text diff).
-async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string, subject?: string): Promise<string | null> {
-  const [before, after] = await Promise.all([capturePrototypeState(beforeUrl), capturePrototypeState(afterUrl)]);
+async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string, subject?: string, pool?: BrowserPool): Promise<string | null> {
+  const [before, after] = await Promise.all([capturePrototypeState(beforeUrl, pool), capturePrototypeState(afterUrl, pool)]);
   if (!before.image && !before.html && !after.image && !after.html) return null;
 
   const cap = (h: string | null) => (h ? h.replace(/\s+/g, " ").trim().slice(0, 30000) : "(unavailable)");
@@ -112,11 +117,11 @@ async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string,
 // itself), so if this pre-diff can't run — the AFTER capture times out, the
 // model errors — we return null and the agent still does the image comparison.
 // It must therefore never throw: a failure here degrades, it doesn't abort.
-async function diffPrototypeAgainstImage(beforeImage: string, afterUrl: string, note: string, subject?: string): Promise<string | null> {
+async function diffPrototypeAgainstImage(beforeImage: string, afterUrl: string, note: string, subject?: string, pool?: BrowserPool): Promise<string | null> {
   if (!beforeImage) return null;
   let after: { image: string | null; html: string | null };
   try {
-    after = await capturePrototypeState(afterUrl);
+    after = await capturePrototypeState(afterUrl, pool);
   } catch (e) {
     console.error("[image-baseline] AFTER capture failed:", (e as Error).message);
     return null;
@@ -167,6 +172,32 @@ import { getDesignSource, type DesignSource } from "./designSources";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+// The designer's rich, structured context — primary truth the agent should use
+// instead of re-inferring intent. Falls back to the short note. Shared by the
+// single-screen tool-loop understand() and the multi-screen scaled path so both
+// frame the change identically.
+function buildDesignerContext(input: {
+  note?: string;
+  designDescription?: string;
+  projectContext?: string;
+  focusAreas?: string;
+  designDecisions?: string;
+}): string {
+  return (
+    [
+      input.designDescription?.trim() ? `WHAT THE NEW DESIGN IS:\n${input.designDescription.trim()}` : "",
+      input.projectContext?.trim() ? `SURROUNDING CONTEXT:\n${input.projectContext.trim()}` : "",
+      input.focusAreas?.trim() ? `FOCUS AREAS (weight these):\n${input.focusAreas.trim()}` : "",
+      input.designDecisions?.trim()
+        ? `KEY DESIGN DECISIONS & RATIONALE (use directly — do not re-infer):\n${input.designDecisions.trim()}`
+        : "",
+      input.note?.trim() ? `NOTE:\n${input.note.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n") || input.note?.trim() || ""
+  );
+}
+
 // ── Stage 1: UNDERSTAND ──────────────────────────────────────────────────────
 // A real tool-loop agent: it fetches the prototype, optionally reads the
 // design-system reference, then emits the structured Change Brief.
@@ -184,6 +215,7 @@ async function understand(input: {
   focusAreas?: string;
   designDecisions?: string;
   designReference?: string;
+  pool?: BrowserPool;
   onActivity?: (message: string, kind?: string) => void;
 }): Promise<ChangeBrief> {
   const subject = input.subject?.trim();
@@ -191,20 +223,7 @@ async function understand(input: {
   const act = input.onActivity ?? (() => {});
   const guidance = await readChangeBriefGuidance();
 
-  // The designer's rich, structured context — primary truth the agent should use
-  // instead of re-inferring intent. Falls back to the short note.
-  const designerContext =
-    [
-      input.designDescription?.trim() ? `WHAT THE NEW DESIGN IS:\n${input.designDescription.trim()}` : "",
-      input.projectContext?.trim() ? `SURROUNDING CONTEXT:\n${input.projectContext.trim()}` : "",
-      input.focusAreas?.trim() ? `FOCUS AREAS (weight these):\n${input.focusAreas.trim()}` : "",
-      input.designDecisions?.trim()
-        ? `KEY DESIGN DECISIONS & RATIONALE (use directly — do not re-infer):\n${input.designDecisions.trim()}`
-        : "",
-      input.note?.trim() ? `NOTE:\n${input.note.trim()}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n") || input.note?.trim() || "";
+  const designerContext = buildDesignerContext(input);
 
   // Establish the "before" state: codebase (preferred) → baseline URL → inference.
   // Scope the codebase to the relevant subpath so we never crawl the whole app —
@@ -223,7 +242,12 @@ async function understand(input: {
     }
   }
 
-  const tools: ToolSet = { fetchPrototype, readReference, inspectPrototype, explorePrototype: makeExploreTool(3) };
+  const tools: ToolSet = {
+    fetchPrototype,
+    readReference,
+    inspectPrototype: makeInspectTool(input.pool),
+    explorePrototype: makeExploreTool(3, input.pool),
+  };
   if (useCodebase) tools.readCodebase = makeCodebaseTool(codeRoot!);
 
   // For a URL baseline, diff the two prototypes up front — visually AND at the
@@ -237,9 +261,9 @@ async function understand(input: {
   else if (useImageBaseline) act("Diffing the uploaded baseline screenshot against the prototype…", "tool");
   const diffSummary = !useCodebase
     ? input.baselineUrl
-      ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, designerContext, subject)
+      ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, designerContext, subject, input.pool)
       : useImageBaseline
-        ? await diffPrototypeAgainstImage(input.baselineImage!, input.prototypeUrl, designerContext, subject)
+        ? await diffPrototypeAgainstImage(input.baselineImage!, input.prototypeUrl, designerContext, subject, input.pool)
         : null
     : null;
   if (diffSummary) act(useImageBaseline ? "Baseline screenshot diff complete" : "Before/after diff complete", "tool");
@@ -744,16 +768,67 @@ export async function* runPipeline(input: {
   focusAreas?: string;
   designDecisions?: string;
   designSource?: string;
+  // ── Large-prototype controls (all optional; absent = legacy single-screen) ──
+  screens?: Array<string | { url: string; label?: string }>; // explicit screen list
+  crawl?: boolean; // discover screens by crawling same-origin links from the entry
+  maxScreens?: number; // cap on discovered/scoped screens (default 12)
+  maxCaptureScreens?: number; // cap on screens actually screenshotted (default 24 when multi)
 }): AsyncGenerator<PipelineEvent> {
   const source: DesignSource = getDesignSource(input.designSource);
   // Wall-clock start — reported on completion and stored with the run.
   const startedAt = Date.now();
   // Stable id for this run — used for the capture folder AND the library entry.
   const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  // One warm browser shared across the whole run (discovery scoping, before/after
+  // diff, per-screen analysis, and capture) instead of a cold launch per op (#3).
+  // Null when no browser is available — every consumer degrades gracefully.
+  const pool = await BrowserPool.open();
   // Which artifact types to produce. Empty/undefined = all. Component specs are
   // gated under "design-system" since they're a design-system deliverable.
   const enabled = input.enabledOutputs?.length ? new Set(input.enabledOutputs) : null;
   const wants = (id: string) => !enabled || enabled.has(id);
+  try {
+  // ── Stage: DISCOVER SCREENS + SCOPE TO THE DELTA (#1, #2) ────────────────────
+  // Enumerate the prototype's screens (explicit list → crawl → single fallback),
+  // then keep only those that changed vs. the baseline. A plain single-URL run
+  // (no crawl, no list) yields exactly ONE screen and takes the legacy tool-loop
+  // path below — so nothing regresses for the isolated-component demo case.
+  yield { type: "status", stage: "discover", message: "Mapping the prototype's screens…" };
+  const discovered = await discoverScreens({
+    prototypeUrl: input.prototypeUrl,
+    baselineUrl: input.baselineUrl,
+    screens: input.screens,
+    crawl: input.crawl,
+    maxScreens: input.maxScreens,
+  });
+  const map: ScreenMap =
+    discovered.screens.length > 1
+      ? await scopeToChanged(discovered.screens, { pool: pool ?? undefined, hasBaseline: !!input.baselineUrl })
+      : {
+          screens: discovered.screens,
+          method: discovered.method,
+          discovered: discovered.screens.length,
+          scoped: discovered.screens.length,
+          note: "Single screen — no decomposition needed.",
+        };
+  const multi = map.screens.length > 1;
+  if (discovered.screens.length > 1) {
+    yield {
+      type: "screenmap",
+      method: map.method,
+      discovered: map.discovered,
+      scoped: map.scoped,
+      screens: map.screens.map((s) => ({ key: s.key, label: s.label, url: s.url })),
+      note: map.note,
+    };
+    yield { type: "activity", message: `${map.scoped}/${map.discovered} screens in scope — ${map.note}`, kind: "milestone" };
+  }
+
+  // Checkpoint the job so a re-run can resume; the content-hash cache in the
+  // per-screen analysis is what actually makes an unchanged screen a cheap hit (#4).
+  const checkpoint: JobCheckpoint = newCheckpoint(runId, input.prototypeUrl, map.screens.map((s) => s.key));
+  void saveJob(checkpoint);
+
   const basis = input.codebasePath
     ? "against the current codebase"
     : input.baselineUrl
@@ -761,27 +836,58 @@ export async function* runPipeline(input: {
       : input.baselineImage
         ? "against the uploaded baseline screenshot"
         : "from the note (no baseline — inferred)";
-  yield { type: "status", stage: "understand", message: `Building the change brief, diffing ${basis}…` };
-  yield { type: "activity", message: "Analyzing the prototype and building the change brief…", kind: "stage" };
-  // Run Understand while draining its tool-step narration to the feed. The queue
-  // closes when understand settles (success OR failure); we then await the brief
-  // so any error still propagates.
+  yield {
+    type: "status",
+    stage: "understand",
+    message: multi ? `Analysing ${map.scoped} screens and merging into one change brief…` : `Building the change brief, diffing ${basis}…`,
+  };
+  yield {
+    type: "activity",
+    message: multi ? `Analysing ${map.scoped} screens in parallel…` : "Analyzing the prototype and building the change brief…",
+    kind: "stage",
+  };
+  // Run Understand while draining its narration to the feed. Multi-screen uses the
+  // map-reduce path (scaledUnderstand); a single screen uses the legacy tool-loop.
+  // The queue closes when the chosen path settles (success OR failure); we then
+  // await the brief so any error still propagates.
   const q = new ActivityQueue();
   let briefErr: unknown = null;
-  // Attach the catch immediately (before the long drain) so a mid-run failure
-  // never surfaces as an unhandled rejection; rethrow it after draining.
-  const briefPromise = understand({
-    ...input,
-    designReference: source.reference,
-    onActivity: (message, kind) => q.push({ type: "activity", message, kind }),
-  })
-    .catch((e) => { briefErr = e; return null; })
+  let screenUrls: Record<string, string> = {};
+  const briefPromise = (async () => {
+    if (multi) {
+      const r = await scaledUnderstand(
+        { designerContext: buildDesignerContext(input), designReference: source.reference, subject: input.subject },
+        map.screens,
+        { pool: pool ?? undefined, onActivity: (message, kind) => q.push({ type: "activity", message, kind }) },
+      );
+      screenUrls = r.screenUrls;
+      return r.brief;
+    }
+    return understand({
+      ...input,
+      pool: pool ?? undefined,
+      designReference: source.reference,
+      onActivity: (message, kind) => q.push({ type: "activity", message, kind }),
+    });
+  })()
+    .catch((e) => {
+      briefErr = e;
+      return null;
+    })
     .finally(() => q.close());
   for await (const ev of q.drain()) yield ev;
   const brief = await briefPromise;
   if (briefErr || !brief) throw briefErr ?? new Error("Understand produced no brief");
+  checkpoint.briefDone = true;
+  void saveJob(checkpoint);
   yield { type: "activity", message: `Change brief ready: “${brief.title}”`, kind: "milestone" };
   yield { type: "brief", brief };
+
+  // The lighter brief handed to the fan-out generators (#5): strips capture-only
+  // visualManifest fields and caps oversized arrays, so a large multi-screen brief
+  // doesn't inflate the shared, prompt-cached generator prefix. Capture and the
+  // library save keep the FULL brief.
+  const briefForGen = compactBriefForGenerators(brief);
 
   // ── Stage: CAPTURE ─────────────────────────────────────────────────────────
   // Screenshot each view in the brief's visualManifest from the live prototype.
@@ -795,7 +901,15 @@ export async function* runPipeline(input: {
       message: `Capturing ${manifest.length} screen${manifest.length > 1 ? "s" : ""} from the prototype…`,
     };
     yield { type: "activity", message: `Capturing ${manifest.length} screen${manifest.length > 1 ? "s" : ""} from the prototype…`, kind: "stage" };
-    captures = await captureScreens({ prototypeUrl: input.prototypeUrl, manifest, runId, defaultSelector: input.componentSelector });
+    captures = await captureScreens({
+      prototypeUrl: input.prototypeUrl,
+      manifest,
+      runId,
+      defaultSelector: input.componentSelector,
+      pool: pool ?? undefined, // reuse the run's warm browser + bounded concurrency (#3)
+      screenUrls, // per-screen URLs for a multi-page prototype
+      maxScreens: input.maxCaptureScreens ?? (multi ? 24 : undefined), // hard cap on a big run (#3)
+    });
     yield { type: "captures", captures };
     const okCount = captures.filter((c) => c.ok).length;
     yield { type: "activity", message: `Captured ${okCount}/${captures.length} screens`, kind: "milestone" };
@@ -852,7 +966,7 @@ export async function* runPipeline(input: {
   let instrumentation: InstrumentationPlan | null = null;
   if (wants("analytics-plan") || wants("dev-code")) {
     try {
-      instrumentation = await generateInstrumentation({ brief, productContext, subject: input.subject });
+      instrumentation = await generateInstrumentation({ brief: briefForGen, productContext, subject: input.subject });
       const nPts = instrumentation?.points?.length ?? 0;
       if (nPts) {
         yield { type: "status", stage: "instrument", message: `Instrumentation plan: ${nPts} data-id${nPts > 1 ? "s" : ""} for Gainsight` };
@@ -872,7 +986,7 @@ export async function* runPipeline(input: {
       (async () =>
         generate({
           ...j,
-          brief,
+          brief: briefForGen,
           productContext,
           examples: await readExamples(j.id),
           captures: IMAGE_ARTIFACTS.has(j.id) ? captures : undefined,
@@ -901,7 +1015,7 @@ export async function* runPipeline(input: {
   if (wants("slide")) {
     promises.push(
       guard(
-        (async () => generateSlide({ brief, productContext, examples: await readExamples("slide"), captures }))(),
+        (async () => generateSlide({ brief: briefForGen, productContext, examples: await readExamples("slide"), captures }))(),
         "slide",
         "Slide",
       ),
@@ -920,7 +1034,7 @@ export async function* runPipeline(input: {
           const codeSpecText = source.codeSpec ? await readCodeSpecFile(source.codeSpec) : (await readCodeSpec(framework)).text;
           const repoConventions = await readRepoConventions(input.codebasePath); // #4
           const artifact = await generateCode({
-            brief, productContext, dsReference, codeSpecText, framework,
+            brief: briefForGen, productContext, dsReference, codeSpecText, framework,
             focus: newComponents[0]?.name, instrumentation,
             analytics: source.analytics, repoConventions, label: codeLabel,
           });
@@ -990,4 +1104,9 @@ export async function* runPipeline(input: {
   }
 
   yield { type: "done", savedRunId: savedRunId ?? undefined, project: savedProject, durationMs };
+  } finally {
+    // One browser for the whole run — close it once, here, whether the run
+    // completed, threw, or the client aborted the stream (generator .return()).
+    if (pool) await pool.close();
+  }
 }
