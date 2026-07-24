@@ -4,7 +4,7 @@
 // ROOT LAYOUT, so it survives client-side navigation. Previously this lived in
 // the page component, so visiting /library unmounted it and killed the run.
 import { createContext, useContext, useRef, useState, useEffect, type ReactNode } from "react";
-import type { ChangeBrief, PipelineEvent, Capture, SlideSpec, InstrumentationPlan } from "@/lib/types";
+import type { ChangeBrief, DesignSpec, RunMode, SpecScope, PipelineEvent, Capture, SlideSpec, InstrumentationPlan } from "@/lib/types";
 import { formatDuration } from "@/lib/format";
 import { createExporters } from "@/app/lib/exports";
 import { DEFAULT_DESIGN_SOURCE } from "@/lib/designSources";
@@ -30,12 +30,25 @@ export const OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] 
 ];
 export const ALL_OUTPUT_IDS = OUTPUTS.flatMap((g) => g.items.map((i) => i.id));
 
+// Spec-mode outputs — document-the-design deliverables. Reuses the same output
+// ids as compare mode where they map (so the `enabled` map and gating just work).
+export const SPEC_OUTPUTS: { pkg: string; items: { id: string; label: string }[] }[] = [
+  { pkg: "Design system", items: [{ id: "design-system", label: "Component specs (one per component)" }] },
+  { pkg: "Engineering", items: [{ id: "dev", label: "Developer functional spec" }] },
+  { pkg: "QA", items: [{ id: "qa", label: "QA test cases" }] },
+  { pkg: "Documentation", items: [{ id: "product-docs", label: "Product docs" }, { id: "one-pager", label: "Design overview" }] },
+];
+export const SPEC_OUTPUT_IDS = SPEC_OUTPUTS.flatMap((g) => g.items.map((i) => i.id));
+
 // Leading glyph per activity-feed line kind.
 export const FEED_ICON: Record<string, string> = {
   tool: "•", stage: "▸", milestone: "◆", artifact: "✓", done: "✅", error: "⚠", info: "·",
 };
 
 function useProvideRun() {
+  // Run mode — no default (equal prominence); the setup gates on picking one.
+  const [mode, setMode] = useState<RunMode | null>(null);
+  const [specScope, setSpecScope] = useState<SpecScope>("component");
   const [projectName, setProjectName] = useState("");
   const [url, setUrl] = useState("");
   const [designDescription, setDesignDescription] = useState("");
@@ -62,6 +75,7 @@ function useProvideRun() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [brief, setBrief] = useState<ChangeBrief | null>(null);
+  const [spec, setSpec] = useState<DesignSpec | null>(null);
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [instrumentation, setInstrumentation] = useState<InstrumentationPlan | null>(null);
   const [artifacts, setArtifacts] = useState<UiArtifact[]>([]);
@@ -91,7 +105,11 @@ function useProvideRun() {
   // Append one line to the live activity feed, stamped with run-elapsed time.
   const pushFeed = (message: string, kind = "info") =>
     setFeed((prev) => [...prev, { ms: Date.now() - startRef.current, message, kind }]);
-  const enabledCount = ALL_OUTPUT_IDS.filter((id) => enabled[id]).length;
+  // The active output set depends on mode (spec mode shows the document-the-design
+  // deliverables). Before a mode is chosen, fall back to the compare set.
+  const activeOutputs = mode === "spec" ? SPEC_OUTPUTS : OUTPUTS;
+  const activeOutputIds = mode === "spec" ? SPEC_OUTPUT_IDS : ALL_OUTPUT_IDS;
+  const enabledCount = activeOutputIds.filter((id) => enabled[id]).length;
   // Spin the loader for the whole run; the nav+viewer fills in below it as
   // content streams, and the loader clears when the run completes.
   const showLoader = running;
@@ -122,6 +140,9 @@ function useProvideRun() {
     setDesignDecisions(c.designDecisions);
     setDesignSource(c.designSource);
     setFramework(c.framework);
+    // A demo case may target a specific mode/scope (spec-mode demos); default to compare.
+    setMode((c.mode as RunMode) ?? "compare");
+    if (c.specScope) setSpecScope(c.specScope as SpecScope);
   }
 
   // Restore the tab title once you come back to a flashed tab.
@@ -220,7 +241,7 @@ function useProvideRun() {
   async function run() {
     setRunning(true);
     setError(""); setNotice("");
-    setBrief(null); setCaptures([]); setInstrumentation(null); setArtifacts([]); setSavedRun(null);
+    setBrief(null); setSpec(null); setCaptures([]); setInstrumentation(null); setArtifacts([]); setSavedRun(null);
     setSelected(null);
     setStatus("Starting…");
     setElapsedMs(0);
@@ -246,7 +267,9 @@ function useProvideRun() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prototypeUrl: url, baselineUrl, baselineImage, codebasePath, codebaseScope, framework,
-          enabledOutputs: ALL_OUTPUT_IDS.filter((id) => enabled[id]),
+          mode: mode ?? "compare",
+          specScope,
+          enabledOutputs: activeOutputIds.filter((id) => enabled[id]),
           subject, componentSelector,
           projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
           // Large-prototype path (omitted when unused → single-screen behaviour).
@@ -301,6 +324,7 @@ function useProvideRun() {
         pushFeed(`Screen map (${ev.method}): ${ev.scoped}/${ev.discovered} screens in scope`, "milestone");
         break;
       case "brief": setBrief(ev.brief); setSelected((s) => s ?? "brief"); break;
+      case "spec": setSpec(ev.spec); setSelected((s) => s ?? "spec"); break;
       case "captures": setCaptures(ev.captures); break;
       case "instrumentation": setInstrumentation(ev.plan); break;
       case "artifact":
@@ -358,16 +382,17 @@ function useProvideRun() {
   }
 
   return {
+    mode, setMode, specScope, setSpecScope,
     projectName, setProjectName, url, setUrl, designDescription, setDesignDescription,
     projectContext, setProjectContext, focusAreas, setFocusAreas, designDecisions, setDesignDecisions,
     baselineUrl, setBaselineUrl, baselineImage, setBaselineImage, codebasePath, setCodebasePath, codebaseScope, setCodebaseScope,
     demoCase, applyDemoCase, framework, setFramework, designSource, setDesignSource,
     subject, setSubject, componentSelector, setComponentSelector,
     crawl, setCrawl, screensText, setScreensText, maxScreens, setMaxScreens,
-    running, status, error, notice, setNotice, brief, captures, instrumentation, artifacts,
+    running, status, error, notice, setNotice, brief, spec, captures, instrumentation, artifacts,
     savedRun, elapsedMs, feed, feedOpen, setFeedOpen, setupOpen, setSetupOpen,
     enabled, setEnabled, selected, setSelected, notifyWhenDone, setNotifyWhenDone,
-    enabledCount, showLoader, exporters,
+    enabledCount, activeOutputs, activeOutputIds, showLoader, exporters,
     abortRef, feedBodyRef, loaderRef,
     run, updateArtifact, toggleApprove, copy, downloadAll,
   };

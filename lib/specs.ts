@@ -10,6 +10,11 @@ export async function readChangeBriefGuidance(): Promise<string> {
   return readFile(join(SPECS_DIR, "change-brief.md"), "utf8");
 }
 
+// Spec-mode counterpart to the change-brief guidance: how to fill the Design Spec.
+export async function readDesignSpecGuidance(): Promise<string> {
+  return readFile(join(SPECS_DIR, "design-spec.md"), "utf8");
+}
+
 export async function readAudienceSpec(specFile: string): Promise<string> {
   return readFile(join(SPECS_DIR, "audiences", specFile), "utf8");
 }

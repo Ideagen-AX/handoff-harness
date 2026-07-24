@@ -132,8 +132,8 @@ export default function LibraryPage() {
 
 // Read-only view of one stored run — same tabbed layout as the generator.
 function RunView({ run, onError, onNotice }: { run: StoredRun; onError: (s: string) => void; onNotice: (s: string) => void }) {
-  const exporters = createExporters({ captures: run.captures, brief: run.brief, framework: run.input?.framework || "vue", onError, onNotice });
-  const [tab, setTab] = useState<string | null>("brief");
+  const exporters = createExporters({ captures: run.captures, brief: run.brief ?? null, framework: run.input?.framework || "vue", onError, onNotice });
+  const [tab, setTab] = useState<string | null>(run.spec ? "spec" : "brief");
 
   async function downloadRunZip() {
     try {
@@ -183,7 +183,8 @@ function RunView({ run, onError, onNotice }: { run: StoredRun; onError: (s: stri
       </div>
       {run.input?.designDescription && <p className="meta" style={{ margin: "0 0 14px" }}>{run.input.designDescription}</p>}
       <RunOutputs
-        brief={run.brief}
+        brief={run.brief ?? null}
+        spec={run.spec ?? null}
         captures={run.captures}
         instrumentation={run.instrumentation}
         artifacts={run.artifacts}

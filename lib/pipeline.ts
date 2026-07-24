@@ -1,12 +1,13 @@
 import { ToolLoopAgent, Output, generateText, generateObject, stepCountIs, type ToolSet } from "ai";
 import { MODEL_UNDERSTAND, MODEL_GENERATE } from "./model";
-import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, type ChangeBrief, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan, type StoredRun } from "./types";
+import { ChangeBriefSchema, SlideSpecSchema, InstrumentationPlanSchema, DesignSpecSchema, type ChangeBrief, type DesignSpec, type RunMode, type SpecScope, type PipelineEvent, type Artifact, type Capture, type SlideSpec, type InstrumentationPlan, type StoredRun } from "./types";
 import { stat } from "node:fs/promises";
 import { fetchPrototype, readReference, makeCodebaseTool, makeInspectTool, makeExploreTool } from "./tools";
 import { captureScreens, capturePrototypeState } from "./capture";
 import { BrowserPool } from "./browserPool";
 import { discoverScreens, scopeToChanged, type ScreenMap } from "./screenMap";
 import { scaledUnderstand } from "./scaledUnderstand";
+import { scaledSpecify } from "./scaledSpecify";
 import { compactBriefForGenerators } from "./compactBrief";
 import { newCheckpoint, saveJob, type JobCheckpoint } from "./jobStore";
 import { APP_VERSION } from "./version";
@@ -166,7 +167,7 @@ async function diffPrototypeAgainstImage(beforeImage: string, afterUrl: string, 
     return null;
   }
 }
-import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples, readCodeSpec, readCodeSpecFile } from "./specs";
+import { readAudienceSpec, readChangeBriefGuidance, readDesignSpecGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples, readCodeSpec, readCodeSpecFile } from "./specs";
 import { AUDIENCES } from "./audiences";
 import { getDesignSource, type DesignSource } from "./designSources";
 import { readFile } from "node:fs/promises";
@@ -391,6 +392,132 @@ async function understand(input: {
   return output as ChangeBrief;
 }
 
+// ── Stage 1 (SPEC MODE): SPECIFY ─────────────────────────────────────────────
+// The standalone counterpart to understand(): documents a design in ITSELF — no
+// baseline, no diff, no "what changed". Same tool-loop and tools, but the agent
+// is told to explore EXHAUSTIVELY (open every hidden state) and emit a thorough,
+// self-contained DesignSpec. Used for component scope (a single subject/screen);
+// product scope goes through scaledSpecify().
+async function specify(input: {
+  prototypeUrl: string;
+  note: string;
+  subject?: string;
+  componentSelector?: string;
+  designDescription?: string;
+  projectContext?: string;
+  focusAreas?: string;
+  designDecisions?: string;
+  designReference?: string;
+  pool?: BrowserPool;
+  onActivity?: (message: string, kind?: string) => void;
+}): Promise<DesignSpec> {
+  const subject = input.subject?.trim();
+  const designRef = input.designReference || "design-system";
+  const act = input.onActivity ?? (() => {});
+  const guidance = await readDesignSpecGuidance();
+  const designerContext = buildDesignerContext(input);
+
+  const tools: ToolSet = {
+    fetchPrototype,
+    readReference,
+    inspectPrototype: makeInspectTool(input.pool),
+    // Spec mode leans on exploration (there's no baseline to scope the work), so
+    // give it a bit more headroom than understand()'s tight cap.
+    explorePrototype: makeExploreTool(5, input.pool),
+  };
+
+  // Two phases — deliberately split so the deep, nested DesignSpec object is NOT
+  // generated inside the tool loop (that intermittently ends on a tool call or
+  // truncates the object). PHASE 1: a tool-loop agent explores the prototype and
+  // writes a plain-text dossier (reliable — free-form text). PHASE 2: a single
+  // generateObject turns the dossier into the structured DesignSpec (no tools, so
+  // the whole output budget is the object; cheap to retry).
+  const agent = new ToolLoopAgent({
+    model: MODEL_UNDERSTAND,
+    tools,
+    stopWhen: stepCountIs(24),
+    maxOutputTokens: 8000,
+    onStepFinish: (step: { toolCalls?: Array<{ toolName: string; input?: unknown }> }) => {
+      for (const tc of step.toolCalls ?? []) act(toolActivity(tc.toolName, tc.input), "tool");
+    },
+    instructions: [
+      "You are a senior product designer + technical writer producing a THOROUGH, SELF-CONTAINED dossier of a design AS IT IS. There is no before/after and no baseline — do NOT frame anything as a change, and never use 'new', 'added', 'updated', or 'improved'. Document what exists.",
+      `Process: (1) fetchPrototype on the prototype URL; (2) readReference('product'); (3) readReference('${designRef}') — the design source whose components/tokens/conventions you'll map onto; (4) inspectPrototype for the ACTUAL clickable control labels; (5) open every hidden state with explorePrototype — each drawer, modal, flyout, menu, and inactive tab/toggle — and read the revealed markup; (6) STOP calling tools and write the dossier.`,
+      subject
+        ? `SUBJECT: document ONLY the ${subject}. The prototype is an ISOLATED DEMO that frames it in a stage/page — IGNORE the demo scaffolding (page background, stage/frame card, wrappers, iframes, page format).`
+        : "",
+      "Then write a THOROUGH plain-text/markdown dossier covering, exhaustively: the overview (purpose, audience, where it lives); the anatomy (regions top→bottom); every component (name, role, variants, states, and the DS tokens it consumes — CSS custom properties like --px-*/--ehsq-* or DS token names, NOT raw hex); every interaction (trigger by EXACT visible label → behavior → outcome); every distinct state (default/empty/loading/error/edge); the content/data model (field, format, source); responsive behaviour across breakpoints; accessibility (roles, keyboard, focus order, aria — WCAG 2.2); and a list of the DISTINCT states worth screenshotting with, for each, the exact click/setViewport actions to reach it. Flag anything you could not verify as an open question. Be concrete; never invent behaviour.",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  });
+
+  const promptText = [
+    `Prototype URL (the design to document): ${input.prototypeUrl}`,
+    input.componentSelector ? `Component selector (scopes screenshots to the component): ${input.componentSelector}` : "",
+    "",
+    "Designer's context (primary truth — use directly, infer only what's missing):",
+    designerContext || "(none provided — document conservatively and flag gaps)",
+    "",
+    "Explore the prototype, then write the dossier.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  // PHASE 1 — explore + dossier (free-form text; robust).
+  let dossier = "";
+  try {
+    const { text } = await agent.generate({ prompt: promptText });
+    dossier = (text ?? "").trim();
+  } catch (e) {
+    console.error("[specify] exploration phase failed:", (e as Error).message);
+  }
+  if (!dossier) dossier = "(exploration produced no notes — infer conservatively from the designer's context and flag gaps)";
+
+  // PHASE 2 — structure the dossier into the DesignSpec (no tools; cheap retry).
+  act("Assembling the design spec…", "stage");
+  const RETRYABLE = new Set(["AI_NoObjectGeneratedError", "AI_NoOutputGeneratedError"]);
+  let spec: DesignSpec | null = null;
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const { object } = await generateObject({
+        model: MODEL_UNDERSTAND,
+        maxOutputTokens: 16000,
+        schema: DesignSpecSchema,
+        system: [
+          "You are turning an exploration dossier into a structured Design Spec of a design AS IT IS (no before/after — never frame anything as a change). Use ONLY facts in the dossier and the designer's context; put anything unverified in openQuestions.",
+          subject ? `Put the ${subject} as a SINGLE entry in \`screens\` and leave \`flows\` empty.` : "Put the documented screen as a SINGLE entry in `screens` and leave `flows` empty.",
+          "Build a COMPREHENSIVE visualManifest — one entry per distinct state named in the dossier, each with a stable screenKey, caption, state, a component-scoping selector, annotations, and the exact `actions` (click by visible label; setViewport for responsive). Distinct states MUST have distinct actions.",
+          "",
+          "Follow this design-spec specification:",
+          guidance,
+        ].join("\n"),
+        prompt: [
+          "Designer's context:",
+          designerContext || "(none provided)",
+          "",
+          "Exploration dossier:",
+          dossier,
+          "",
+          "Produce the structured Design Spec now.",
+        ].join("\n"),
+      });
+      spec = object as DesignSpec;
+      lastErr = null;
+      break;
+    } catch (e) {
+      lastErr = e;
+      console.error(`[specify] structuring attempt ${attempt} failed:`, (e as { name?: string })?.name);
+      if (!RETRYABLE.has((e as { name?: string })?.name ?? "")) throw e;
+    }
+  }
+  if (lastErr || !spec) throw lastErr ?? new Error("Specify produced no spec");
+
+  spec.scope = "component"; // enforce regardless of what the model set
+  return spec;
+}
+
 // ── GENERATE (one artifact) ──────────────────────────────────────────────────
 // Every artifact is generated from the brief + a spec. No tools — pure
 // re-voicing of one canonical understanding. `focus` narrows a spec to a single
@@ -399,7 +526,9 @@ async function generate(opts: {
   id: string;
   label: string;
   specText: string;
-  brief: ChangeBrief;
+  // The canonical understanding — a Change Brief (compare) or Design Spec (spec).
+  // generate() is object-agnostic: it serialises this as JSON for the model.
+  brief: ChangeBrief | DesignSpec;
   productContext: string;
   examples?: string;
   captures?: Capture[];
@@ -768,6 +897,9 @@ export async function* runPipeline(input: {
   focusAreas?: string;
   designDecisions?: string;
   designSource?: string;
+  // ── Mode (default "compare" = before/after; "spec" = document a design in itself) ──
+  mode?: RunMode;
+  specScope?: SpecScope; // spec mode only: "component" (single) | "product" (multi-screen)
   // ── Large-prototype controls (all optional; absent = legacy single-screen) ──
   screens?: Array<string | { url: string; label?: string }>; // explicit screen list
   crawl?: boolean; // discover screens by crawling same-origin links from the entry
@@ -787,6 +919,12 @@ export async function* runPipeline(input: {
   // gated under "design-system" since they're a design-system deliverable.
   const enabled = input.enabledOutputs?.length ? new Set(input.enabledOutputs) : null;
   const wants = (id: string) => !enabled || enabled.has(id);
+  // Run mode. Spec mode documents the design in itself (no baseline/diff). Its
+  // "component" scope is always single-screen; "product" scope allows multi-screen
+  // discovery but never delta-scopes (there's no baseline to diff against).
+  const mode: RunMode = input.mode ?? "compare";
+  const specMode = mode === "spec";
+  const specProduct = specMode && input.specScope === "product";
   try {
   // ── Stage: DISCOVER SCREENS + SCOPE TO THE DELTA (#1, #2) ────────────────────
   // Enumerate the prototype's screens (explicit list → crawl → single fallback),
@@ -794,16 +932,28 @@ export async function* runPipeline(input: {
   // (no crawl, no list) yields exactly ONE screen and takes the legacy tool-loop
   // path below — so nothing regresses for the isolated-component demo case.
   yield { type: "status", stage: "discover", message: "Mapping the prototype's screens…" };
+  // Multi-screen discovery applies to compare mode and to spec mode's "product"
+  // scope. Spec "component" scope is always single-screen — ignore crawl/list.
+  const allowMulti = !specMode || specProduct;
   const discovered = await discoverScreens({
     prototypeUrl: input.prototypeUrl,
     baselineUrl: input.baselineUrl,
-    screens: input.screens,
-    crawl: input.crawl,
+    screens: allowMulti ? input.screens : undefined,
+    crawl: allowMulti ? input.crawl : undefined,
     maxScreens: input.maxScreens,
   });
   const map: ScreenMap =
     discovered.screens.length > 1
-      ? await scopeToChanged(discovered.screens, { pool: pool ?? undefined, hasBaseline: !!input.baselineUrl })
+      ? specMode
+        ? {
+            // Spec mode documents every discovered screen — no baseline, so no delta-scoping.
+            screens: discovered.screens,
+            method: discovered.method,
+            discovered: discovered.screens.length,
+            scoped: discovered.screens.length,
+            note: "Documenting all discovered screens.",
+          }
+        : await scopeToChanged(discovered.screens, { pool: pool ?? undefined, hasBaseline: !!input.baselineUrl })
       : {
           screens: discovered.screens,
           method: discovered.method,
@@ -839,61 +989,70 @@ export async function* runPipeline(input: {
   yield {
     type: "status",
     stage: "understand",
-    message: multi ? `Analysing ${map.scoped} screens and merging into one change brief…` : `Building the change brief, diffing ${basis}…`,
+    message: specMode
+      ? multi ? `Documenting ${map.scoped} screens and assembling the design spec…` : "Documenting the design and building the spec…"
+      : multi ? `Analysing ${map.scoped} screens and merging into one change brief…` : `Building the change brief, diffing ${basis}…`,
   };
   yield {
     type: "activity",
-    message: multi ? `Analysing ${map.scoped} screens in parallel…` : "Analyzing the prototype and building the change brief…",
+    message: specMode
+      ? multi ? `Documenting ${map.scoped} screens in parallel…` : "Documenting the design and building the spec…"
+      : multi ? `Analysing ${map.scoped} screens in parallel…` : "Analyzing the prototype and building the change brief…",
     kind: "stage",
   };
-  // Run Understand while draining its narration to the feed. Multi-screen uses the
-  // map-reduce path (scaledUnderstand); a single screen uses the legacy tool-loop.
-  // The queue closes when the chosen path settles (success OR failure); we then
-  // await the brief so any error still propagates.
+  // Run Understand/Specify while draining its narration to the feed. Multi-screen
+  // uses the map-reduce path; a single screen uses the tool-loop. The queue closes
+  // when the chosen path settles (success OR failure); we then await it so any
+  // error still propagates.
   const q = new ActivityQueue();
-  let briefErr: unknown = null;
+  let understandErr: unknown = null;
   let screenUrls: Record<string, string> = {};
-  const briefPromise = (async () => {
+  const understandingPromise: Promise<ChangeBrief | DesignSpec | null> = (async () => {
+    const ctx = { designerContext: buildDesignerContext(input), designReference: source.reference, subject: input.subject };
+    const onActivity = (message: string, kind?: string) => q.push({ type: "activity", message, kind });
+    if (specMode) {
+      if (multi) {
+        const r = await scaledSpecify(ctx, map.screens, { pool: pool ?? undefined, onActivity });
+        screenUrls = r.screenUrls;
+        return r.spec;
+      }
+      return specify({ ...input, pool: pool ?? undefined, designReference: source.reference, onActivity });
+    }
     if (multi) {
-      const r = await scaledUnderstand(
-        { designerContext: buildDesignerContext(input), designReference: source.reference, subject: input.subject },
-        map.screens,
-        { pool: pool ?? undefined, onActivity: (message, kind) => q.push({ type: "activity", message, kind }) },
-      );
+      const r = await scaledUnderstand(ctx, map.screens, { pool: pool ?? undefined, onActivity });
       screenUrls = r.screenUrls;
       return r.brief;
     }
-    return understand({
-      ...input,
-      pool: pool ?? undefined,
-      designReference: source.reference,
-      onActivity: (message, kind) => q.push({ type: "activity", message, kind }),
-    });
+    return understand({ ...input, pool: pool ?? undefined, designReference: source.reference, onActivity });
   })()
     .catch((e) => {
-      briefErr = e;
+      understandErr = e;
       return null;
     })
     .finally(() => q.close());
   for await (const ev of q.drain()) yield ev;
-  const brief = await briefPromise;
-  if (briefErr || !brief) throw briefErr ?? new Error("Understand produced no brief");
+  const understanding = await understandingPromise;
+  if (understandErr || !understanding) throw understandErr ?? new Error(specMode ? "Specify produced no spec" : "Understand produced no brief");
   checkpoint.briefDone = true;
   void saveJob(checkpoint);
-  yield { type: "activity", message: `Change brief ready: “${brief.title}”`, kind: "milestone" };
-  yield { type: "brief", brief };
+  // Typed views onto the canonical understanding for the mode-specific paths below.
+  const brief: ChangeBrief | null = specMode ? null : (understanding as ChangeBrief);
+  const spec: DesignSpec | null = specMode ? (understanding as DesignSpec) : null;
+  yield { type: "activity", message: `${specMode ? "Design spec" : "Change brief"} ready: “${understanding.title}”`, kind: "milestone" };
+  if (specMode) yield { type: "spec", spec: spec! };
+  else yield { type: "brief", brief: brief! };
 
-  // The lighter brief handed to the fan-out generators (#5): strips capture-only
-  // visualManifest fields and caps oversized arrays, so a large multi-screen brief
-  // doesn't inflate the shared, prompt-cached generator prefix. Capture and the
-  // library save keep the FULL brief.
-  const briefForGen = compactBriefForGenerators(brief);
+  // The lighter object handed to the fan-out generators: for compare, strip
+  // capture-only visualManifest fields and cap oversized arrays so a large brief
+  // doesn't inflate the shared, prompt-cached generator prefix. For spec, pass the
+  // spec directly. Capture and the library save keep the FULL object.
+  const objForGen: ChangeBrief | DesignSpec = specMode ? spec! : compactBriefForGenerators(brief!);
 
   // ── Stage: CAPTURE ─────────────────────────────────────────────────────────
   // Screenshot each view in the brief's visualManifest from the live prototype.
   // Local-first; degrades to placeholders. Feeds the visual artifacts + deck.
   let captures: Capture[] = [];
-  const manifest = brief.visualManifest ?? [];
+  const manifest = understanding.visualManifest ?? [];
   if (manifest.length) {
     yield {
       type: "status",
@@ -923,34 +1082,66 @@ export async function* runPipeline(input: {
     }
   }
 
-  // Build the generation jobs: the 5 comms audiences + the developer handoff…
+  // Build the generation jobs. The set differs by mode.
   const jobs: Array<{ id: string; label: string; specText: string; focus?: string }> = [];
-  for (const a of AUDIENCES) {
-    if (a.id === "slide") continue; // slide uses a dedicated structured generator
-    if (!wants(a.id)) continue;
-    jobs.push({ id: a.id, label: a.label, specText: await readAudienceSpec(a.specFile) });
-  }
-  if (wants("dev")) {
-    jobs.push({ id: "dev", label: "Developer handoff", specText: await readAudienceSpec("dev.md") });
-  }
+  // Compare-only: the net-new components that trigger the component-spec offshoot.
+  let newComponents: { name: string }[] = [];
+  if (specMode) {
+    // ── SPEC MODE fan-out — document-the-design outputs ──────────────────────
+    // Product docs + a design overview, QA cases, a developer functional spec,
+    // and one DS component spec per documented component (promoted to primary).
+    if (wants("product-docs")) jobs.push({ id: "product-docs", label: "Product documentation", specText: await readAudienceSpec("product-docs-spec.md") });
+    if (wants("one-pager")) jobs.push({ id: "one-pager", label: "Design overview", specText: await readAudienceSpec("overview-spec.md") });
+    if (wants("qa")) jobs.push({ id: "qa", label: "QA test cases", specText: await readAudienceSpec("qa-spec.md") });
+    if (wants("dev")) jobs.push({ id: "dev", label: "Developer functional spec", specText: await readAudienceSpec("dev-spec.md") });
+    if (wants("design-system")) {
+      const template = await readComponentSpecTemplate();
+      // Every distinct component documented across the spec's screens, minus
+      // decorative/structural non-components that don't warrant their own spec.
+      const TRIVIAL = /^(spacer|divider|separator|gap|whitespace|filler|container|wrapper)$/i;
+      const names = Array.from(new Set(spec!.screens.flatMap((s) => s.components.map((c) => c.name.trim())).filter(Boolean)))
+        .filter((n) => !TRIVIAL.test(n));
+      if (names.length) {
+        yield {
+          type: "status",
+          stage: "offshoot",
+          message: `Documenting ${names.length} component spec${names.length > 1 ? "s" : ""}: ${names.join(", ")}`,
+        };
+        for (const name of names) {
+          jobs.push({ id: `component-${slug(name)}`, label: `Component spec — ${name}`, specText: template, focus: name });
+        }
+      }
+    }
+  } else {
+    // ── COMPARE MODE fan-out — the comms audiences + developer handoff ────────
+    for (const a of AUDIENCES) {
+      if (a.id === "slide") continue; // slide uses a dedicated structured generator
+      if (!wants(a.id)) continue;
+      jobs.push({ id: a.id, label: a.label, specText: await readAudienceSpec(a.specFile) });
+    }
+    if (wants("dev")) {
+      jobs.push({ id: "dev", label: "Developer handoff", specText: await readAudienceSpec("dev.md") });
+    }
 
-  // …plus the conditional offshoot: one component spec per net-new component
-  // (gated under the design-system output).
-  const newComponents = brief.componentImpact.filter((c) => c.disposition === "net-new");
-  if (newComponents.length && wants("design-system")) {
-    const names = newComponents.map((c) => c.name).join(", ");
-    yield {
-      type: "status",
-      stage: "offshoot",
-      message: `${newComponents.length} net-new component${newComponents.length > 1 ? "s" : ""} detected — adding component spec${newComponents.length > 1 ? "s" : ""}: ${names}`,
-    };
-    const template = await readComponentSpecTemplate();
-    for (const c of newComponents) {
-      jobs.push({ id: `component-${slug(c.name)}`, label: `New component spec — ${c.name}`, specText: template, focus: c.name });
+    // …plus the conditional offshoot: one component spec per net-new component
+    // (gated under the design-system output).
+    newComponents = brief!.componentImpact.filter((c) => c.disposition === "net-new");
+    if (newComponents.length && wants("design-system")) {
+      const names = newComponents.map((c) => c.name).join(", ");
+      yield {
+        type: "status",
+        stage: "offshoot",
+        message: `${newComponents.length} net-new component${newComponents.length > 1 ? "s" : ""} detected — adding component spec${newComponents.length > 1 ? "s" : ""}: ${names}`,
+      };
+      const template = await readComponentSpecTemplate();
+      for (const c of newComponents) {
+        jobs.push({ id: `component-${slug(c.name)}`, label: `New component spec — ${c.name}`, specText: template, focus: c.name });
+      }
     }
   }
 
-  const extra = (wants("slide") ? 1 : 0) + (wants("dev-code") ? 1 : 0);
+  // Slide, instrumentation, and the coded component are compare-mode only.
+  const extra = (!specMode && wants("slide") ? 1 : 0) + (!specMode && wants("dev-code") ? 1 : 0);
   yield {
     type: "status",
     stage: "generate",
@@ -964,9 +1155,9 @@ export async function* runPipeline(input: {
   // PX observes and which selectors it attaches to. Computed once, before the
   // fan-out, whenever either of those two outputs is wanted. Best-effort.
   let instrumentation: InstrumentationPlan | null = null;
-  if (wants("analytics-plan") || wants("dev-code")) {
+  if (!specMode && (wants("analytics-plan") || wants("dev-code"))) {
     try {
-      instrumentation = await generateInstrumentation({ brief: briefForGen, productContext, subject: input.subject });
+      instrumentation = await generateInstrumentation({ brief: objForGen as ChangeBrief, productContext, subject: input.subject });
       const nPts = instrumentation?.points?.length ?? 0;
       if (nPts) {
         yield { type: "status", stage: "instrument", message: `Instrumentation plan: ${nPts} data-id${nPts > 1 ? "s" : ""} for Gainsight` };
@@ -986,7 +1177,7 @@ export async function* runPipeline(input: {
       (async () =>
         generate({
           ...j,
-          brief: briefForGen,
+          brief: objForGen,
           productContext,
           examples: await readExamples(j.id),
           captures: IMAGE_ARTIFACTS.has(j.id) ? captures : undefined,
@@ -1012,10 +1203,10 @@ export async function* runPipeline(input: {
     promises.push(...restJobs.map(genJob));
   }
   // The slide's dedicated structured generator, streamed alongside the rest.
-  if (wants("slide")) {
+  if (!specMode && wants("slide")) {
     promises.push(
       guard(
-        (async () => generateSlide({ brief: briefForGen, productContext, examples: await readExamples("slide"), captures }))(),
+        (async () => generateSlide({ brief: objForGen as ChangeBrief, productContext, examples: await readExamples("slide"), captures }))(),
         "slide",
         "Slide",
       ),
@@ -1024,7 +1215,7 @@ export async function* runPipeline(input: {
   // The coded developer artifact (framework-parameterized; Vue default), grounded
   // in the design-system reference and focused on the primary net-new component.
   const codeLabel = source.codeLabel ? `Developer component code (${source.codeLabel})` : `Developer component code (${framework})`;
-  if (wants("dev-code")) {
+  if (!specMode && wants("dev-code")) {
     promises.push(
       guard(
         (async () => {
@@ -1034,7 +1225,7 @@ export async function* runPipeline(input: {
           const codeSpecText = source.codeSpec ? await readCodeSpecFile(source.codeSpec) : (await readCodeSpec(framework)).text;
           const repoConventions = await readRepoConventions(input.codebasePath); // #4
           const artifact = await generateCode({
-            brief: briefForGen, productContext, dsReference, codeSpecText, framework,
+            brief: objForGen as ChangeBrief, productContext, dsReference, codeSpecText, framework,
             focus: newComponents[0]?.name, instrumentation,
             analytics: source.analytics, repoConventions, label: codeLabel,
           });
@@ -1066,14 +1257,15 @@ export async function* runPipeline(input: {
   let savedProject: string | undefined;
   try {
     const projectName =
-      input.projectName?.trim() || input.subject?.trim() || brief.title || "Unsorted";
+      input.projectName?.trim() || input.subject?.trim() || understanding.title || "Unsorted";
     const project = { id: projectSlug(projectName), name: projectName };
     const run: StoredRun = {
       id: runId,
       version: APP_VERSION,
       createdAt: new Date().toISOString(),
       project,
-      title: brief.title,
+      title: understanding.title,
+      mode,
       prototypeUrl: input.prototypeUrl,
       baselineUrl: input.baselineUrl,
       subject: input.subject,
@@ -1092,7 +1284,9 @@ export async function* runPipeline(input: {
         designDecisions: input.designDecisions,
         enabledOutputs: input.enabledOutputs,
       },
-      brief,
+      // Exactly one of brief/spec is set, tagged by `mode`.
+      brief: brief ?? undefined,
+      spec: spec ?? undefined,
       captures,
       artifacts: collected,
       instrumentation,

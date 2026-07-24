@@ -15,6 +15,8 @@ export type DemoCase = {
   designDecisions: string;
   designSource: string;
   framework: string;
+  mode?: "compare" | "spec"; // absent = compare
+  specScope?: "component" | "product"; // spec mode only
 };
 
 export const DEMO_CASES: DemoCase[] = [
@@ -74,6 +76,26 @@ export const DEMO_CASES: DemoCase[] = [
       "Presented date-bound search results on a month grid rather than only a list, so scheduling and clustering are visible at a glance, without changing the underlying search/filter model. (Edit to add Adam's specific decisions and rationale.)",
     designSource: "ehsqe-ds",
     framework: "vue",
+  },
+  {
+    id: "toolbar-spec",
+    label: "Search toolbar — full spec (spec mode)",
+    projectName: "Nexus Toolbar Spec",
+    url: "https://forge-demo-toolbar-after.vercel.app/",
+    baselineUrl: "",
+    subject: "Search page toolbar",
+    componentSelector: ".toolbar",
+    designDescription:
+      "The Search page toolbar in the Nexus design language — its controls, display modes, and the Tools/Options overflow menus.",
+    projectContext:
+      "Part of the EHSQ-E reskin toward Nexus. This toolbar appears on Search pages across modules (Incidents, Audits, CAPA, MOC).",
+    focusAreas:
+      "Complete documentation of every control and state, responsive collapse into Tools/Options menus, and accessibility.",
+    designDecisions: "",
+    designSource: "ehsqe-ds",
+    framework: "vue",
+    mode: "spec",
+    specScope: "component",
   },
 ];
 
