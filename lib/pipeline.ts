@@ -100,6 +100,67 @@ async function diffPrototypes(beforeUrl: string, afterUrl: string, note: string,
   });
   return text.trim();
 }
+
+// Image baseline diff: the designer uploads a SCREENSHOT of the current app as
+// the "before" (e.g. a grab of production to compare their prototype against).
+// The before is visual-only — no markup — so we capture the after prototype
+// (screenshot + rendered HTML/CSS) and compare the two visually, telling the
+// model to keep code-level claims about the prior state tentative.
+//
+// This is a best-effort ENHANCEMENT: the uploaded screenshot is also handed
+// straight to the Understand agent (which fetches/inspects the prototype
+// itself), so if this pre-diff can't run — the AFTER capture times out, the
+// model errors — we return null and the agent still does the image comparison.
+// It must therefore never throw: a failure here degrades, it doesn't abort.
+async function diffPrototypeAgainstImage(beforeImage: string, afterUrl: string, note: string, subject?: string): Promise<string | null> {
+  if (!beforeImage) return null;
+  let after: { image: string | null; html: string | null };
+  try {
+    after = await capturePrototypeState(afterUrl);
+  } catch (e) {
+    console.error("[image-baseline] AFTER capture failed:", (e as Error).message);
+    return null;
+  }
+  if (!after.image && !after.html) {
+    console.error("[image-baseline] AFTER capture returned nothing — the agent will diff the before image directly");
+    return null;
+  }
+
+  const cap = (h: string | null) => (h ? h.replace(/\s+/g, " ").trim().slice(0, 30000) : "(unavailable)");
+  const content: DiffPart[] = [
+    {
+      type: "text",
+      text: [
+        subject
+          ? `You are comparing two versions of a single UI COMPONENT — the ${subject} — in a BEFORE state and an AFTER state.`
+          : "You are comparing two versions of the same UI — a BEFORE state and an AFTER state.",
+        "The BEFORE is an uploaded SCREENSHOT of the current app (visual only — you do NOT have its markup). The AFTER is the new prototype, for which you have a screenshot AND its rendered HTML/CSS markup.",
+        "IMPORTANT — these may be ISOLATED COMPONENT DEMOS: the component can be framed inside a demo page (a centered 'stage' card, a page background, possibly an <iframe> or other wrapper). That framing is SCAFFOLDING, not part of the component. Do NOT report changes to the page background, the stage/frame card, wrappers, iframes, or overall page format/structure — report ONLY changes to the component itself and its own behaviour.",
+        "Produce a precise, factual VISUAL diff of what changed from BEFORE to AFTER — layout, spacing, styling, grouping, states, responsive behaviour. Ground every claim in the screenshots (and the AFTER markup); do not speculate. Because you have no BEFORE markup, do NOT assert what the prior implementation's code/structure was — keep any such inference tentative and say it is unverified.",
+        "Express colours, spacing, radii and type as design-system TOKENS — the CSS custom properties you see in the AFTER markup (e.g. --px-* / --ehsq-*) or DS token names — not raw hex values. Only give a hex value when no token applies, and say so.",
+        note ? `Designer's note for context: ${note}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+    { type: "text", text: "— BEFORE screenshot (uploaded; visual only) —" },
+    { type: "image", image: beforeImage },
+  ];
+  if (after.image) content.push({ type: "text", text: "— AFTER screenshot —" }, { type: "image", image: after.image });
+  content.push({ type: "text", text: `— AFTER markup —\n${cap(after.html)}` });
+
+  try {
+    const { text } = await generateText({
+      model: MODEL_UNDERSTAND,
+      maxOutputTokens: 2200,
+      messages: [{ role: "user", content }],
+    });
+    return text.trim() || null;
+  } catch (e) {
+    console.error("[image-baseline] pre-diff generateText failed:", (e as Error).message);
+    return null;
+  }
+}
 import { readAudienceSpec, readChangeBriefGuidance, readComponentSpecTemplate, readReferenceDoc, readExamples, readCodeSpec, readCodeSpecFile } from "./specs";
 import { AUDIENCES } from "./audiences";
 import { getDesignSource, type DesignSource } from "./designSources";
@@ -113,6 +174,7 @@ async function understand(input: {
   prototypeUrl: string;
   note: string;
   baselineUrl?: string;
+  baselineImage?: string;
   codebasePath?: string;
   codebaseScope?: string;
   subject?: string;
@@ -166,13 +228,21 @@ async function understand(input: {
 
   // For a URL baseline, diff the two prototypes up front — visually AND at the
   // code level (screenshot + rendered HTML/CSS). Styling changes don't show up in
-  // fetched text. Falls back to the plain text diff if capture is unavailable.
+  // fetched text. An uploaded baseline SCREENSHOT is diffed the same way but
+  // visually only (no before markup). URL takes priority over image when both are
+  // given. Falls back to the plain text/inference path if capture is unavailable.
+  const useImageBaseline = !useCodebase && !input.baselineUrl && !!input.baselineImage;
+  if (useImageBaseline) console.error(`[image-baseline] using uploaded screenshot (~${Math.round((input.baselineImage!.length * 3) / 4 / 1024)} KB)`);
   if (!useCodebase && input.baselineUrl) act("Diffing the before/after prototypes (visual + code)…", "tool");
-  const diffSummary =
-    !useCodebase && input.baselineUrl
+  else if (useImageBaseline) act("Diffing the uploaded baseline screenshot against the prototype…", "tool");
+  const diffSummary = !useCodebase
+    ? input.baselineUrl
       ? await diffPrototypes(input.baselineUrl, input.prototypeUrl, designerContext, subject)
-      : null;
-  if (diffSummary) act("Before/after diff complete", "tool");
+      : useImageBaseline
+        ? await diffPrototypeAgainstImage(input.baselineImage!, input.prototypeUrl, designerContext, subject)
+        : null
+    : null;
+  if (diffSummary) act(useImageBaseline ? "Baseline screenshot diff complete" : "Before/after diff complete", "tool");
 
   let basisInstruction: string;
   if (useCodebase) {
@@ -182,6 +252,17 @@ async function understand(input: {
     basisInstruction = diffSummary
       ? "BASELINE: a before/after diff of the two prototypes — comparing both the screenshots and the rendered HTML/CSS (BEFORE = baseline URL, AFTER = prototype) — is provided below. Treat it as the authoritative record of what changed, especially styling and layout, and base whatChanged/beforeAfter on it. Set changeBasis.method = 'url-diff'."
       : `BASELINE: a baseline URL of the current state is provided. Call fetchPrototype on it (${input.baselineUrl}) as the 'before', then diff against the prototype. Set changeBasis.method = 'url-diff'.`;
+  } else if (useImageBaseline) {
+    // The uploaded screenshot is ATTACHED to this message as an image (see the
+    // agent invocation). The agent must compare it against the prototype it
+    // fetches/inspects itself — this works whether or not the pre-computed
+    // diffSummary below is available, so an image baseline is NEVER downgraded
+    // to 'inferred'.
+    basisInstruction =
+      "BASELINE: an uploaded SCREENSHOT of the BEFORE state (the current app) is ATTACHED to this message as an image (labelled 'BEFORE (uploaded baseline screenshot)'). It is visual only — you have no BEFORE markup. Establish what changed by comparing that attached screenshot against the AFTER prototype you fetch and inspect (fetchPrototype/inspectPrototype give you its markup and live controls). Base whatChanged/beforeAfter on that visual delta. Because the before is visual-only, do NOT assert what the prior code/structure was — flag any such code-level inference in openQuestions. Set changeBasis.method = 'image-diff' (NOT 'inferred' — you DO have a real baseline)." +
+      (diffSummary
+        ? " A pre-computed before/after visual diff is also provided below as a strong starting point — reconcile it with what you see in the attached screenshot."
+        : " (No pre-computed diff was available this run — rely on the attached screenshot directly.)");
   } else {
     basisInstruction =
       "BASELINE: none provided. Infer what changed from the designer's note plus product/design-system knowledge, and set changeBasis.method = 'inferred'. State clearly in changeBasis.note AND in openQuestions that whatChanged/beforeAfter are inferred and must be verified against the real prior state.";
@@ -221,7 +302,7 @@ async function understand(input: {
       "Capture the component's DISTINCT, meaningful states — not the same view repeatedly. For a toolbar that means e.g.: default, responsive/mobile (setViewport), each display-mode selected (click each mode), any menu/panel open (click it), and an active/pressed control. Give each a distinct screenKey and the actions to reach it.",
       "Set each visualManifest entry's `selector` to a CSS selector that scopes the screenshot to the COMPONENT (not the whole page) — the component is small and centered on the demo page, so an unscoped shot makes every state look the same. Use a selector wide enough to include any open menu/popover for menu-open states. If a component selector was provided with the run, prefer it; otherwise infer one from the markup/inspection.",
       "The designer has supplied structured context in the prompt below — what the new design is, the surrounding context, the focus areas, and the key design decisions with rationale. TREAT THIS AS PRIMARY TRUTH: put the stated decisions and their rationale straight into decisionLog (rather than re-inferring them), weight the focus areas when choosing what matters, and lean on the description instead of guessing intent. Only infer what the designer hasn't told you — and flag those inferences in openQuestions.",
-      "CRITICAL — do not confuse ENHANCED with NEW. A change is often an improvement to something that already exists (making existing views responsive, faster, or more accessible), NOT the introduction of a brand-new capability. Never state that a feature, mode, or view is 'new' or 'added' unless a baseline (codebase or baseline URL) confirms it was absent before. Without that confirmation, describe the change as an enhancement to existing behaviour and record the assumption in openQuestions. Read the designer's note literally but skeptically — 'added X' in a note may mean 'made existing X responsive'.",
+      "CRITICAL — do not confuse ENHANCED with NEW. A change is often an improvement to something that already exists (making existing views responsive, faster, or more accessible), NOT the introduction of a brand-new capability. Never state that a feature, mode, or view is 'new' or 'added' unless a baseline (codebase, baseline URL, or baseline screenshot) confirms it was absent before. Without that confirmation, describe the change as an enhancement to existing behaviour and record the assumption in openQuestions. Read the designer's note literally but skeptically — 'added X' in a note may mean 'made existing X responsive'.",
       "Be concrete and factual. Never invent behavior you cannot verify — put genuine uncertainty in openQuestions instead of guessing. Where you must infer a decision or metric that the inputs don't state, still flag it in openQuestions.",
       "",
       "Follow this brief specification:",
@@ -232,7 +313,8 @@ async function understand(input: {
   const promptText = [
     `Prototype URL (the AFTER state): ${input.prototypeUrl}`,
     input.baselineUrl && !useCodebase ? `Baseline URL (the BEFORE state): ${input.baselineUrl}` : "",
-    diffSummary ? `\nBefore/after diff (authoritative — visual + code, BEFORE=baseline, AFTER=prototype):\n${diffSummary}\n` : "",
+    useImageBaseline ? "Baseline: an uploaded SCREENSHOT of the BEFORE state (the current app) is ATTACHED to this message as an image (labelled 'BEFORE (uploaded baseline screenshot)') — visual only, no markup. Compare it against the AFTER prototype you fetch/inspect." : "",
+    diffSummary ? `\nBefore/after diff (authoritative record of what changed, BEFORE=baseline, AFTER=prototype):\n${diffSummary}\n` : "",
     useCodebase ? "Current source code (the BEFORE state) is available via the readCodebase tool." : "",
     "",
     `Designer's context (primary truth — use directly, infer only what's missing):`,
@@ -248,11 +330,29 @@ async function understand(input: {
   // the object (AI_NoObjectGeneratedError). The gateway/model themselves are healthy,
   // so simply re-running the whole loop almost always recovers — retry BOTH.
   const RETRYABLE = new Set(["AI_NoObjectGeneratedError", "AI_NoOutputGeneratedError"]);
+  // With an image baseline, attach the uploaded screenshot to the prompt as an
+  // image part so the agent can see the BEFORE state directly — independent of
+  // whether the pre-diff above succeeded. Otherwise a plain text prompt.
+  const call: { prompt: string } | { messages: Array<{ role: "user"; content: Array<{ type: "text"; text: string } | { type: "image"; image: string }> }> } =
+    useImageBaseline
+      ? {
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: promptText },
+                { type: "text", text: "— BEFORE (uploaded baseline screenshot) —" },
+                { type: "image", image: input.baselineImage! },
+              ],
+            },
+          ],
+        }
+      : { prompt: promptText };
   let output: unknown;
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
-      ({ output } = await agent.generate({ prompt: promptText }));
+      ({ output } = await agent.generate(call));
       lastErr = null;
       break;
     } catch (e) {
@@ -631,6 +731,7 @@ export async function* runPipeline(input: {
   prototypeUrl: string;
   note: string;
   baselineUrl?: string;
+  baselineImage?: string;
   codebasePath?: string;
   codebaseScope?: string;
   framework?: string;
@@ -657,7 +758,9 @@ export async function* runPipeline(input: {
     ? "against the current codebase"
     : input.baselineUrl
       ? "against the baseline URL"
-      : "from the note (no baseline — inferred)";
+      : input.baselineImage
+        ? "against the uploaded baseline screenshot"
+        : "from the note (no baseline — inferred)";
   yield { type: "status", stage: "understand", message: `Building the change brief, diffing ${basis}…` };
   yield { type: "activity", message: "Analyzing the prototype and building the change brief…", kind: "stage" };
   // Run Understand while draining its tool-step narration to the feed. The queue

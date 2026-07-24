@@ -25,12 +25,11 @@ body{margin:0;font-family:"Gilroy","Helvetica Neue",Arial,sans-serif;background:
 .slide::before{content:'';position:absolute;width:26vw;height:26vw;border-radius:50%;filter:blur(80px);background:#36EEFF;opacity:.28;bottom:-9vw;right:-7vw;animation:drift 20s ease-in-out infinite reverse;pointer-events:none}
 @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(2vw,-1.5vw) scale(1.07)}}
 .slide>*{position:relative;z-index:2}
-.brand{position:absolute;top:30px;left:8vw;display:flex;align-items:center;gap:12px;z-index:3}
-.brand .word{font-weight:500;letter-spacing:-.05em;font-size:clamp(16px,1.6vw,24px)}
-.brand svg{width:26px;height:36px}
+.brand{z-index:3;display:flex}
+.brand svg{height:clamp(40px,4.4vw,52px);width:auto;display:block}
 /* Sits in-line with the fixed "Back Home" pack button (top:64px, right:18px),
    to its left with a clear gap so the two never touch at any width. */
-.slideno{position:absolute;top:78px;right:180px;font-size:clamp(10px,1vw,14px);color:rgba(255,255,255,.55);z-index:65;letter-spacing:.15em}
+.slideno{font-size:clamp(10px,1vw,14px);color:rgba(255,255,255,.55);letter-spacing:.15em;white-space:nowrap}
 .eyebrow{font-size:clamp(11px,1.2vw,16px);letter-spacing:.2em;text-transform:uppercase;color:var(--brightpink);font-weight:700;margin-bottom:2.2vh;display:flex;align-items:center;gap:10px}
 .eyebrow .dot{width:9px;height:9px;border-radius:50%;background:var(--brightpink);animation:blink 2.4s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
@@ -67,17 +66,33 @@ h2{font-size:clamp(26px,4vw,56px);font-weight:800;line-height:1.06;letter-spacin
 .hint{position:fixed;bottom:32px;left:8vw;font-size:11.5px;color:rgba(255,255,255,.4);z-index:10}
 ul.tidy{margin:0;padding-left:1.2em;font-size:clamp(14px,1.5vw,20px);line-height:1.9;color:rgba(255,255,255,.85);max-width:60ch}
 ul.tidy li::marker{color:var(--brightpink)}
+/* Problem slide — two-column: copy left, hub-and-spoke constellation right */
+.slide.problem{padding-right:6vw}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.02fr);gap:4vw;align-items:center;width:100%;max-width:1220px}
+.grid2 .eyebrow{margin-bottom:2.2vh}
+.grid2 h2{margin-bottom:2.4vh}
+.constellation{position:relative;width:100%;max-width:min(50vh,520px);aspect-ratio:1;margin:0 auto}
+.constellation .lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.constellation .lines line{stroke:rgba(92,201,208,.4);stroke-width:.35}
+.constellation .hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24%;height:24%;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;font-size:clamp(13px,1.5vw,20px);color:#fff;background:linear-gradient(135deg,var(--pink),var(--brightpink));box-shadow:0 0 0 7px rgba(227,0,114,.16),0 12px 34px rgba(227,0,114,.4);z-index:3;animation:hubbob 6s ease-in-out infinite}
+@keyframes hubbob{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,calc(-50% - 4px))}}
+.constellation .node{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:clamp(9.5px,1vw,13px);font-weight:600;line-height:1;padding:.55em .85em;border-radius:999px;color:rgba(255,255,255,.92);background:rgba(255,255,255,.08);border:1px solid rgba(92,201,208,.42);backdrop-filter:blur(4px);z-index:2;transition:transform .18s,border-color .18s}
+.constellation .node:hover{transform:translate(-50%,-50%) scale(1.06);border-color:var(--brightpink)}
+/* Solution slide — copy left, product screenshot right */
+.slide.solution .grid2{grid-template-columns:minmax(0,.92fr) minmax(0,1.18fr)}
+.shot{width:100%;max-height:66vh;object-fit:contain;border-radius:14px;border:1px solid rgba(255,255,255,.16);box-shadow:0 24px 60px rgba(0,0,0,.5);display:block;margin:0 auto}
+/* Demo slide — copy left, embedded demo video right */
+.slide.demo .grid2{grid-template-columns:minmax(0,.82fr) minmax(0,1.5fr);gap:3.5vw;max-width:none}
+.demo-vid{display:block;max-width:100%;max-height:76vh;width:auto;height:auto;margin-left:auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);box-shadow:0 24px 60px rgba(0,0,0,.5);background:#000}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<a class="packhome-btn" href="../00-START-HERE.html" aria-label="Back home"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back Home</a><style>.packhome-btn{position:fixed;right:18px;top:64px;z-index:64;display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:rgba(9,33,51,.92);color:#fff!important;font-family:"Gilroy","Helvetica Neue",Arial,sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.02em;text-decoration:none;box-shadow:0 10px 24px rgba(9,33,51,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);transition:background .2s,transform .2s}.packhome-btn:hover{background:#E30072;transform:translateY(-1px)}.packhome-btn:focus-visible{outline:2px solid #5CC9D0;outline-offset:2px}.packhome-btn svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}@media print{.packhome-btn{display:none!important}}</style>
+<header class="topbar"><div class="brand"><svg viewBox="0 0 560 120" role="img" aria-label="Ideagen FORGE"><g transform="translate(24,20) scale(1.6)"><polygon fill="#45bbce" points="0,28.9 0,36.2 0.6,36.2 0.6,29.3 12.2,36.2 24.2,28.9 12.2,21.7"/><polygon fill="#039db7" points="12.2,36.2 12.2,50.7 24.2,43.4 24.2,28.9"/><polygon fill="#e2408e" points="12.1,7.2 12.1,14.4 12.6,14.4 12.6,7.6 24.2,14.5 36.2,7.2 24.2,0"/><polygon fill="#ffffff" points="24.2,14.5 24.2,28.9 36.2,21.7 36.2,7.2" opacity="0.92"/></g><text x="110" y="76" font-family="Gilroy, 'Helvetica Neue', Arial, sans-serif" font-size="56" font-weight="800" letter-spacing="6" fill="#ffffff">FORGE</text><text x="112" y="102" font-family="Gilroy, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="7.5" fill="#FF54A4">IDEAGEN · 2026</text><defs><linearGradient id="bloom" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5CC9D0"/><stop offset="1" stop-color="#FF54A4"/></linearGradient></defs><circle cx="342" cy="70" r="7" fill="url(#bloom)"/></svg></div><div class="topbar-right"><div class="slideno" id="slideno"></div><a class="packhome-btn" href="../00-START-HERE.html" aria-label="Back home"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back Home</a></div></header><style>.topbar{position:fixed;top:30px;left:8vw;right:8vw;display:flex;align-items:center;justify-content:space-between;z-index:65;pointer-events:none}.topbar-right{display:flex;align-items:baseline;gap:40px}.topbar .packhome-btn{pointer-events:auto}.packhome-btn{display:inline-block;padding:10px 16px;border-radius:999px;background:rgba(9,33,51,.92);color:#fff!important;font-family:"Gilroy","Helvetica Neue",Arial,sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.02em;text-decoration:none;box-shadow:0 10px 24px rgba(9,33,51,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);transition:background .2s,transform .2s}.packhome-btn:hover{background:#E30072;transform:translateY(-1px)}.packhome-btn:focus-visible{outline:2px solid #5CC9D0;outline-offset:2px}.packhome-btn svg{width:14px;height:14px;vertical-align:middle;margin-right:8px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}@media print{.topbar .packhome-btn{display:none!important}}</style>
 <div class="deck" id="deck">
 
   <!-- 1 · TITLE / video title card -->
-  <section class="slide active">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">FORGE 2026 · BUILD DAYS</div>
+  <section class="slide active" data-no="FORGE 2026 · BUILD DAYS">
     <div class="eyebrow"><span class="dot"></span>FORGE 2026 · PRODUCT &amp; DESIGN · US</div>
     <h1>Project Blue <span class="bloom">Book</span><span class="fs">.</span></h1>
     <p class="sub">One design change, voiced for every audience — so we stop hand-writing the same handoff a dozen times over.</p>
@@ -85,13 +100,65 @@ ul.tidy li::marker{color:var(--brightpink)}
     <div class="foot"><span>14–15 July 2026</span></div>
   </section>
 
-  <!-- 2 · THE PROCESS & THE PAIN -->
-  <section class="slide">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">01 · THE PROCESS</div>
+  <!-- 2 · THE PROBLEM -->
+  <section class="slide problem" data-no="01 · THE PROBLEM">
+    <div class="grid2">
+      <div>
+        <div class="eyebrow"><span class="dot"></span>The problem</div>
+        <h2>Once a design is finished, <span class="bloom">where does it go?</span></h2>
+        <p class="sub" style="max-width:52ch">When our products change, a constellation of teams across the company need to know. Dev needs to know how to build it. Support needs to know how to work it. QA needs to know how to test it. Marketing and Sales need to know how to pitch it and sell it. And on and on. Today, that communication happens haphazardly, if at all.</p>
+      </div>
+      <div class="constellation">
+        <svg class="lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="50" y1="50" x2="50" y2="8"/>
+          <line x1="50" y1="50" x2="69.52" y2="12.81"/>
+          <line x1="50" y1="50" x2="84.57" y2="26.14"/>
+          <line x1="50" y1="50" x2="91.69" y2="44.94"/>
+          <line x1="50" y1="50" x2="89.27" y2="64.89"/>
+          <line x1="50" y1="50" x2="77.85" y2="81.44"/>
+          <line x1="50" y1="50" x2="60.05" y2="90.78"/>
+          <line x1="50" y1="50" x2="39.95" y2="90.78"/>
+          <line x1="50" y1="50" x2="22.15" y2="81.44"/>
+          <line x1="50" y1="50" x2="10.73" y2="64.89"/>
+          <line x1="50" y1="50" x2="8.31" y2="44.94"/>
+          <line x1="50" y1="50" x2="15.43" y2="26.14"/>
+          <line x1="50" y1="50" x2="30.48" y2="12.81"/>
+        </svg>
+        <div class="hub">Design</div>
+        <div class="node" style="left:50%;top:8%">QA</div>
+        <div class="node" style="left:69.52%;top:12.81%">Luminate</div>
+        <div class="node" style="left:87%;top:26.14%">Product Comms</div>
+        <div class="node" style="left:91.69%;top:44.94%">Marketing</div>
+        <div class="node" style="left:89.27%;top:64.89%">Engineering</div>
+        <div class="node" style="left:80%;top:81.44%">Product Success</div>
+        <div class="node" style="left:60.05%;top:90.78%">Sales</div>
+        <div class="node" style="left:39.95%;top:90.78%">TAMs</div>
+        <div class="node" style="left:18%;top:81.44%">Product Management</div>
+        <div class="node" style="left:10.73%;top:64.89%">Executives</div>
+        <div class="node" style="left:8.31%;top:44.94%">Analytics</div>
+        <div class="node" style="left:15.43%;top:26.14%">Design System</div>
+        <div class="node" style="left:30.48%;top:12.81%">Support</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · THE SOLUTION -->
+  <section class="slide solution" data-no="02 · THE SOLUTION">
+    <div class="grid2">
+      <div>
+        <div class="eyebrow"><span class="dot"></span>The solution</div>
+        <h2><span class="bloom">A.D.E.P.T.</span></h2>
+        <p class="sub" style="max-width:54ch">Meet the Agentic Design Extended Publication Tool. ADEPT takes a finished design prototype and, from it, generates tailored content for all of our partner teams, taking us from a world where product changes are an unexpected and poorly understood surprise, to one where all of our partner functions are delivered the information they need to take the latest versions of our products and run with them.</p>
+      </div>
+      <img class="shot" src="library_screenshot.png" alt="ADEPT Handoff library — a generated run showing the change brief and per-audience artifacts">
+    </div>
+  </section>
+
+  <!-- 4 · THE PROCESS & THE PAIN -->
+  <section class="slide" data-no="03 · THE PROCESS">
     <div class="eyebrow"><span class="dot"></span>The process &amp; the pain</div>
     <h2>What it <span class="bloom">costs us</span> every week<span class="fs">.</span></h2>
-    <p class="sub" style="max-width:72ch">After every UX change a constellation of people across the company need to be informed. Today, if that communication happens at all, it's done ad-hoc, and fully manually. If the handoff package produced by Blue Book were made by hand — all of the collecting of material, analysis and synthesis, writing and coding and making slides, and sending emails, and Teams messages, and setting up calls, and having those calls — the total time spent is estimated at 104 hours, conservatively.</p>
+    <p class="sub" style="max-width:72ch">If the handoff package produced by ADEPT were made by hand — all of the collecting of material, analysis and synthesis, writing and coding and making slides, and sending emails, and Teams messages, and setting up calls, and having those calls — the total time spent is estimated at 104 hours, conservatively.</p>
     <div class="statrow">
       <div><b>104 hrs</b><span>to communicate one change, by hand</span></div>
       <div><b>1 designer</b><span>the only person who can</span></div>
@@ -99,10 +166,8 @@ ul.tidy li::marker{color:var(--brightpink)}
     </div>
   </section>
 
-  <!-- 3 · OUR HARNESS -->
-  <section class="slide">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">02 · THE HARNESS</div>
+  <!-- 5 · OUR HARNESS -->
+  <section class="slide" data-no="04 · THE HARNESS">
     <div class="eyebrow"><span class="dot"></span>Our harness — an environment, not one automation</div>
     <h2>Five layers, <span class="bloom">one harness</span><span class="fs">.</span></h2>
     <div class="cards">
@@ -114,25 +179,25 @@ ul.tidy li::marker{color:var(--brightpink)}
     </div>
   </section>
 
-  <!-- 4 · DEMO -->
-  <section class="slide">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">03 · THE DEMO</div>
-    <div class="eyebrow"><span class="dot"></span>Live &amp; end to end</div>
-    <h2>The agent, on <span class="bloom">real input</span><span class="fs">.</span></h2>
-    <p class="sub">Switch to the live run or your screen recording here — let the agent's decisions carry the story.</p>
-    <ul class="tidy">
-      <li>Fetches the before &amp; after prototypes and diffs them — visually and in code.</li>
-      <li>Writes one change brief, captures the screens, fans out 9 artifacts in parallel.</li>
-      <li>Chooses its tools, the states to screenshot, and the component-impact call — unprompted.</li>
-      <li>Release notes, QA cases, docs, an exec slide, and a coded Vue component — export-ready.</li>
-    </ul>
+  <!-- 6 · DEMO -->
+  <section class="slide demo" data-no="05 · THE DEMO">
+    <div class="grid2">
+      <div>
+        <div class="eyebrow"><span class="dot"></span>Live &amp; end to end</div>
+        <h2>The agent, on <span class="bloom">real input</span><span class="fs">.</span></h2>
+        <ul class="tidy">
+          <li>Fetches the before &amp; after prototypes and diffs them — visually and in code.</li>
+          <li>Writes one change brief, captures the screens, fans out 9 artifacts in parallel.</li>
+          <li>Chooses its tools, the states to screenshot, and the component-impact call — unprompted.</li>
+          <li>Release notes, QA cases, docs, an exec slide, and a coded Vue component — export-ready.</li>
+        </ul>
+      </div>
+      <video class="demo-vid" src="demo.mp4" controls preload="metadata" playsinline></video>
+    </div>
   </section>
 
-  <!-- 5 · GUARDRAILS -->
-  <section class="slide">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">04 · GUARDRAILS</div>
+  <!-- 7 · GUARDRAILS -->
+  <section class="slide" data-no="06 · GUARDRAILS">
     <div class="eyebrow"><span class="dot"></span>Every capability pairs with a guardrail</div>
     <h2>Powerful, <span class="bloom">and governed</span><span class="fs">.</span></h2>
     <div>
@@ -143,19 +208,15 @@ ul.tidy li::marker{color:var(--brightpink)}
     </div>
   </section>
 
-  <!-- 6 · IMPACT -->
-  <section class="slide">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">05 · IMPACT</div>
+  <!-- 8 · IMPACT -->
+  <section class="slide" data-no="07 · IMPACT">
     <div class="eyebrow"><span class="dot"></span>What we stop doing on Monday</div>
     <div class="big"><span>104 hours</span> <span class="bloom">back</span><span class="fs">.</span></div>
     <p class="sub" style="margin-top:3vh">What took ~104 hours by hand now runs in 5 min 25 sec — one structured note in, a full reviewed handoff out. The designer's time goes back to designing.</p>
   </section>
 
-  <!-- 7 · WHAT'S NEXT -->
-  <section class="slide">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">06 · ADOPT</div>
+  <!-- 9 · WHAT'S NEXT -->
+  <section class="slide" data-no="08 · ADOPT">
     <div class="eyebrow"><span class="dot"></span>The floor is the seed</div>
     <h2>Where this <span class="bloom">grows</span><span class="fs">.</span></h2>
     <ul class="tidy">
@@ -166,10 +227,8 @@ ul.tidy li::marker{color:var(--brightpink)}
     </ul>
   </section>
 
-  <!-- 8 · TEAM / CLOSE -->
-  <section class="slide">
-    <div class="brand"><svg viewBox="221.8 0 36.2 50.7"><polygon fill="#45bbce" points="221.8,28.9 221.8,36.2 222.4,36.2 222.4,29.3 234,36.2 246,28.9 234,21.7"/><polygon fill="#039db7" points="234,36.2 234,50.7 246,43.4 246,28.9"/><polygon fill="#e2408e" points="233.9,7.2 233.9,14.4 234.4,14.4 234.4,7.6 246,14.5 258,7.2 246,0"/><polygon fill="#fff" points="246,14.5 246,28.9 258,21.7 258,7.2"/></svg><span class="word">Ideagen</span></div>
-    <div class="slideno">FORGE 2026</div>
+  <!-- 10 · TEAM / CLOSE -->
+  <section class="slide" data-no="FORGE 2026">
     <div class="eyebrow"><span class="dot"></span>Built at the Forge · 14–15 July 2026</div>
     <h1>Thank you<span class="fs">.</span></h1>
     <p class="sub"><span>Project Blue Book</span> · <span>Product &amp; Design</span> · <span>US</span></p>
@@ -188,6 +247,7 @@ let i = 0;
 function go(n){
   i = Math.max(0, Math.min(slides.length - 1, n));
   slides.forEach((s, k) => s.classList.toggle('active', k === i));
+  document.getElementById('slideno').textContent = slides[i].dataset.no || '';
   document.getElementById('progress').style.width = ((i + 1) / slides.length * 100) + '%';
 }
 document.getElementById('next').addEventListener('click', e => { e.stopPropagation(); go(i + 1); });

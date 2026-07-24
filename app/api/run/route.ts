@@ -12,7 +12,7 @@ export const maxDuration = 800;
 
 export async function POST(req: Request) {
   const {
-    prototypeUrl, note, baselineUrl, codebasePath, codebaseScope, framework, enabledOutputs, subject, componentSelector,
+    prototypeUrl, note, baselineUrl, baselineImage, codebasePath, codebaseScope, framework, enabledOutputs, subject, componentSelector,
     projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
   } = await req.json();
 
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
           prototypeUrl,
           note: note ?? "",
           baselineUrl: baselineUrl || undefined,
+          baselineImage: typeof baselineImage === "string" && baselineImage.startsWith("data:image/") ? baselineImage : undefined,
           codebasePath: codebasePath || undefined,
           codebaseScope: codebaseScope || undefined,
           framework: framework || undefined,
