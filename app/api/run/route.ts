@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   const {
     prototypeUrl, note, baselineUrl, baselineImage, codebasePath, codebaseScope, framework, enabledOutputs, subject, componentSelector,
     projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
+    mode, specScope,
     screens, crawl, maxScreens, maxCaptureScreens,
   } = await req.json();
 
@@ -47,6 +48,8 @@ export async function POST(req: Request) {
           focusAreas: focusAreas || undefined,
           designDecisions: designDecisions || undefined,
           designSource: designSource || undefined,
+          mode: mode === "spec" ? "spec" : "compare",
+          specScope: specScope === "product" ? "product" : "component",
           // Large-prototype controls (optional; absent = legacy single-screen).
           screens: Array.isArray(screens) ? screens : undefined,
           crawl: typeof crawl === "boolean" ? crawl : undefined,

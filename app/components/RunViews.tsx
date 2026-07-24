@@ -1,7 +1,7 @@
 "use client";
 
 import { marked } from "marked";
-import type { ChangeBrief, Capture, InstrumentationPlan } from "@/lib/types";
+import type { ChangeBrief, DesignSpec, Capture, InstrumentationPlan } from "@/lib/types";
 import { EXPORT_ORDER, EXPORT_LABEL, exportsFor, codeExt, type ArtifactLike, type Exporters } from "@/app/lib/exports";
 
 // Review packages — artifacts are grouped into these tabs by id/prefix, so the
@@ -214,6 +214,70 @@ export function BriefCard({ brief, onExport }: { brief: ChangeBrief; onExport?: 
   );
 }
 
+// ── Design spec (spec mode) ──────────────────────────────────────────────────
+export function SpecCard({ spec, onExport }: { spec: DesignSpec; onExport?: (format: "pdf" | "docx" | "md") => void }) {
+  return (
+    <details className="card brief" open>
+      <summary>Design spec · {spec.title}</summary>
+      <dl>
+        <dt>One-liner</dt>
+        <dd>{spec.oneLiner}</dd>
+        <dt>Scope</dt>
+        <dd><span className="pill ok">{spec.scope === "product" ? "Whole product" : "Component / screen"}</span></dd>
+        <dt>Purpose</dt>
+        <dd>{spec.overview.purpose}</dd>
+        <dt>Audience</dt>
+        <dd>{spec.overview.audience}</dd>
+        <dt>Where it lives</dt>
+        <dd>{spec.overview.whereItLives}</dd>
+        <dt>Screens ({spec.screens.length})</dt>
+        <dd>
+          {spec.screens.map((s, i) => (
+            <details key={i} className="brief" style={{ marginBottom: 8 }}>
+              <summary><strong>{s.label}</strong> <span className="meta">· {s.purpose}</span></summary>
+              <dl style={{ marginTop: 8 }}>
+                <dt>Anatomy</dt>
+                <dd><ul>{s.anatomy.map((x, j) => <li key={j}>{x}</li>)}</ul></dd>
+                <dt>Components</dt>
+                <dd><ul>{s.components.map((c, j) => (
+                  <li key={j}><strong>{c.name}</strong> — {c.role}{c.states.length ? <span className="meta"> · states: {c.states.join(", ")}</span> : null}{c.tokens.length ? <span className="meta"> · tokens: {c.tokens.join(", ")}</span> : null}</li>
+                ))}</ul></dd>
+                <dt>Interactions</dt>
+                <dd><ul>{s.interactions.map((it, j) => <li key={j}><strong>{it.trigger}</strong> → {it.behavior} → <em>{it.outcome}</em></li>)}</ul></dd>
+                <dt>States</dt>
+                <dd><ul>{s.states.map((st, j) => <li key={j}><strong>{st.name}</strong> — {st.description}</li>)}</ul></dd>
+                {s.contentModel.length > 0 && (<><dt>Content</dt>
+                <dd><ul>{s.contentModel.map((f, j) => <li key={j}><strong>{f.field}</strong> <span className="meta">· {f.format} · {f.source}</span></li>)}</ul></dd></>)}
+                {s.responsive.length > 0 && (<><dt>Responsive</dt>
+                <dd><ul>{s.responsive.map((x, j) => <li key={j}>{x}</li>)}</ul></dd></>)}
+                {s.accessibility.length > 0 && (<><dt>Accessibility</dt>
+                <dd><ul>{s.accessibility.map((x, j) => <li key={j}>{x}</li>)}</ul></dd></>)}
+              </dl>
+            </details>
+          ))}
+        </dd>
+        {spec.flows.length > 0 && (<><dt>Flows</dt>
+        <dd><ul>{spec.flows.map((f, i) => <li key={i}><strong>{f.name}</strong>: {f.steps.join(" → ")}</li>)}</ul></dd></>)}
+        {spec.designTokens.length > 0 && (<><dt>Design tokens</dt>
+        <dd><ul>{spec.designTokens.map((t, i) => <li key={i}><strong>{t.category}</strong> — {t.notes}</li>)}</ul></dd></>)}
+        {spec.accessibilitySummary.length > 0 && (<><dt>Accessibility (overall)</dt>
+        <dd><ul>{spec.accessibilitySummary.map((x, i) => <li key={i}>{x}</li>)}</ul></dd></>)}
+        {spec.useCases.length > 0 && (<><dt>Use cases</dt>
+        <dd><ul>{spec.useCases.map((u, i) => <li key={i}><strong>{u.persona}</strong> — {u.scenario} <span className="meta">(e.g. {u.example})</span></li>)}</ul></dd></>)}
+        <dt>Open questions</dt>
+        <dd>{spec.openQuestions.length ? <ul>{spec.openQuestions.map((x, i) => <li key={i}>{x}</li>)}</ul> : <span className="empty">None flagged</span>}</dd>
+      </dl>
+      {onExport && (
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <button className="ghost" onClick={() => onExport("pdf")}>PDF</button>
+          <button className="ghost" onClick={() => onExport("docx")}>Word</button>
+          <button className="ghost" onClick={() => onExport("md")}>.md</button>
+        </div>
+      )}
+    </details>
+  );
+}
+
 // ── Nav-panel run view ───────────────────────────────────────────────────────
 // The shared outputs UI used by BOTH the generator and the library: a left
 // navigation panel (Change brief · Captured screens · Instrumentation · then
@@ -222,6 +286,7 @@ export function BriefCard({ brief, onExport }: { brief: ChangeBrief; onExport?: 
 // approve/edit/copy affordances; omit it for the read-only library view.
 export function RunOutputs({
   brief,
+  spec = null,
   captures,
   instrumentation,
   artifacts,
@@ -235,6 +300,7 @@ export function RunOutputs({
   onCopy,
 }: {
   brief: ChangeBrief | null;
+  spec?: DesignSpec | null;
   captures: Capture[];
   instrumentation: InstrumentationPlan | null;
   artifacts: TabArtifact[];
@@ -254,6 +320,11 @@ export function RunOutputs({
         {brief && (
           <button className={`nav-item ${selected === "brief" ? "active" : ""}`} onClick={() => onSelect("brief")}>
             <span className="nav-item-label">Change brief</span>
+          </button>
+        )}
+        {spec && (
+          <button className={`nav-item ${selected === "spec" ? "active" : ""}`} onClick={() => onSelect("spec")}>
+            <span className="nav-item-label">Design spec</span>
           </button>
         )}
         {captures.length > 0 && (
@@ -290,6 +361,8 @@ export function RunOutputs({
       <section className="viewer">
         {selected === "brief" && brief ? (
           <BriefCard brief={brief} onExport={exporters.briefExport} />
+        ) : selected === "spec" && spec ? (
+          <SpecCard spec={spec} onExport={exporters.briefExport} />
         ) : selected === "captures" ? (
           <CaptureGallery captures={captures} onDownloadOne={exporters.downloadCapture} onDownloadAll={exporters.downloadCapturesZip} />
         ) : selected === "instrumentation" && instrumentation ? (

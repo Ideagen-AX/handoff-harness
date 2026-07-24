@@ -9,7 +9,7 @@ import CubesLoader from "@/app/components/CubesLoader";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { DESIGN_SOURCES } from "@/lib/designSources";
 import { DEMO_CASES } from "@/lib/demoCases";
-import { useRun, OUTPUTS, ALL_OUTPUT_IDS, FEED_ICON } from "@/app/RunProvider";
+import { useRun, FEED_ICON } from "@/app/RunProvider";
 
 // Pull the first image out of a clipboard-paste or drag-drop DataTransfer.
 function imageFileFrom(items?: DataTransferItemList | null): File | null {
@@ -49,13 +49,16 @@ export default function Home() {
     demoCase, applyDemoCase, framework, setFramework, designSource, setDesignSource,
     subject, setSubject, componentSelector, setComponentSelector,
     crawl, setCrawl, screensText, setScreensText, maxScreens, setMaxScreens,
-    running, status, error, notice, setNotice, brief, captures, instrumentation, artifacts,
+    mode, setMode, specScope, setSpecScope,
+    running, status, error, notice, setNotice, brief, spec, captures, instrumentation, artifacts,
     savedRun, elapsedMs, feed, feedOpen, setFeedOpen, setupOpen, setSetupOpen,
     enabled, setEnabled, selected, setSelected, notifyWhenDone, setNotifyWhenDone,
-    enabledCount, showLoader, exporters,
+    enabledCount, activeOutputs, showLoader, exporters,
     abortRef, feedBodyRef, loaderRef,
     run, updateArtifact, toggleApprove, copy, downloadAll,
   } = useRun();
+  const specMode = mode === "spec";
+  const totalOutputs = activeOutputs.reduce((n: number, g: { items: unknown[] }) => n + g.items.length, 0);
 
   const [dragOver, setDragOver] = useState(false);
 
@@ -129,10 +132,33 @@ export default function Home() {
         <details className="setup-fold" open={setupOpen} onToggle={(e) => setSetupOpen(e.currentTarget.open)}>
           <summary className="setup-summary">
             <span className="setup-title">Handoff setup</span>
-            <span className="setup-meta">{enabledCount} of {ALL_OUTPUT_IDS.length} outputs selected</span>
+            <span className="setup-meta">{mode ? `${enabledCount} of ${totalOutputs} outputs selected` : "Pick a mode"}</span>
             <span className="setup-toggle">{setupOpen ? "Hide Setup" : "Show Setup"}</span>
           </summary>
           <div className="setup-body">
+        {/* Mode chooser — equal prominence, no default. The rest of the form
+            appears only once a mode is picked. */}
+        <div className="mode-choose">
+          <button type="button" className={`mode-card ${mode === "compare" ? "sel" : ""}`} onClick={() => setMode("compare")} disabled={running}>
+            <span className="mode-card-title">Compare</span>
+            <span className="mode-card-desc">Document what changed between a &ldquo;before&rdquo; and the new design.</span>
+          </button>
+          <button type="button" className={`mode-card ${mode === "spec" ? "sel" : ""}`} onClick={() => setMode("spec")} disabled={running}>
+            <span className="mode-card-title">Specify</span>
+            <span className="mode-card-desc">Thoroughly document a design in itself — no comparison.</span>
+          </button>
+        </div>
+        {!mode && <p className="meta" style={{ margin: "6px 2px 0" }}>Choose a mode to begin.</p>}
+        {mode && (<>
+        {specMode && (
+          <label className="field">
+            <span className="lab">Spec scope — how much to document</span>
+            <select value={specScope} onChange={(e) => setSpecScope(e.target.value as typeof specScope)} disabled={running}>
+              <option value="component">Single component / screen</option>
+              <option value="product">Whole product — multiple screens / flows</option>
+            </select>
+          </label>
+        )}
         <label className="field demo-case">
           <span className="lab">Demo case — optional; populates the fields below so you can watch a run</span>
           <select value={demoCase} onChange={(e) => applyDemoCase(e.target.value)} disabled={running}>
@@ -151,6 +177,7 @@ export default function Home() {
           <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-prototype.vercel.app/" disabled={running} />
         </label>
 
+        {!specMode && (
         <div className="baseline">
           <div className="baseline-title">Baseline — compare against a &ldquo;before&rdquo; (optional, recommended)</div>
           <p className="meta" style={{ margin: "8px 0 12px" }}>
@@ -199,6 +226,7 @@ export default function Home() {
             <input type="text" value={codebaseScope} onChange={(e) => setCodebaseScope(e.target.value)} placeholder="e.g. src/components/Search" disabled={running} />
           </label>
         </div>
+        )}
 
         <div className="describe">
           <div className="describe-head">Describe the design — the richer this is, the less the agent has to guess</div>
@@ -247,9 +275,9 @@ export default function Home() {
         </label>
 
         <details className="baseline" open>
-          <summary>Outputs — {enabledCount} of {ALL_OUTPUT_IDS.length} selected</summary>
+          <summary>Outputs — {enabledCount} of {totalOutputs} selected</summary>
           <div className="out-select">
-            {OUTPUTS.map((g) => (
+            {activeOutputs.map((g) => (
               <div key={g.pkg} className="out-group">
                 <div className="out-group-title">{g.pkg}</div>
                 {g.items.map((i) => (
@@ -262,13 +290,20 @@ export default function Home() {
             ))}
           </div>
         </details>
-        <details className="baseline">
-          <summary>Large prototype — multiple pages / full app (optional)</summary>
+        {(!specMode || specScope === "product") && (
+        <details className="baseline" open={specMode}>
+          <summary>Large prototype — multiple pages / full app{specMode ? "" : " (optional)"}</summary>
           <p className="meta" style={{ margin: "8px 0 12px" }}>
-            For a multi-screen prototype, the harness maps its screens, then — with a
-            &ldquo;before&rdquo; URL above — processes <strong>only the screens that changed</strong>,
-            analysing them in parallel and merging into one brief. Leave all of this blank for a
-            single-screen run.
+            {specMode ? (
+              <>For a multi-screen product, the harness maps its screens and documents
+              <strong> every screen</strong>, analysing them in parallel and assembling one spec.
+              Crawl from the prototype URL or list the screens explicitly.</>
+            ) : (
+              <>For a multi-screen prototype, the harness maps its screens, then — with a
+              &ldquo;before&rdquo; URL above — processes <strong>only the screens that changed</strong>,
+              analysing them in parallel and merging into one brief. Leave all of this blank for a
+              single-screen run.</>
+            )}
           </p>
           <label className="out-check" style={{ marginBottom: 10 }}>
             <input type="checkbox" checked={crawl} disabled={running} onChange={(e) => setCrawl(e.target.checked)} />
@@ -296,6 +331,8 @@ export default function Home() {
             />
           </label>
         </details>
+        )}
+        </>)}
           </div>
         </details>
 
@@ -325,8 +362,8 @@ export default function Home() {
           </div>
         )}
         <div className="btn-row">
-          <button className="primary" onClick={run} disabled={running || !url || enabledCount === 0}>
-            {running ? "Running…" : "Generate handoff"}
+          <button className="primary" onClick={run} disabled={running || !mode || !url || enabledCount === 0}>
+            {running ? "Running…" : !mode ? "Pick a mode first" : specMode ? "Generate spec" : "Generate handoff"}
           </button>
           {running && <button className="ghost" onClick={() => abortRef.current?.abort()}>Cancel</button>}
           <label className="notify-toggle" title="Get an OS notification, a tab-title flash, and a chime when the run finishes — so you can work in another tab meanwhile">
@@ -384,6 +421,7 @@ export default function Home() {
 
           <RunOutputs
             brief={brief}
+            spec={spec}
             captures={captures}
             instrumentation={instrumentation}
             artifacts={artifacts}
