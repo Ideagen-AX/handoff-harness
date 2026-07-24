@@ -17,5 +17,8 @@ next-env.d.ts
 specs/templates/*.pptx
 specs/templates/*.potx
 
+# Harness runtime job cache
+.harness-cache
+
 # macOS
 .DS_Store

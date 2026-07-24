@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { APP_VERSION } from "@/lib/version";
 import { formatDuration } from "@/lib/format";
@@ -9,6 +10,18 @@ import ThemeToggle from "@/app/components/ThemeToggle";
 import { DESIGN_SOURCES } from "@/lib/designSources";
 import { DEMO_CASES } from "@/lib/demoCases";
 import { useRun, OUTPUTS, ALL_OUTPUT_IDS, FEED_ICON } from "@/app/RunProvider";
+
+// Pull the first image out of a clipboard-paste or drag-drop DataTransfer.
+function imageFileFrom(items?: DataTransferItemList | null): File | null {
+  if (!items) return null;
+  for (const it of Array.from(items)) {
+    if (it.kind === "file" && it.type.startsWith("image/")) {
+      const f = it.getAsFile();
+      if (f) return f;
+    }
+  }
+  return null;
+}
 
 // Required-field indicator: a red asterisk symbol until a value is present, then
 // a teal check-in-a-circle. Value-driven, so demo-case auto-fill flips it too.
@@ -32,7 +45,7 @@ export default function Home() {
   const {
     projectName, setProjectName, url, setUrl, designDescription, setDesignDescription,
     projectContext, setProjectContext, focusAreas, setFocusAreas, designDecisions, setDesignDecisions,
-    baselineUrl, setBaselineUrl, codebasePath, setCodebasePath, codebaseScope, setCodebaseScope,
+    baselineUrl, setBaselineUrl, baselineImage, setBaselineImage, codebasePath, setCodebasePath, codebaseScope, setCodebaseScope,
     demoCase, applyDemoCase, framework, setFramework, designSource, setDesignSource,
     subject, setSubject, componentSelector, setComponentSelector,
     crawl, setCrawl, screensText, setScreensText, maxScreens, setMaxScreens,
@@ -43,6 +56,55 @@ export default function Home() {
     abortRef, feedBodyRef, loaderRef,
     run, updateArtifact, toggleApprove, copy, downloadAll,
   } = useRun();
+
+  const [dragOver, setDragOver] = useState(false);
+
+  // Read an uploaded/pasted/dropped screenshot into a data URL for the visual
+  // baseline, downscaling so the long edge is at most 1600px. A raw Retina
+  // screen grab can be many MB — too big for the request body and beyond the
+  // vision model's useful resolution — which previously bloated the run and
+  // caused the baseline to be dropped. Kept client-side; rides along in the run
+  // request body. Falls back to the raw data URL if canvas processing fails.
+  function onBaselineImage(file: File | null | undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = typeof reader.result === "string" ? reader.result : "";
+      if (!raw) return;
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1600;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        if (scale >= 1) { setBaselineImage(raw); return; }
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { setBaselineImage(raw); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setBaselineImage(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => setBaselineImage(raw);
+      img.src = raw;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Paste a screenshot from anywhere on the page (⌘V / Ctrl+V). Only reacts when
+  // the clipboard holds an image, so it never hijacks normal text paste.
+  useEffect(() => {
+    if (running) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const file = imageFileFrom(e.clipboardData?.items);
+      if (file) {
+        e.preventDefault();
+        onBaselineImage(file);
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
 
   return (
     <div className="wrap">
@@ -88,6 +150,55 @@ export default function Home() {
           <span className="lab lab-req">Prototype URL<ReqMark filled={!!url.trim()} /></span>
           <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-prototype.vercel.app/" disabled={running} />
         </label>
+
+        <div className="baseline">
+          <div className="baseline-title">Baseline — compare against a &ldquo;before&rdquo; (optional, recommended)</div>
+          <p className="meta" style={{ margin: "8px 0 12px" }}>
+            Give it the <strong>before</strong> state for a real diff. Point it at a
+            <strong> &ldquo;before&rdquo; prototype URL</strong> (it screenshots and reads the rendered HTML/CSS of
+            both and compares), <strong>upload a screenshot</strong> of the current app to compare your work
+            against visually, or give a local codebase path. With none, it infers from your description.
+          </p>
+          <label className="field">
+            <span className="lab">&ldquo;Before&rdquo; prototype URL — compares the new design against it (visual + code)</span>
+            <input type="url" value={baselineUrl} onChange={(e) => setBaselineUrl(e.target.value)} placeholder="https://search-toolbar-before.vercel.app/" disabled={running} />
+          </label>
+          <div className="field">
+            <span className="lab">&ldquo;Before&rdquo; screenshot — a grab of the current app to diff against (visual only)</span>
+            <label
+              className={`drop-zone ${dragOver ? "drag-over" : ""} ${running ? "disabled" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); if (!running) setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                if (!running) onBaselineImage(imageFileFrom(e.dataTransfer.items) ?? e.dataTransfer.files?.[0]);
+              }}
+            >
+              <input type="file" accept="image/*" onChange={(e) => onBaselineImage(e.target.files?.[0])} disabled={running} hidden />
+              <span className="drop-hint">
+                <strong>Drag &amp; drop</strong> an image, <strong>paste</strong> from the clipboard (⌘V / Ctrl+V), or <strong>click to browse</strong>.
+              </span>
+            </label>
+          </div>
+          {baselineImage && (
+            <div className="baseline-preview">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={baselineImage} alt="Baseline screenshot preview" />
+              <button type="button" className="link-btn" onClick={() => setBaselineImage("")} disabled={running}>
+                Remove screenshot
+              </button>
+            </div>
+          )}
+          <label className="field">
+            <span className="lab">Current source codebase path (alternative — local runs only)</span>
+            <input type="text" value={codebasePath} onChange={(e) => setCodebasePath(e.target.value)} placeholder="/path/to/miramar" disabled={running} />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span className="lab">Codebase scope — a subpath to diff against, so it doesn&rsquo;t scan the whole app (recommended for large repos)</span>
+            <input type="text" value={codebaseScope} onChange={(e) => setCodebaseScope(e.target.value)} placeholder="e.g. src/components/Search" disabled={running} />
+          </label>
+        </div>
 
         <div className="describe">
           <div className="describe-head">Describe the design — the richer this is, the less the agent has to guess</div>
@@ -150,26 +261,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </details>
-        <details className="baseline">
-          <summary>Baseline — compare against a &ldquo;before&rdquo; (optional, recommended)</summary>
-          <p className="meta" style={{ margin: "8px 0 12px" }}>
-            Give it the <strong>before</strong> state for a real diff. Point it at a
-            <strong> &ldquo;before&rdquo; prototype URL</strong> (it screenshots and reads the rendered HTML/CSS of
-            both and compares), or a local codebase path. With neither, it infers from your description.
-          </p>
-          <label className="field">
-            <span className="lab">&ldquo;Before&rdquo; prototype URL — compares the new design against it (visual + code)</span>
-            <input type="url" value={baselineUrl} onChange={(e) => setBaselineUrl(e.target.value)} placeholder="https://search-toolbar-before.vercel.app/" disabled={running} />
-          </label>
-          <label className="field">
-            <span className="lab">Current source codebase path (alternative — local runs only)</span>
-            <input type="text" value={codebasePath} onChange={(e) => setCodebasePath(e.target.value)} placeholder="/path/to/miramar" disabled={running} />
-          </label>
-          <label className="field" style={{ marginBottom: 0 }}>
-            <span className="lab">Codebase scope — a subpath to diff against, so it doesn&rsquo;t scan the whole app (recommended for large repos)</span>
-            <input type="text" value={codebaseScope} onChange={(e) => setCodebaseScope(e.target.value)} placeholder="e.g. src/components/Search" disabled={running} />
-          </label>
         </details>
         <details className="baseline">
           <summary>Large prototype — multiple pages / full app (optional)</summary>

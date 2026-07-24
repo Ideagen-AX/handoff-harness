@@ -34,7 +34,7 @@ export const DEMO_CASES: DemoCase[] = [
       "Fidelity of the visual restyle to Nexus; the new dark-mode variant; accessibility (aria labels, visible focus); and the responsive collapse into Tools/Options menus.",
     designDecisions:
       "Kept the control set and spacing unchanged to avoid retraining users. Added a first-class dark variant. The selected display mode now uses a gradient + shadow to read as active.",
-    designSource: "miramar",
+    designSource: "ehsqe-ds",
     framework: "vue",
   },
   {
@@ -53,7 +53,7 @@ export const DEMO_CASES: DemoCase[] = [
       "Fidelity of the drawer restyle to Nexus; the filter-row and date interactions; the apply / clear affordances; and the drawer's responsive behaviour.",
     designDecisions:
       "Restyled to Nexus without changing the underlying filter model. (Edit to add the specific decisions and rationale for this redesign.)",
-    designSource: "miramar",
+    designSource: "ehsqe-ds",
     framework: "vue",
   },
   {
@@ -72,7 +72,7 @@ export const DEMO_CASES: DemoCase[] = [
       "Fidelity of the calendar view to Nexus; the month grid and how records/chips render on their dates; empty vs dense days; responsive behaviour; and accessibility (keyboard navigation of the grid, aria labels).",
     designDecisions:
       "Presented date-bound search results on a month grid rather than only a list, so scheduling and clustering are visible at a glance, without changing the underlying search/filter model. (Edit to add Adam's specific decisions and rationale.)",
-    designSource: "miramar",
+    designSource: "ehsqe-ds",
     framework: "vue",
   },
 ];

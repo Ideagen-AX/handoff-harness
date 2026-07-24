@@ -13,9 +13,9 @@ export const ChangeBriefSchema = z.object({
   changeBasis: z
     .object({
       method: z
-        .enum(["codebase-diff", "url-diff", "inferred"])
+        .enum(["codebase-diff", "url-diff", "image-diff", "inferred"])
         .describe(
-          "How 'what changed' was established: compared against the current source code, against a baseline URL, or inferred from the note + knowledge with NO baseline",
+          "How 'what changed' was established: compared against the current source code, against a baseline URL, against an uploaded baseline screenshot (visual only), or inferred from the note + knowledge with NO baseline",
         ),
       note: z
         .string()
