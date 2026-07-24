@@ -15,7 +15,15 @@ const themeInit = `(function(){try{var t=localStorage.getItem('handoff-theme');d
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body data-variant="nexus" data-theme="light">
+      {/*
+        suppressHydrationWarning: the themeInit script above mutates body's
+        data-theme before React hydrates (to avoid a theme flash), and browser
+        extensions (e.g. ColorZilla's cz-shortcut-listen) inject their own body
+        attributes pre-hydration. Both make the server/client body attributes
+        differ benignly. This suppresses warnings for body's OWN attributes only
+        — genuine mismatches in children still surface.
+      */}
+      <body data-variant="nexus" data-theme="light" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <RunProvider>{children}</RunProvider>
       </body>

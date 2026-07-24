@@ -43,6 +43,9 @@ function useProvideRun() {
   const [focusAreas, setFocusAreas] = useState("");
   const [designDecisions, setDesignDecisions] = useState("");
   const [baselineUrl, setBaselineUrl] = useState("");
+  // An uploaded screenshot of the current app, held as a data URL, used as a
+  // visual "before" when the designer has no baseline URL or codebase to diff against.
+  const [baselineImage, setBaselineImage] = useState("");
   const [codebasePath, setCodebasePath] = useState("");
   const [codebaseScope, setCodebaseScope] = useState("");
   const [demoCase, setDemoCase] = useState("custom");
@@ -97,9 +100,11 @@ function useProvideRun() {
   function applyDemoCase(id: string) {
     setDemoCase(id);
     const c = DEMO_CASES.find((x) => x.id === id);
+    setBaselineImage(""); // demo cases use a baseline URL, not an uploaded screenshot
     if (!c) {
       setProjectName(""); setUrl(""); setBaselineUrl(""); setSubject(""); setComponentSelector("");
       setDesignDescription(""); setProjectContext(""); setFocusAreas(""); setDesignDecisions("");
+      setDesignSource(DEFAULT_DESIGN_SOURCE); setFramework("vue"); // back to the EHSQ-E DS default
       return;
     }
     setProjectName(c.projectName);
@@ -231,7 +236,7 @@ function useProvideRun() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prototypeUrl: url, baselineUrl, codebasePath, codebaseScope, framework,
+          prototypeUrl: url, baselineUrl, baselineImage, codebasePath, codebaseScope, framework,
           enabledOutputs: ALL_OUTPUT_IDS.filter((id) => enabled[id]),
           subject, componentSelector,
           projectName, designDescription, projectContext, focusAreas, designDecisions, designSource,
@@ -339,7 +344,7 @@ function useProvideRun() {
   return {
     projectName, setProjectName, url, setUrl, designDescription, setDesignDescription,
     projectContext, setProjectContext, focusAreas, setFocusAreas, designDecisions, setDesignDecisions,
-    baselineUrl, setBaselineUrl, codebasePath, setCodebasePath, codebaseScope, setCodebaseScope,
+    baselineUrl, setBaselineUrl, baselineImage, setBaselineImage, codebasePath, setCodebasePath, codebaseScope, setCodebaseScope,
     demoCase, applyDemoCase, framework, setFramework, designSource, setDesignSource,
     subject, setSubject, componentSelector, setComponentSelector,
     running, status, error, notice, setNotice, brief, captures, instrumentation, artifacts,
